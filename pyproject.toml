@@ -24,7 +24,6 @@ dev = [
     "build",
     "twine",
     "ruff",
-    "ty",
     "pre-commit",
     "ty>=0.0.1a29",
 ]
