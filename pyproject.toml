@@ -1,7 +1,7 @@
 [project]
 name = "orchard"
 version = "2025.12.01"
-description = ""
+description = "Python client for Orchard, a compute platform for Apple Silicon"
 readme = "README.md"
 requires-python = ">=3.12"
 
