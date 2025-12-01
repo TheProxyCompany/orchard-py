@@ -16,7 +16,7 @@ dependencies = [
     "pynng"
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "pytest",
     "pytest-asyncio",
@@ -26,4 +26,5 @@ dev = [
     "ruff",
     "ty",
     "pre-commit",
+    "ty>=0.0.1a29",
 ]
