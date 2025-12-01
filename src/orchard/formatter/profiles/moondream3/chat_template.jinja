@@ -1,0 +1,104 @@
+{# ------------------------------------------------------------------------ #}
+{# Template configuration                                                   #}
+{# Designed to accept model-specific control tokens                         #}
+{# ------------------------------------------------------------------------ #}
+{%- set add_generation_prompt = add_generation_prompt or true -%}
+{%- set prefill = prefill or none -%}
+
+{# ------------------------------------------------------------------------ #}
+{# Macro: render_content                                                    #}
+{# Renders the content parts of an interaction (text only, no images)       #}
+{# ------------------------------------------------------------------------ #}
+{%- macro render_content(interaction) -%}
+    {%- if interaction['content'] is string -%}
+        {{- interaction['content'] | safe -}}
+    {%- else -%}
+        {%- for content in interaction['content'] -%}
+            {%- if content['type'] != 'image' and content['type'] != 'capability' -%}
+                {{- content | safe -}}
+            {%- endif -%}
+        {%- endfor -%}
+    {%- endif -%}
+{%- endmacro -%}
+
+{# ------------------------------------------------------------------------ #}
+{# Macro: render_images                                                     #}
+{# Renders image placeholders for an interaction                            #}
+{# ------------------------------------------------------------------------ #}
+{%- macro render_images(interaction) -%}
+    {%- if interaction['content'] is not string -%}
+        {%- for content in interaction['content'] -%}
+            {%- if content['type'] == 'image' -%}
+                {{- "<|image|>" -}}
+            {%- endif -%}
+        {%- endfor -%}
+    {%- endif -%}
+{%- endmacro -%}
+
+{# ------------------------------------------------------------------------ #}
+{# Task-specific templates for Moondream3                                   #}
+{# ------------------------------------------------------------------------ #}
+{{ begin_of_text }}
+
+{#- Render images first (they come before the task prompt) -#}
+{%- for interaction in interactions -%}
+    {{- render_images(interaction) -}}
+{%- endfor -%}
+
+{%- if task is defined and task is not none -%}
+    {#- Caption tasks: describe<sep>{length}<answer> -#}
+    {%- if task == 'caption_short' -%}
+        {{- roles.user.role_start_tag ~ 'describe' ~ roles.user.role_end_tag ~ 'short' ~ roles.agent.role_start_tag -}}
+    {%- elif task == 'caption_normal' -%}
+        {{- roles.user.role_start_tag ~ 'describe' ~ roles.user.role_end_tag ~ 'normal' ~ roles.agent.role_start_tag -}}
+    {%- elif task == 'caption_long' -%}
+        {{- roles.user.role_start_tag ~ 'describe' ~ roles.user.role_end_tag ~ 'long' ~ roles.agent.role_start_tag -}}
+    {#- Detect task: detect<sep>{object}<answer> -#}
+    {%- elif task == 'detect' -%}
+        {{- roles.user.role_start_tag ~ 'detect' ~ roles.user.role_end_tag -}}
+        {%- for interaction in interactions -%}
+            {{- render_content(interaction) -}}
+        {%- endfor -%}
+        {{- roles.agent.role_start_tag -}}
+    {#- Point task: point<sep>{object}<answer> -#}
+    {%- elif task == 'point' -%}
+        {{- roles.user.role_start_tag ~ 'point' ~ roles.user.role_end_tag -}}
+        {%- for interaction in interactions -%}
+            {{- render_content(interaction) -}}
+        {%- endfor -%}
+        {{- roles.agent.role_start_tag -}}
+    {#- Detect gaze task: coordinate pair embedded inline via single <|coord|> placeholder -#}
+    {#- C++ MoondreamCoordCapability takes 8-byte input (x,y) and produces 2 embedding tokens -#}
+    {%- elif task == 'detect_gaze' -%}
+        {{- "\n\nPoint:<|coord|> gaze\n\n" -}}
+    {#- Unknown task, fall through to default query behavior -#}
+    {%- else -%}
+        {{- roles.user.role_start_tag ~ roles.user.role_name ~ roles.user.role_end_tag -}}
+        {%- for interaction in interactions -%}
+            {{- render_content(interaction) -}}
+        {%- endfor -%}
+        {%- if add_generation_prompt -%}
+            {%- if reasoning is not none and reasoning -%}
+                {{- thinking_start_token -}}
+            {%- else -%}
+                {{- roles.agent.role_start_tag -}}
+            {%- endif -%}
+        {%- endif -%}
+    {%- endif -%}
+{%- else -%}
+    {#- Default query behavior -#}
+    {{- roles.user.role_start_tag ~ roles.user.role_name ~ roles.user.role_end_tag -}}
+    {%- for interaction in interactions -%}
+        {{- render_content(interaction) -}}
+    {%- endfor -%}
+    {%- if add_generation_prompt -%}
+        {%- if reasoning is not none and reasoning -%}
+            {{- thinking_start_token -}}
+        {%- else -%}
+            {{- roles.agent.role_start_tag -}}
+        {%- endif -%}
+    {%- endif -%}
+{%- endif -%}
+{%- if prefill is not none -%}
+    {{- prefill -}}
+{%- endif -%}

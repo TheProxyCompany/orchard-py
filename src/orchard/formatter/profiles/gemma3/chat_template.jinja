@@ -1,0 +1,55 @@
+{# ------------------------------------------------------------------------ #}
+{# Template configuration                                                   #}
+{# Designed to accept model-specific control tokens                         #}
+{# ------------------------------------------------------------------------ #}
+{%- set add_generation_prompt = add_generation_prompt or true -%}
+{%- set prefill = prefill or none -%}
+
+{# ------------------------------------------------------------------------ #}
+{# Macro: render_interaction                                                #}
+{# Renders individual interactions using model-specific control tokens.     #}
+{# ------------------------------------------------------------------------ #}
+{%- macro render_interaction(interaction) -%}
+
+    {# Get the role configuration (start/end tags, etc.) for this interaction #}
+    {%- set role = roles.get(interaction['role']) -%}
+    {%- if role is not none -%}
+        {{- role.role_start_tag + role.role_name + role.role_end_tag -}}
+    {%- endif -%}
+
+    {# Render the main content of the interaction                            #}
+    {%- if interaction['content'] is string -%}
+        {{- interaction['content'] | safe -}}
+    {%- else -%}
+        {%- for content in interaction['content'] -%}
+            {%- if content['type'] == 'image' -%}
+                {{ start_image_token }}{{ end_image_token }}
+            {%- else -%}
+                {{- content | safe -}}
+            {%- endif -%}
+        {%- endfor -%}
+    {%- endif -%}
+    {%- if end_of_message is not none -%}
+        {{ end_of_message }}
+    {%- else -%}
+        {{ end_of_sequence }}
+    {%- endif -%}
+{%- endmacro -%}
+
+{# ------------------------------------------------------------------------ #}
+{# Main chat template structure                                             #}
+{# Iterates over interactions and assembles the complete chat prompt.       #}
+{# Ensures model-specific control tokens delimit the content appropriately. #}
+{# ------------------------------------------------------------------------ #}
+{{ begin_of_text }}
+{%- for interaction in interactions -%}
+    {{ render_interaction(interaction) -}}
+{%- endfor -%}
+{%- if add_generation_prompt -%}
+    {%- if roles is not none and roles.agent is not none -%}
+        {{- roles.agent.role_start_tag + roles.agent.role_name + roles.agent.role_end_tag -}}
+    {%- endif -%}
+{%- endif -%}
+{%- if prefill is not none -%}
+    {{- prefill -}}
+{%- endif -%}

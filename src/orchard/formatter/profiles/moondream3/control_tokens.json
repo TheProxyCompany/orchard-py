@@ -1,0 +1,38 @@
+{
+    "template_type": "moondream3",
+    "begin_of_text": "<|endoftext|>",
+    "end_of_sequence": "<|endoftext|>",
+    "end_of_message": "<|endoftext|>",
+    "thinking_start_token": "<|md_reserved_3|>",
+    "thinking_end_token": "",
+    "start_image_token": "",
+    "end_image_token": "",
+    "coord_placeholder": "<|coord|>",
+    "capabilities": {
+        "start_ground": "<|md_reserved_6|>",
+        "end_ground": "<|md_reserved_8|>",
+        "coord": "<|md_reserved_4|>"
+    },
+    "roles": {
+        "system": {
+            "role_name": "",
+            "role_start_tag": "",
+            "role_end_tag": ""
+        },
+        "agent": {
+            "role_name": "",
+            "role_start_tag": "<|md_reserved_2|>",
+            "role_end_tag": ""
+        },
+        "user": {
+            "role_name": "query",
+            "role_start_tag": "<|md_reserved_0|>",
+            "role_end_tag": "<|md_reserved_1|>"
+        },
+        "tool": {
+            "role_name": "",
+            "role_start_tag": "",
+            "role_end_tag": ""
+        }
+    }
+}
