@@ -13,7 +13,8 @@ dependencies = [
     "jinja2",
     "sse_starlette",
     "filelock",
-    "pynng"
+    "pynng",
+    "requests",
 ]
 
 [project.scripts]
