@@ -6,7 +6,7 @@ from pathlib import Path
 
 import uvicorn
 
-from orchard.engine.fetch import download_engine, get_installed_version
+from orchard.engine.fetch import ORCHARD_HOME, download_engine, get_installed_version
 from orchard.engine.inference_engine import InferenceEngine
 from orchard.server.app import create_app
 
@@ -58,24 +58,39 @@ def run_engine_stop(args: argparse.Namespace):
 def run_upgrade(args: argparse.Namespace):
     """Handler for the 'upgrade' command."""
     channel = args.channel
+
+    if args.reinstall:
+        print(f"\033[34m→\033[0m Reinstalling \033[32m{channel}\033[0m build...")
+        # Clear existing installation
+        bin_dir = ORCHARD_HOME / "bin"
+        version_file = ORCHARD_HOME / "version.txt"
+        if bin_dir.exists():
+            import shutil
+
+            shutil.rmtree(bin_dir)
+            print("\033[34m→\033[0m Cleared existing installation")
+        if version_file.exists():
+            version_file.unlink()
+    else:
+        print(f"\033[34m→\033[0m Upgrading to latest \033[32m{channel}\033[0m build...")
+
     current = get_installed_version()
 
     if current:
-        print(f"\033[34m→\033[0m Current version: {current}")
+        print(f"\033[34m→\033[0m Current version: \033[34m{current}\033[0m")
     else:
-        print("\033[34m→\033[0m No version currently installed")
+        print("\033[34m→\033[0m No version currently installed.")
 
-    print(f"\033[34m→\033[0m Fetching latest from '{channel}' channel...")
+    print(f"\033[34m→\033[0m Fetching latest \033[32m{channel}\033[0m build...")
 
     try:
-        download_engine(channel=channel)
         new_version = get_installed_version()
-        if new_version == current:
-            print(f"\033[32m✓\033[0m Already on latest: {new_version}")
+        if new_version == current and not args.reinstall:
+            print(f"\033[32m✓\033[0m Already on latest: \033[34m{new_version}\033[0m")
         else:
-            print(f"\033[32m✓\033[0m Upgraded to {new_version}")
+            download_engine(channel=channel)
     except Exception as e:
-        print(f"\033[31m✗\033[0m Upgrade failed: {e}")
+        print(f"\033[31m✗\033[0m Upgrade failed: \033[31m{e}\033[0m")
         sys.exit(1)
 
 
@@ -121,6 +136,11 @@ def main():
         nargs="?",
         default="stable",
         help="Release channel to pull from (default: stable).",
+    )
+    upgrade_parser.add_argument(
+        "--reinstall",
+        action="store_true",
+        help="Force reinstall by clearing existing installation first.",
     )
     upgrade_parser.set_defaults(func=run_upgrade)
 

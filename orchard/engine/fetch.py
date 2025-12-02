@@ -94,13 +94,15 @@ def download_engine(
     if version is None:
         version = manifest.get("latest")
         if not version:
-            raise ManifestError(f"No latest version defined for '{channel}' channel")
+            raise ManifestError(
+                f"No latest version defined for \033[32m{channel}\033[0m channel"
+            )
 
     versions = manifest.get("versions", {})
     if version not in versions:
         available = ", ".join(sorted(versions.keys())) or "(none)"
         raise ManifestError(
-            f"Version '{version}' not found in '{channel}' channel.\n"
+            f"Version \033[32m{version}\033[0m not found in \033[32m{channel}\033[0m channel.\n"
             f"  Available versions: {available}"
         )
 
@@ -109,15 +111,15 @@ def download_engine(
     expected_sha256 = info.get("sha256")
 
     if not url:
-        raise ManifestError(f"No download URL for version '{version}'")
+        raise ManifestError(f"No download URL for version \033[32m{version}\033[0m")
 
-    _print_status(f"Downloading {version}")
+    _print_status(f"Downloading \033[32m{version}\033[0m")
     content = _download_with_progress(url, expected_sha256)
 
     _print_status("Extracting")
     _extract_and_install(content, version)
 
-    _print_status(f"Installed {version}", done=True)
+    _print_status(f"Installed \033[32m{version}\033[0m", done=True)
 
 
 def get_installed_version() -> str | None:
