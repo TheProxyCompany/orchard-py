@@ -53,15 +53,13 @@ class ExtractionError(FetchError):
 
 def get_engine_path() -> Path:
     """Return path to the engine binary, downloading if necessary."""
-    # Local dev override always wins
+    # Local dev override takes priority if it exists
     local_build = os.environ.get("PIE_LOCAL_BUILD")
     if local_build:
         local_path = Path(local_build) / "bin" / "proxy_inference_engine"
         if local_path.exists():
             return local_path
-        raise FileNotFoundError(
-            f"PIE_LOCAL_BUILD set but binary not found: {local_path}"
-        )
+        # Fall through to download if local build not found
 
     binary_path = ORCHARD_HOME / "bin" / "proxy_inference_engine"
 
