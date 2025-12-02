@@ -47,7 +47,7 @@ async def run_serve(args: argparse.Namespace):
 
 def run_engine_stop(args: argparse.Namespace):
     """Handler for the 'engine stop' command."""
-    logger.info("Attempting to shut down the shared pie_engine process...")
+    logger.info("Attempting to shut down the shared orchard engine process...")
     if InferenceEngine.shutdown(timeout=args.timeout):
         logger.info("Engine shutdown successful.")
     else:
@@ -134,7 +134,7 @@ def main():
 
     # --- 'engine stop' command ---
     stop_parser = engine_subparsers.add_parser(
-        "stop", help="Stop the shared pie_engine process."
+        "stop", help="Stop the shared orchard engine process."
     )
     stop_parser.add_argument(
         "--timeout",

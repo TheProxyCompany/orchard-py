@@ -61,7 +61,7 @@ def write_manifest(entries: list[PreloadEntry], output_path: Path) -> None:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Generate a preload manifest consumed by pie_engine."
+        description="Generate a preload manifest consumed by orchard engine."
     )
     parser.add_argument(
         "--output",

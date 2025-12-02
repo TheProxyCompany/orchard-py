@@ -182,7 +182,10 @@ def reap_engine_process(pid: int) -> None:
 
 def spawn_async_reaper(pid: int) -> None:
     thread = threading.Thread(
-        target=reap_engine_process, args=(pid,), name=f"pie-reaper-{pid}", daemon=True
+        target=reap_engine_process,
+        args=(pid,),
+        name=f"orchard-reaper-{pid}",
+        daemon=True,
     )
     thread.start()
 
@@ -205,7 +208,7 @@ def wait_for_engine_ready(
         while time.monotonic() < deadline:
             if process_alive_check and not process_alive_check():
                 raise RuntimeError(
-                    "pie_engine exited before signaling readiness; check the engine log for details."
+                    "orchard engine exited before signaling readiness; check the engine log for details."
                 )
             try:
                 msg = temp_sub_socket.recv_msg()

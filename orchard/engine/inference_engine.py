@@ -46,7 +46,7 @@ _DEFAULT_ENGINE_PORT = 8000
 
 
 class InferenceEngine:
-    """Process-safe manager that launches and reference-counts pie_engine."""
+    """Process-safe manager that launches and reference-counts orchard engine."""
 
     def __init__(
         self,
@@ -204,7 +204,9 @@ class InferenceEngine:
             if process:
                 process.terminate()
                 process.wait(timeout=10)
-            raise RuntimeError(f"Failed to launch pie_engine executable: {e}") from e
+            raise RuntimeError(
+                f"Failed to launch orchard engine executable: {e}"
+            ) from e
 
     def _acquire_lease_and_init_global_context(self):
         """
@@ -279,19 +281,19 @@ class InferenceEngine:
 
     def _stop_engine_locked(self, pid: int) -> None:
         if not pid_is_alive(pid):
-            logger.debug("pie_engine PID %s already exited.", pid)
+            logger.debug("orchard engine PID %s already exited.", pid)
             self._paths.pid_file.unlink(missing_ok=True)
             self._paths.ready_file.unlink(missing_ok=True)
             return
 
         if not stop_engine_process(pid, timeout=5.0):
-            logger.warning("Failed to stop pie_engine PID %s.", pid)
-            raise RuntimeError(f"Failed to stop pie_engine PID {pid}.")
+            logger.warning("Failed to stop orchard engine PID %s.", pid)
+            raise RuntimeError(f"Failed to stop orchard engine PID {pid}.")
 
         reap_engine_process(pid)
         self._paths.pid_file.unlink(missing_ok=True)
         self._paths.ready_file.unlink(missing_ok=True)
-        logger.info("pie_engine PID %s stopped and readiness cleared.", pid)
+        logger.info("orchard engine PID %s stopped and readiness cleared.", pid)
 
     def _setup_logging(
         self, client_log_file: Path | None = None, engine_log_file: Path | None = None
@@ -326,7 +328,7 @@ class InferenceEngine:
     @staticmethod
     def shutdown(timeout: float = 15.0) -> bool:
         """
-        Forcefully stops the shared pie_engine process, bypassing reference counts.
+        Forcefully stops the shared orchard engine process, bypassing reference counts.
 
         This is an administrative action that will terminate the engine even if
         other clients are connected.
