@@ -1,10 +1,9 @@
 [project]
 name = "orchard-py"
-version = "2025.12.3"
+version = "2025.12.4"
 description = "Python client for Orchard, a compute platform for Apple Silicon"
 readme = "README.md"
 requires-python = ">=3.12"
-
 dependencies = [
     "pillow",
     "huggingface-hub",
@@ -21,7 +20,9 @@ dependencies = [
 orchard = "orchard.cli.main:main"
 
 [tool.setuptools.packages.find]
-include = ["orchard*"]
+include = [
+    "orchard*",
+]
 
 [dependency-groups]
 dev = [
