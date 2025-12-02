@@ -116,7 +116,6 @@ def download_engine(
     _print_status(f"Downloading \033[32m{version}\033[0m")
     content = _download_with_progress(url, expected_sha256)
 
-    _print_status("Extracting")
     _extract_and_install(content, version)
 
     _print_status(f"Installed \033[32m{version}\033[0m", done=True)

@@ -337,9 +337,11 @@ class InferenceEngine:
             True if the engine was stopped gracefully, False otherwise.
         """
         if update := get_available_update():
-            logger.info("Update available: %s", update)
-            print(f"\n\033[33m→\033[0m Update available: {update}")
-            print("  Run \033[1morchard upgrade\033[0m to install\n")
+            logger.info("Orchard upgrade available: %s", update)
+            print(
+                f"Orchard upgrade available. Run `orchard upgrade` to install: {update}"
+            )
+
         paths = get_engine_file_paths(None, None)
         lock = FileLock(str(paths.lock_file), timeout=_LOCK_TIMEOUT_S)
 

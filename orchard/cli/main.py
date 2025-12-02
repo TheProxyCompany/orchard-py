@@ -6,7 +6,12 @@ from pathlib import Path
 
 import uvicorn
 
-from orchard.engine.fetch import ORCHARD_HOME, download_engine, get_installed_version
+from orchard.engine.fetch import (
+    ORCHARD_HOME,
+    check_for_updates,
+    download_engine,
+    get_installed_version,
+)
 from orchard.engine.inference_engine import InferenceEngine
 from orchard.server.app import create_app
 
@@ -74,19 +79,20 @@ def run_upgrade(args: argparse.Namespace):
     else:
         print(f"\033[34m→\033[0m Upgrading to latest \033[32m{channel}\033[0m build...")
 
-    current = get_installed_version()
-
-    if current:
+    if current := get_installed_version():
         print(f"\033[34m→\033[0m Current version: \033[34m{current}\033[0m")
-    else:
-        print("\033[34m→\033[0m No version currently installed.")
 
-    print(f"\033[34m→\033[0m Fetching latest \033[32m{channel}\033[0m build...")
+    latest_version = check_for_updates(channel=channel)
+    if latest_version:
+        print(f"\033[34m→\033[0m Latest version: \033[34m{latest_version}\033[0m")
+    else:
+        latest_version = current
 
     try:
-        new_version = get_installed_version()
-        if new_version == current and not args.reinstall:
-            print(f"\033[32m✓\033[0m Already on latest: \033[34m{new_version}\033[0m")
+        if latest_version == current and not args.reinstall:
+            print(
+                f"\033[32m✓\033[0m Already on latest: \033[34m{latest_version}\033[0m"
+            )
         else:
             download_engine(channel=channel)
     except Exception as e:
