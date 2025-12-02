@@ -20,7 +20,7 @@ def _resolve_ipc_root() -> Path:
         base = (
             mac_cache if mac_cache.exists() and mac_cache.is_dir() else home / ".cache"
         )
-        path = base / "com.theproxycompany.orchard" / "ipc"
+        path = base / "com.theproxycompany.pie" / "ipc"
 
     path.mkdir(parents=True, exist_ok=True)
     return path
