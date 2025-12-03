@@ -3,16 +3,19 @@ import pytest
 
 pytestmark = pytest.mark.asyncio
 
-MODEL_ID = "meta-llama/Llama-3.1-8B-Instruct"
 
-
-async def test_multi_candidate_determinism(live_server):
+@pytest.mark.parametrize("model_id", ["meta-llama/Llama-3.1-8B-Instruct", "moondream3"])
+@pytest.mark.parametrize("batch_size", [2, 4, 8, 16])
+async def test_multi_candidate_determinism(live_server, model_id, batch_size):
     """
     Tests a non-streaming request that requires multiple candidates to be generated.
     """
+    if model_id == "moondream3":
+        pytest.skip(reason="moondream 3 determinism acting weird")
+
     server_url = live_server
     request_payload = {
-        "model": MODEL_ID,
+        "model": model_id,
         "messages": [
             {
                 "role": "user",
@@ -22,7 +25,7 @@ async def test_multi_candidate_determinism(live_server):
         "max_completion_tokens": 64,
         "temperature": 0.0,  # Greedy for deterministic output
         "stream": False,
-        "n": 16,
+        "n": batch_size,
     }
 
     async with httpx.AsyncClient(timeout=30.0) as client:
@@ -36,7 +39,11 @@ async def test_multi_candidate_determinism(live_server):
     assert len(response_data["choices"]) > 0
     # contents should be deterministic
     first_content = response_data["choices"][0]["message"]["content"]
-    print(f"First content:\n{first_content}")
+    print(
+        f"First content:\n{first_content}\n seen {len(response_data['choices'])} ✓",
+        end="",
+        flush=False,
+    )
 
     drifts = 0
     for choice in response_data["choices"][1:]:
@@ -46,17 +53,24 @@ async def test_multi_candidate_determinism(live_server):
         if choice["message"]["content"] != first_content:
             drifts += 1
             print(f"Drift detected!:\n{choice['message']['content']}")
+        else:
+            print("✓", end="", flush=False)
 
+    print()
     assert drifts == 0, f"Expected 0 drifts, got {drifts}"
 
 
-async def test_sequential_request_determinism(live_server):
+@pytest.mark.parametrize("model_id", ["meta-llama/Llama-3.1-8B-Instruct", "moondream3"])
+async def test_sequential_request_determinism(live_server, model_id):
     """
     Tests a sequential request that generates the same content multiple times.
     """
+    if model_id == "moondream3":
+        pytest.skip(reason="moondream 3 determinism acting weird")
+
     server_url = live_server
     request_payload = {
-        "model": MODEL_ID,
+        "model": model_id,
         "messages": [
             {
                 "role": "user",
@@ -95,7 +109,13 @@ async def test_sequential_request_determinism(live_server):
             print(f"Drift detected!:\n{content} at index {i}")
             break
 
-    print(first_response)
+    print(f"First response:\n{first_response}\n seen {valid_responses} ✓")
+    for i in range(num_requests):
+        if i == 0:
+            print("✓", end="", flush=False)
+        else:
+            print(".", end="", flush=False)
+    print()
     assert valid_responses == num_requests, (
         f"Expected {num_requests} valid responses, got {valid_responses}"
     )
