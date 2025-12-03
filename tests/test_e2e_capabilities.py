@@ -110,8 +110,8 @@ def test_moondream_query_with_spatial_refs(engine: InferenceEngine):
             image = img.convert("RGB")
 
         result = client.query(
-            image,
             prompt="What is at this location?",
+            image=image,
             spatial_refs=[(0.5, 0.5)],
             temperature=0.0,
         )
