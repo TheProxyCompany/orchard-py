@@ -69,15 +69,18 @@ class MoondreamClient(Client):
 
     def query(
         self,
-        image: Image.Image,
         prompt: str,
+        image: Image.Image | None = None,
         spatial_refs: SpatialRefs | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
-        data_url = self._image_to_data_url(image)
-        content: list[dict[str, Any]] = [
-            {"type": "input_image", "image_url": data_url},
-        ]
+        content: list[dict[str, Any]] = []
+
+        if image:
+            data_url = self._image_to_data_url(image)
+            content = [
+                {"type": "input_image", "image_url": data_url},
+            ]
 
         # Add spatial refs as capability inputs
         if spatial_refs:
