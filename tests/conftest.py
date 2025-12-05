@@ -6,6 +6,7 @@ import sys
 from collections.abc import Generator
 from pathlib import Path
 
+import dotenv
 import httpx
 import pytest
 import pytest_asyncio
@@ -15,6 +16,7 @@ from orchard.engine.fetch import get_engine_path
 from orchard.engine.inference_engine import InferenceEngine
 
 logger = logging.getLogger(__name__)
+dotenv.load_dotenv()
 
 # These paths should be relative to the project root
 PROJECT_ROOT = Path(__file__).parent.parent
