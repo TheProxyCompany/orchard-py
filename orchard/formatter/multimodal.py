@@ -144,7 +144,6 @@ def build_multimodal_messages(
     for message_index, message in enumerate(items):
         role = _normalize_role(_get_field(message, "role"), available_roles)
         content = _get_field(message, "content")
-        logger.info("Processing message %d from role: %s", message_index, role)
 
         if isinstance(content, str):
             messages.append({"role": role, "content": content})
