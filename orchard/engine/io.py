@@ -49,7 +49,7 @@ def cache_root() -> Path:
     home = Path.home()
     mac_cache = home / "Library" / "Caches"
     base = mac_cache if mac_cache.exists() else home / ".cache"
-    target = base / "com.proxycompany.pie"
+    target = base / "com.theproxycompany"
     target.mkdir(parents=True, exist_ok=True)
     return target
 
