@@ -1,0 +1,3 @@
+[submodule "orchard/formatter/profiles"]
+	path = orchard/formatter/profiles
+	url = https://github.com/TheProxyCompany/orchard-models.git
