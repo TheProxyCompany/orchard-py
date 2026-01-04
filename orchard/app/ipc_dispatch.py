@@ -115,7 +115,8 @@ class IPCState:
             )
         else:
             logger.debug(
-                f"Received delta for unknown/completed request_id {request_id}. Discarding."
+                "Received delta for unknown/completed request_id %d. Discarding.",
+                request_id,
             )
 
     def handle_engine_event(self, msg_bytes: bytes) -> None:
