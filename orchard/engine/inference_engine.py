@@ -227,9 +227,9 @@ class InferenceEngine:
                 self._paths.pid_file.unlink(missing_ok=True)
                 self._paths.ready_file.unlink(missing_ok=True)
 
-            if not engine_running and not alive_refs:
+            if not engine_running:
                 logger.debug(
-                    "Inference engine not running. Launching new instance as leader."
+                    "Inference engine not running. Launching new instance."
                 )
                 try:
                     self._launch_engine_locked()
