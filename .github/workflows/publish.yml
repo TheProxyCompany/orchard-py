@@ -71,7 +71,7 @@ jobs:
         run: |
           source .venv/bin/activate
           pip install dist/*.whl
-          python -c "from orchard import OrchardClient; print('orchard import OK')"
+          python -c "from orchard.clients import Client; print('orchard import OK')"
 
       - name: Publish to PyPI
         env:
