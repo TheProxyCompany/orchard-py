@@ -70,9 +70,8 @@ jobs:
       - name: Validate package
         run: |
           source .venv/bin/activate
-          # Check the package can be imported
           pip install dist/*.whl
-          python -c "import orchard; print(f'orchard {orchard.__version__} OK')"
+          python -c "from orchard import OrchardClient; print('orchard import OK')"
 
       - name: Publish to PyPI
         env:
