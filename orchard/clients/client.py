@@ -218,6 +218,7 @@ class Client:
             # in a synchronous generator that pulls from it.
             return self._sync_iterator_bridge(result)
         else:
+            assert not isinstance(result, AsyncIterator)
             # Could be ClientResponse or list[ClientResponse]
             return result
 
