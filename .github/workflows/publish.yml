@@ -9,8 +9,6 @@ jobs:
     timeout-minutes: 15
     env:
       PATH: /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
-    permissions:
-      contents: write
 
     steps:
       - name: Checkout
@@ -88,13 +86,3 @@ jobs:
           git add pyproject.toml
           git commit -m "v${{ steps.version.outputs.version }}"
           git push
-
-      - name: Create GitHub Release
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-        run: |
-          gh release create "${{ steps.version.outputs.version }}" \
-            --title "v${{ steps.version.outputs.version }}" \
-            --generate-notes \
-            --notes-start-tag "${{ steps.version.outputs.previous }}" \
-            dist/*
