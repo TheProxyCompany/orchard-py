@@ -5,25 +5,31 @@ on:
 
 jobs:
   publish:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, terminal-0]
+    timeout-minutes: 15
+    env:
+      PATH: /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
     permissions:
       contents: write
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GH_PAT }}
+          fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install tools
-        run: pip install build twine tomli tomli-w
+      - name: Setup Python environment
+        run: |
+          python3 -m venv .venv
+          source .venv/bin/activate
+          pip install --upgrade pip
+          pip install build twine tomli tomli-w
 
       - name: Bump version
         id: version
         run: |
+          source .venv/bin/activate
           python << 'EOF'
           import tomli
           import tomli_w
@@ -51,18 +57,30 @@ jobs:
 
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
               f.write(f"version={new_version}\n")
+              f.write(f"previous={current}\n")
 
           print(f"{current} → {new_version}")
           EOF
 
-      - name: Build
-        run: python -m build
+      - name: Build package
+        run: |
+          source .venv/bin/activate
+          python -m build
+
+      - name: Validate package
+        run: |
+          source .venv/bin/activate
+          # Check the package can be imported
+          pip install dist/*.whl
+          python -c "import orchard; print(f'orchard {orchard.__version__} OK')"
 
       - name: Publish to PyPI
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: twine upload dist/*
+        run: |
+          source .venv/bin/activate
+          twine upload dist/*
 
       - name: Commit version bump
         run: |
@@ -71,3 +89,13 @@ jobs:
           git add pyproject.toml
           git commit -m "v${{ steps.version.outputs.version }}"
           git push
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          gh release create "${{ steps.version.outputs.version }}" \
+            --title "v${{ steps.version.outputs.version }}" \
+            --generate-notes \
+            --notes-start-tag "${{ steps.version.outputs.previous }}" \
+            dist/*
