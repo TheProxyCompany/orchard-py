@@ -392,7 +392,9 @@ class Client:
                 info.formatter.control_tokens.start_image_token
                 or info.formatter.default_image_placeholder,
                 info.formatter.should_clip_image_placeholder,
-                coord_placeholder=info.formatter.control_tokens.coord_placeholder,
+                coord_placeholder=info.formatter.control_tokens.capabilities.get(
+                    "coord_placeholder"
+                ),
             )
         except ValueError as exc:
             raise ValueError(f"Invalid multimodal layout: {exc}") from exc
@@ -403,10 +405,11 @@ class Client:
             )
 
         # Strip coord placeholders from prompt text (they're handled by layout segments)
-        if info.formatter.control_tokens.coord_placeholder:
-            prompt_text = prompt_text.replace(
-                info.formatter.control_tokens.coord_placeholder, ""
-            )
+        coord_placeholder = info.formatter.control_tokens.capabilities.get(
+            "coord_placeholder"
+        )
+        if coord_placeholder:
+            prompt_text = prompt_text.replace(coord_placeholder, "")
 
         prompt_bytes = prompt_text.encode("utf-8")
 
@@ -476,6 +479,13 @@ class Client:
             "final_candidates": final_candidates,
             "task_name": kwargs.get("task_name"),
             "reasoning_effort": reasoning_effort,
+            "tool_calling_tokens": {
+                "call_start": info.formatter.control_tokens.tool_calling.call_start,
+                "call_end": info.formatter.control_tokens.tool_calling.call_end,
+                "section_start": info.formatter.control_tokens.tool_calling.section_start,
+                "section_end": info.formatter.control_tokens.tool_calling.section_end,
+                "name_separator": info.formatter.control_tokens.tool_calling.name_separator,
+            },
         }
         logger.debug(
             f"Submitting request {request_id} for model {model_id} with response channel id: {response_channel_id}"
@@ -549,7 +559,9 @@ class Client:
                 raise ValueError(f"Invalid chat message payload: {exc}") from exc
 
             if not messages_for_template:
-                raise ValueError("Chat request must include at least one content segment.")
+                raise ValueError(
+                    "Chat request must include at least one content segment."
+                )
 
             prompt_text = info.formatter.apply_template(
                 messages_for_template,
@@ -565,7 +577,9 @@ class Client:
                     info.formatter.control_tokens.start_image_token
                     or info.formatter.default_image_placeholder,
                     info.formatter.should_clip_image_placeholder,
-                    coord_placeholder=info.formatter.control_tokens.coord_placeholder,
+                    coord_placeholder=info.formatter.control_tokens.capabilities.get(
+                        "coord_placeholder"
+                    ),
                 )
             except ValueError as exc:
                 raise ValueError(f"Invalid multimodal layout: {exc}") from exc
@@ -575,10 +589,11 @@ class Client:
                     info.formatter.default_image_placeholder, ""
                 )
 
-            if info.formatter.control_tokens.coord_placeholder:
-                prompt_text = prompt_text.replace(
-                    info.formatter.control_tokens.coord_placeholder, ""
-                )
+            coord_placeholder = info.formatter.control_tokens.capabilities.get(
+                "coord_placeholder"
+            )
+            if coord_placeholder:
+                prompt_text = prompt_text.replace(coord_placeholder, "")
 
             prompt_bytes = prompt_text.encode("utf-8")
             capabilities_payload = [
@@ -589,36 +604,45 @@ class Client:
             # Each prompt gets its own rng seed
             rng_seed = int(kwargs.get("rng_seed", random.randint(0, 2**32 - 1)))
 
-            prompt_payloads.append({
-                "prompt_bytes": prompt_bytes,
-                "image_buffers": image_buffers,
-                "capabilities": capabilities_payload,
-                "layout": layout_segments,
-                "sampling_params": {
-                    "temperature": temperature,
-                    "top_p": top_p,
-                    "top_k": top_k,
-                    "min_p": min_p,
-                    "rng_seed": rng_seed,
-                },
-                "logits_params": {
-                    "top_logprobs": top_logprobs,
-                    "frequency_penalty": frequency_penalty,
-                    "presence_penalty": presence_penalty,
-                    "repetition_context_size": repetition_context_size,
-                    "repetition_penalty": repetition_penalty,
-                    "logit_bias": logit_bias,
-                },
-                "max_generated_tokens": max_generated_tokens,
-                "stop_sequences": stop_sequences,
-                "tool_schemas_json": tool_schemas_json,
-                "response_format_json": response_format_json,
-                "num_candidates": num_candidates,
-                "best_of": best_of,
-                "final_candidates": final_candidates,
-                "task_name": kwargs.get("task_name"),
-                "reasoning_effort": reasoning_effort,
-            })
+            prompt_payloads.append(
+                {
+                    "prompt_bytes": prompt_bytes,
+                    "image_buffers": image_buffers,
+                    "capabilities": capabilities_payload,
+                    "layout": layout_segments,
+                    "sampling_params": {
+                        "temperature": temperature,
+                        "top_p": top_p,
+                        "top_k": top_k,
+                        "min_p": min_p,
+                        "rng_seed": rng_seed,
+                    },
+                    "logits_params": {
+                        "top_logprobs": top_logprobs,
+                        "frequency_penalty": frequency_penalty,
+                        "presence_penalty": presence_penalty,
+                        "repetition_context_size": repetition_context_size,
+                        "repetition_penalty": repetition_penalty,
+                        "logit_bias": logit_bias,
+                    },
+                    "max_generated_tokens": max_generated_tokens,
+                    "stop_sequences": stop_sequences,
+                    "tool_schemas_json": tool_schemas_json,
+                    "response_format_json": response_format_json,
+                    "num_candidates": num_candidates,
+                    "best_of": best_of,
+                    "final_candidates": final_candidates,
+                    "task_name": kwargs.get("task_name"),
+                    "reasoning_effort": reasoning_effort,
+                    "tool_calling_tokens": {
+                        "call_start": info.formatter.control_tokens.tool_calling.call_start,
+                        "call_end": info.formatter.control_tokens.tool_calling.call_end,
+                        "section_start": info.formatter.control_tokens.tool_calling.section_start,
+                        "section_end": info.formatter.control_tokens.tool_calling.section_end,
+                        "name_separator": info.formatter.control_tokens.tool_calling.name_separator,
+                    },
+                }
+            )
 
         response_channel_id = self._ipc_state.response_channel_id or request_id
         logger.debug(

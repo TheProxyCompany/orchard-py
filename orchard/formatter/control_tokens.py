@@ -17,6 +17,16 @@ class RoleTags(BaseModel):
     tool: Role | None = None
 
 
+class ToolCallingTokens(BaseModel):
+    """Tokens for structured tool/function calling output."""
+
+    call_start: str = ""
+    call_end: str = ""
+    section_start: str = ""
+    section_end: str = ""
+    name_separator: str = ""
+
+
 class ControlTokens(BaseModel):
     """Control tokens for different model templates.
 
@@ -32,8 +42,8 @@ class ControlTokens(BaseModel):
     end_image_token: str | None = None
     thinking_start_token: str | None = None
     thinking_end_token: str | None = None
-    coord_placeholder: str | None = None
     capabilities: dict[str, str] = Field(default_factory=dict)
+    tool_calling: ToolCallingTokens = Field(default_factory=ToolCallingTokens)
 
     roles: RoleTags
 

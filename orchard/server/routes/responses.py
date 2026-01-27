@@ -222,6 +222,13 @@ async def handle_response_request(
             "final_candidates": 1,
             "task": request.task,
             "reasoning_effort": reasoning_effort,
+            "tool_calling_tokens": {
+                "call_start": formatter.control_tokens.tool_calling.call_start,
+                "call_end": formatter.control_tokens.tool_calling.call_end,
+                "section_start": formatter.control_tokens.tool_calling.section_start,
+                "section_end": formatter.control_tokens.tool_calling.section_end,
+                "name_separator": formatter.control_tokens.tool_calling.name_separator,
+            },
         }
         request_bytes = _build_request_payload(
             request_id=current_request_id,
