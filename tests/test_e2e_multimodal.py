@@ -19,13 +19,13 @@ async def test_multimodal_e2e_apple_image(live_server):
     request_payload = {
         "model": MODEL_ID,
         "temperature": 0.0,
-        "items": [
+        "input": [
             {
+                "type": "message",
                 "role": "user",
                 "content": [
                     {"type": "input_text", "text": "What is in this image: "},
                     {"type": "input_image", "image_url": image_data_url},
-                    # {"type": "input_text", "text": "?"},
                 ],
             }
         ],
@@ -60,8 +60,9 @@ async def test_multimodal_e2e_moondream_image(live_server):
     request_payload = {
         "model": MODEL_ID,
         "temperature": 0.0,
-        "items": [
+        "input": [
             {
+                "type": "message",
                 "role": "user",
                 "content": [
                     {"type": "input_image", "image_url": image_data_url},
