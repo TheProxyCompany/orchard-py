@@ -125,6 +125,27 @@ class ReasoningContent(BaseModel):
     text: str = Field(description="The reasoning/thinking content.")
 
 
+class RefusalContent(BaseModel):
+    """Represents a refusal from the model."""
+
+    type: Literal["refusal"] = "refusal"
+    refusal: str = Field(description="The refusal explanation from the model.")
+
+
+class UrlCitation(BaseModel):
+    """A citation for a web resource used to generate a model response."""
+
+    type: Literal["url_citation"] = "url_citation"
+    url: str = Field(description="The URL of the web resource.")
+    start_index: int = Field(
+        description="The index of the first character of the citation."
+    )
+    end_index: int = Field(
+        description="The index of the last character of the citation."
+    )
+    title: str = Field(description="The title of the web resource.")
+
+
 class OutputReasoning(BaseModel):
     """Represents reasoning output item."""
 
@@ -165,7 +186,9 @@ class IncompleteDetails(BaseModel):
 class ResponseError(BaseModel):
     """Structured error information when response fails."""
 
-    code: str = Field(description="Error code (e.g., 'server_error', 'invalid_request').")
+    code: str = Field(
+        description="Error code (e.g., 'server_error', 'invalid_request')."
+    )
     message: str = Field(description="Human-readable error message.")
 
 
@@ -302,6 +325,10 @@ class ResponseObject(BaseModel):
     tools: list[Function] = Field(
         default_factory=list,
         description="Tools that were available.",
+    )
+    max_tool_calls: int | None = Field(
+        default=None,
+        description="Maximum number of tool calls allowed.",
     )
     text: ResponseFormat | None = Field(
         default=None,

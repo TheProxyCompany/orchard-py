@@ -69,7 +69,9 @@ class InputFunctionCallOutput(BaseModel):
     """The result of a function call."""
 
     type: Literal["function_call_output"] = "function_call_output"
-    call_id: str = Field(description="The call_id of the function call this is responding to.")
+    call_id: str = Field(
+        description="The call_id of the function call this is responding to."
+    )
     output: str = Field(description="The output of the function call.")
 
 
@@ -137,6 +139,11 @@ class ResponseRequest(BaseModel):
     parallel_tool_calls: bool | None = Field(
         default=None,
         description="Whether to allow the model to run tool calls in parallel.",
+    )
+    max_tool_calls: int | None = Field(
+        default=None,
+        ge=1,
+        description="Maximum number of tool calls the model can emit in one response.",
     )
     instructions: str | None = Field(
         default=None,

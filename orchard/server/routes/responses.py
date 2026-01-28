@@ -139,6 +139,7 @@ async def handle_response_request(
             parallel_tool_calls=request.parallel_tool_calls or False,
             tool_choice=request.tool_choice,
             tools=request.tools or [],
+            max_tool_calls=request.max_tool_calls,
             text=request.text,
         )
 
@@ -279,6 +280,7 @@ async def handle_response_request(
             "final_candidates": 1,
             "task": request.task,
             "reasoning_effort": reasoning_effort,
+            "max_tool_calls": request.max_tool_calls,
             "tool_calling_tokens": {
                 "call_start": formatter.control_tokens.tool_calling.call_start,
                 "call_end": formatter.control_tokens.tool_calling.call_end,
@@ -309,7 +311,9 @@ async def handle_response_request(
         )
 
         if request.stream:
-            logger.debug("Starting streaming response for request %d", current_request_id)
+            logger.debug(
+                "Starting streaming response for request %d", current_request_id
+            )
             response_id = generate_response_id()
 
             async def event_stream() -> AsyncIterable[dict[str, str]]:
@@ -363,6 +367,7 @@ async def handle_response_request(
             parallel_tool_calls=request.parallel_tool_calls or False,
             tool_choice=request.tool_choice,
             tools=request.tools or [],
+            max_tool_calls=request.max_tool_calls,
             text=request.text,
         )
 
@@ -863,7 +868,9 @@ async def stream_response_generator(
         is_incomplete = finish_reason in ("length", "max_tokens", "max_output_tokens")
         if is_incomplete:
             stream_state.status = OutputStatus.INCOMPLETE
-            stream_state.incomplete_details = IncompleteDetails(reason="max_output_tokens")
+            stream_state.incomplete_details = IncompleteDetails(
+                reason="max_output_tokens"
+            )
             yield _format_sse_event(
                 ResponseIncompleteEvent(
                     sequence_number=stream_state.next_sequence_number(),
@@ -887,6 +894,9 @@ async def stream_response_generator(
                     response=stream_state.snapshot(),
                 )
             )
+
+    # Emit terminal [DONE] event (required by spec)
+    yield {"data": "[DONE]"}
 
     logger.info("SSE stream for responses request %d completed", request_id)
 

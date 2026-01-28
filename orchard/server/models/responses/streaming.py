@@ -15,7 +15,10 @@ from orchard.server.models.responses.output import (
     OutputStatus,
     OutputTextContent,
     ReasoningContent,
+    ReasoningSummaryTextContent,
+    RefusalContent,
     ResponseUsage,
+    UrlCitation,
     generate_message_id,
     generate_response_id,
     generate_tool_call_id,
@@ -98,7 +101,7 @@ class ContentPartAddedEvent(BaseModel):
     item_id: str
     output_index: int
     content_index: int
-    part: OutputTextContent | ReasoningContent
+    part: OutputTextContent | ReasoningContent | RefusalContent
 
 
 class ContentPartDoneEvent(BaseModel):
@@ -109,7 +112,7 @@ class ContentPartDoneEvent(BaseModel):
     item_id: str
     output_index: int
     content_index: int
-    part: OutputTextContent | ReasoningContent
+    part: OutputTextContent | ReasoningContent | RefusalContent
 
 
 # --- Text Delta Events ---
@@ -215,6 +218,77 @@ class ReasoningSummaryTextDoneEvent(BaseModel):
     output_index: int
     summary_index: int
     text: str
+
+
+# --- Reasoning Summary Part Events ---
+
+
+class ReasoningSummaryPartAddedEvent(BaseModel):
+    """Emitted when a reasoning summary part is added."""
+
+    type: Literal["response.reasoning_summary_part.added"] = (
+        "response.reasoning_summary_part.added"
+    )
+    sequence_number: int
+    item_id: str
+    output_index: int
+    summary_index: int
+    part: ReasoningSummaryTextContent
+
+
+class ReasoningSummaryPartDoneEvent(BaseModel):
+    """Emitted when a reasoning summary part is complete."""
+
+    type: Literal["response.reasoning_summary_part.done"] = (
+        "response.reasoning_summary_part.done"
+    )
+    sequence_number: int
+    item_id: str
+    output_index: int
+    summary_index: int
+    part: ReasoningSummaryTextContent
+
+
+# --- Refusal Events ---
+
+
+class RefusalDeltaEvent(BaseModel):
+    """Emitted for each chunk of refusal content."""
+
+    type: Literal["response.refusal.delta"] = "response.refusal.delta"
+    sequence_number: int
+    item_id: str
+    output_index: int
+    content_index: int
+    delta: str
+
+
+class RefusalDoneEvent(BaseModel):
+    """Emitted when refusal content is complete."""
+
+    type: Literal["response.refusal.done"] = "response.refusal.done"
+    sequence_number: int
+    item_id: str
+    output_index: int
+    content_index: int
+    refusal: str
+
+
+# --- Annotation Events ---
+
+
+class OutputTextAnnotationAddedEvent(BaseModel):
+    """Emitted when an annotation is added to output text."""
+
+    type: Literal["response.output_text.annotation.added"] = (
+        "response.output_text.annotation.added"
+    )
+    sequence_number: int
+    item_id: str
+    output_index: int
+    content_index: int
+    annotation_index: int
+    annotation: UrlCitation | None = None
 
 
 # --- Error Event ---
@@ -369,7 +443,9 @@ class ResponseStreamState:
     def snapshot(self) -> ResponseSnapshot:
         """Create a snapshot of current response state."""
         output_items = [
-            item.to_completed() if item.status == OutputStatus.COMPLETED else item.to_skeleton()
+            item.to_completed()
+            if item.status == OutputStatus.COMPLETED
+            else item.to_skeleton()
             for item in sorted(self.items.values(), key=lambda x: x.output_index)
         ]
         return ResponseSnapshot(
@@ -403,5 +479,10 @@ StreamingEvent = (
     | ReasoningDoneEvent
     | ReasoningSummaryTextDeltaEvent
     | ReasoningSummaryTextDoneEvent
+    | ReasoningSummaryPartAddedEvent
+    | ReasoningSummaryPartDoneEvent
+    | RefusalDeltaEvent
+    | RefusalDoneEvent
+    | OutputTextAnnotationAddedEvent
     | StreamErrorEvent
 )
