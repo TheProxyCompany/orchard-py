@@ -8,14 +8,9 @@ from contextlib import AsyncExitStack
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, status
+from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
 
-from orchard.server.routes._common import (
-    _ModelNotReadyError,
-    extract_usage,
-    managed_stream_session,
-    resolve_model,
-)
 from orchard.formatter.multimodal import (
     build_multimodal_layout,
     build_multimodal_messages,
@@ -36,12 +31,12 @@ from orchard.server.models.responses import (
     IncompleteDetails,
     InputTokensDetails,
     OutputFunctionCall,
+    OutputItemAddedEvent,
+    OutputItemDoneEvent,
     OutputMessage,
     OutputReasoning,
     OutputStatus,
     OutputTextContent,
-    OutputItemAddedEvent,
-    OutputItemDoneEvent,
     OutputTextDeltaEvent,
     OutputTextDoneEvent,
     OutputTokensDetails,
@@ -61,6 +56,12 @@ from orchard.server.models.responses import (
     generate_response_id,
     get_current_timestamp,
 )
+from orchard.server.routes._common import (
+    _ModelNotReadyError,
+    extract_usage,
+    managed_stream_session,
+    resolve_model,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +78,7 @@ async def handle_response_request(
     request: ResponseRequest,
     ipc_state: IPCStateDep,
     model_registry: ModelRegistryDep,
-) -> ResponseObject | EventSourceResponse:
+) -> ResponseObject | EventSourceResponse | JSONResponse:
     """Handle multimodal requests to the `/v1/responses` endpoint."""
     logger.info("Handling response request for model: %s", request.model)
 
