@@ -125,27 +125,6 @@ class ReasoningContent(BaseModel):
     text: str = Field(description="The reasoning/thinking content.")
 
 
-class RefusalContent(BaseModel):
-    """Represents a refusal from the model."""
-
-    type: Literal["refusal"] = "refusal"
-    refusal: str = Field(description="The refusal explanation from the model.")
-
-
-class UrlCitation(BaseModel):
-    """A citation for a web resource used to generate a model response."""
-
-    type: Literal["url_citation"] = "url_citation"
-    url: str = Field(description="The URL of the web resource.")
-    start_index: int = Field(
-        description="The index of the first character of the citation."
-    )
-    end_index: int = Field(
-        description="The index of the last character of the citation."
-    )
-    title: str = Field(description="The title of the web resource.")
-
-
 class OutputReasoning(BaseModel):
     """Represents reasoning output item."""
 
