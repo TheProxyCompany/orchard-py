@@ -4,14 +4,10 @@ import random
 import struct
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 
 from orchard.app.ipc_dispatch import QueueRegistration
-from orchard.app.model_registry import (
-    ModelLoadState,
-    ModelResolutionError,
-)
 from orchard.ipc.serialization import _build_request_payload
 from orchard.ipc.utils import (
     ResponseDeltaDict,
@@ -25,6 +21,7 @@ from orchard.server.models.embeddings import (
     EmbeddingResponse,
     EmbeddingUsage,
 )
+from orchard.server.routes._common import _ModelNotReadyError, resolve_model
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +37,7 @@ async def create_embeddings(
     """
     Handles requests to the `/v1/embeddings` endpoint.
     """
-    logger.info(f"Embeddings request for model: {request.model}")
+    logger.info("Embeddings request for model: %s", request.model)
 
     # For now, we'll handle single string input only as a placeholder
     # Full implementation will handle batching and tokenization
@@ -65,43 +62,9 @@ async def create_embeddings(
     logger.debug("Generated request ID: %d", current_request_id)
 
     try:
-        model_state, canonical_id = await model_registry.schedule_model(request.model)
-    except ModelResolutionError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"message": str(exc), "candidates": exc.candidates},
-        ) from exc
-
-    if model_state in {ModelLoadState.LOADING, ModelLoadState.DOWNLOADING}:
-        status_text = (
-            "downloading" if model_state == ModelLoadState.DOWNLOADING else "loading"
-        )
-        payload = {
-            "status": status_text,
-            "message": "Model download in progress. Retry after a short delay.",
-            "model_id": canonical_id,
-        }
-        return JSONResponse(
-            status_code=status.HTTP_202_ACCEPTED,
-            content=payload,
-            headers={"Retry-After": "30"},
-        )
-
-    if model_state == ModelLoadState.FAILED:
-        error_detail = model_registry.get_error(canonical_id) or "Model failed to load."
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=error_detail,
-        )
-
-    model_info = model_registry.get_if_ready(canonical_id)
-    if not model_info:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=(
-                f"Model '{canonical_id}' reported READY but no runtime info was found."
-            ),
-        )
+        canonical_id, model_info = await resolve_model(model_registry, request.model)
+    except _ModelNotReadyError as exc:
+        return exc.response
 
     response_channel_id = ipc_state.response_channel_id or current_request_id
     rng_seed = random.randint(0, 2**32 - 1)
@@ -196,7 +159,7 @@ async def create_embeddings(
         return final_response
 
     except Exception as e:
-        logger.error(f"Error processing embedding request: {e}", exc_info=True)
+        logger.error("Error processing embedding request: %s", e, exc_info=True)
         raise HTTPException(
             status_code=500,
             detail="An unexpected error occurred during embedding generation.",
@@ -230,7 +193,7 @@ async def gather_embedding_response(
             ) from e
         else:
             try:
-                logger.debug(f"Embedding response received for request {request_id}")
+                logger.debug("Embedding response received for request %d", request_id)
 
                 if delta.get("prompt_token_count", 0) > 0:
                     prompt_tokens = delta["prompt_token_count"]
@@ -241,7 +204,7 @@ async def gather_embedding_response(
                     embedding_vector = list(
                         struct.unpack(f"{num_floats}f", embedding_bytes)
                     )
-                    logger.debug(f"Unpacked {num_floats} floats from embedding bytes.")
+                    logger.debug("Unpacked %d floats from embedding bytes.", num_floats)
 
                 if delta.get("is_final_delta", False):
                     logger.debug(

@@ -4,16 +4,17 @@ import json
 import logging
 import random
 from collections.abc import AsyncIterable
-from contextlib import AsyncExitStack, asynccontextmanager
+from contextlib import AsyncExitStack
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, status
 from sse_starlette.sse import EventSourceResponse
 
-from orchard.app.ipc_dispatch import QueueRegistration
-from orchard.app.model_registry import (
-    ModelLoadState,
-    ModelResolutionError,
+from orchard.server.routes._common import (
+    _ModelNotReadyError,
+    extract_usage,
+    managed_stream_session,
+    resolve_model,
 )
 from orchard.formatter.multimodal import (
     build_multimodal_layout,
@@ -66,30 +67,6 @@ logger = logging.getLogger(__name__)
 responses_router = APIRouter()
 
 
-@asynccontextmanager
-async def _managed_stream_session(
-    ipc_state: IPCStateDep,
-    request_id: int,
-    queue: asyncio.Queue[ResponseDeltaDict],
-):
-    """Context manager for streaming session lifecycle."""
-    loop = asyncio.get_running_loop()
-    ipc_state.active_request_queues[request_id] = QueueRegistration(
-        loop=loop, queue=queue
-    )
-    try:
-        yield queue
-    finally:
-        ipc_state.active_request_queues.pop(request_id, None)
-        try:
-            while True:
-                leftover = queue.get_nowait()
-                release_delta_resources(leftover)
-                queue.task_done()
-        except asyncio.QueueEmpty:
-            pass
-
-
 @responses_router.post(
     "/responses",
     response_model=None,  # Disable automatic response model to support streaming
@@ -105,64 +82,9 @@ async def handle_response_request(
     logger.info("Handling response request for model: %s", request.model)
 
     try:
-        model_state, canonical_id = await model_registry.schedule_model(request.model)
-    except ModelResolutionError as exc:
-        logger.error("Model resolution failed for %s: %s", request.model, exc)
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"message": str(exc), "candidates": exc.candidates},
-        ) from exc
-
-    if model_state == ModelLoadState.LOADING:
-        logger.info("Model %s still loading for responses request.", canonical_id)
-        return ResponseObject(
-            model=request.model,
-            status=OutputStatus.IN_PROGRESS,
-            output=[
-                OutputMessage(
-                    content=[
-                        OutputTextContent(
-                            text="Model is loading. Please retry once initialization completes."
-                        )
-                    ]
-                )
-            ],
-            usage=ResponseUsage(input_tokens=0, output_tokens=0, total_tokens=0),
-            metadata=request.metadata,
-            min_p=request.min_p,
-            top_p=request.top_p,
-            top_k=request.top_k,
-            temperature=request.temperature,
-            presence_penalty=request.presence_penalty,
-            frequency_penalty=request.frequency_penalty,
-            truncation=request.truncation,
-            parallel_tool_calls=request.parallel_tool_calls or False,
-            tool_choice=request.tool_choice,
-            tools=request.tools or [],
-            max_tool_calls=request.max_tool_calls,
-            text=request.text,
-        )
-
-    if model_state == ModelLoadState.FAILED:
-        error_detail = model_registry.get_error(canonical_id) or "Model failed to load."
-        logger.error("Model %s failed to load: %s", canonical_id, error_detail)
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=error_detail,
-        )
-
-    model_info = model_registry.get_if_ready(canonical_id)
-    if not model_info:
-        logger.error(
-            "Model registry reported READY but runtime info missing for %s",
-            canonical_id,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=(
-                f"Model '{canonical_id}' reported READY but no runtime info was found."
-            ),
-        )
+        canonical_id, model_info = await resolve_model(model_registry, request.model)
+    except _ModelNotReadyError as exc:
+        return exc.response
 
     formatter = model_info.formatter
 
@@ -242,7 +164,7 @@ async def handle_response_request(
     response_queue: asyncio.Queue[ResponseDeltaDict] = asyncio.Queue()
     exit_stack = AsyncExitStack()
     await exit_stack.enter_async_context(
-        _managed_stream_session(ipc_state, current_request_id, response_queue)
+        managed_stream_session(ipc_state, current_request_id, response_queue)
     )
 
     try:
@@ -372,13 +294,10 @@ async def handle_response_request(
         )
 
         logger.info("Response request %d completed successfully.", current_request_id)
-        await exit_stack.aclose()
         return response
     except HTTPException:
-        await exit_stack.aclose()
         raise
     except InferenceError as exc:
-        await exit_stack.aclose()
         logger.error(
             "Inference error during response request %d: %s",
             current_request_id,
@@ -389,7 +308,6 @@ async def handle_response_request(
             detail=str(exc),
         ) from exc
     except Exception as exc:  # pragma: no cover - defensive
-        await exit_stack.aclose()
         logger.exception(
             "Failed to process multimodal response request %d: %s",
             current_request_id,
@@ -399,6 +317,8 @@ async def handle_response_request(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred during response generation.",
         ) from exc
+    finally:
+        await exit_stack.aclose()
 
 
 async def gather_non_streaming_response(
@@ -406,19 +326,6 @@ async def gather_non_streaming_response(
     queue: asyncio.Queue[ResponseDeltaDict],
 ) -> dict[str, Any]:
     """Aggregate non-streaming deltas into a final response with proper output items."""
-
-    def _coerce_int(value: Any) -> int | None:
-        if value is None:
-            return None
-        try:
-            return int(value)
-        except (TypeError, ValueError):
-            logger.debug(
-                "Failed to coerce value %s to int for request %d",
-                value,
-                request_id,
-            )
-            return None
 
     # Track output items by output_index
     output_items: dict[int, dict[str, Any]] = {}
@@ -429,7 +336,6 @@ async def gather_non_streaming_response(
         "cached_tokens": 0,
         "reasoning_tokens": 0,
     }
-    usage_payload: dict[str, Any] | None = None
     error_detail: str | None = None
     finish_reason: str | None = None
     completed_at: int | None = None
@@ -480,39 +386,7 @@ async def gather_non_streaming_response(
                         output_items[0]["content"] += str(delta_content)
 
                 # Extract usage from delta
-                if usage := delta.get("usage"):
-                    if isinstance(usage, dict):
-                        usage_payload = usage
-
-                for source_key, target_key in (
-                    ("prompt_token_count", "prompt_tokens"),
-                    ("prompt_tokens", "prompt_tokens"),
-                    ("input_tokens", "prompt_tokens"),
-                    ("completion_token_count", "completion_tokens"),
-                    ("completion_tokens", "completion_tokens"),
-                    ("output_tokens", "completion_tokens"),
-                    ("total_token_count", "total_tokens"),
-                    ("total_tokens", "total_tokens"),
-                    ("cached_token_count", "cached_tokens"),
-                    ("reasoning_tokens", "reasoning_tokens"),
-                ):
-                    if source_key in delta:
-                        value = _coerce_int(delta.get(source_key))
-                        if value is not None:
-                            usage_counts[target_key] = value
-
-                if usage_payload:
-                    for source_key, target_key in (
-                        ("prompt_tokens", "prompt_tokens"),
-                        ("input_tokens", "prompt_tokens"),
-                        ("completion_tokens", "completion_tokens"),
-                        ("output_tokens", "completion_tokens"),
-                        ("total_tokens", "total_tokens"),
-                    ):
-                        if source_key in usage_payload:
-                            value = _coerce_int(usage_payload.get(source_key))
-                            if value is not None:
-                                usage_counts[target_key] = value
+                extract_usage(delta, usage_counts)
 
                 # Track finish reason for incomplete_details
                 if fr := delta.get("finish_reason"):
@@ -792,7 +666,9 @@ async def stream_response_generator(
                 if delta:
                     release_delta_resources(delta)
 
-    # Emit completion events for all items
+    # Emit completion events for items that didn't receive an item_completed event
+    # from PIE. Items that did receive item_completed already have status=COMPLETED
+    # (set in _process_state_event_for_streaming) and are skipped here.
     for output_index, item in sorted(stream_state.items.items()):
         if item.status != OutputStatus.COMPLETED:
             item.status = OutputStatus.COMPLETED

@@ -7,10 +7,7 @@ from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import JSONResponse
 
 from orchard.app.ipc_dispatch import QueueRegistration
-from orchard.app.model_registry import (
-    ModelLoadState,
-    ModelResolutionError,
-)
+from orchard.server.routes._common import _ModelNotReadyError, resolve_model
 from orchard.ipc.serialization import _build_request_payload
 from orchard.ipc.utils import (
     ResponseDeltaDict,
@@ -59,43 +56,9 @@ async def handle_completion_request(
     prompts = _normalize_prompt_inputs(request.prompt)
 
     try:
-        model_state, canonical_id = await model_registry.schedule_model(request.model)
-    except ModelResolutionError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"message": str(exc), "candidates": exc.candidates},
-        ) from exc
-
-    if model_state in {ModelLoadState.LOADING, ModelLoadState.DOWNLOADING}:
-        status_text = (
-            "downloading" if model_state == ModelLoadState.DOWNLOADING else "loading"
-        )
-        payload = {
-            "status": status_text,
-            "message": "Model download in progress. Retry after a short delay.",
-            "model_id": canonical_id,
-        }
-        return JSONResponse(
-            status_code=status.HTTP_202_ACCEPTED,
-            content=payload,
-            headers={"Retry-After": "30"},
-        )
-
-    if model_state == ModelLoadState.FAILED:
-        error_detail = model_registry.get_error(canonical_id) or "Model failed to load."
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=error_detail,
-        )
-
-    model_info = model_registry.get_if_ready(canonical_id)
-    if not model_info:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=(
-                f"Model '{canonical_id}' reported READY but no runtime info was found."
-            ),
-        )
+        canonical_id, model_info = await resolve_model(model_registry, request.model)
+    except _ModelNotReadyError as exc:
+        return exc.response
 
     formatter = model_info.formatter
     model_path = model_info.model_path

@@ -73,7 +73,11 @@ class InferenceEngine:
 
         self._acquire_lease_and_init_global_context()
         if load_models:
-            asyncio.run(self.load_models(load_models))
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(self.load_models(load_models))
+            except RuntimeError:
+                asyncio.run(self.load_models(load_models))
 
     def __enter__(self) -> InferenceEngine:
         if self._closed:
@@ -228,9 +232,7 @@ class InferenceEngine:
                 self._paths.ready_file.unlink(missing_ok=True)
 
             if not engine_running:
-                logger.debug(
-                    "Inference engine not running. Launching new instance."
-                )
+                logger.debug("Inference engine not running. Launching new instance.")
                 try:
                     self._launch_engine_locked()
                     engine_pid = self._wait_for_engine_ready()

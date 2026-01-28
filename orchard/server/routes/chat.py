@@ -4,17 +4,17 @@ import logging
 import random
 from collections import defaultdict
 from collections.abc import AsyncIterable
-from contextlib import AsyncExitStack, asynccontextmanager
+from contextlib import AsyncExitStack
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
 
-from orchard.app.ipc_dispatch import QueueRegistration
-from orchard.app.model_registry import (
-    ModelLoadState,
-    ModelResolutionError,
+from orchard.server.routes._common import (
+    _ModelNotReadyError,
+    managed_stream_session,
+    resolve_model,
 )
 from orchard.ipc.serialization import _build_request_payload
 from orchard.ipc.utils import (
@@ -63,28 +63,6 @@ def _dedupe_stop_sequences(raw_stop: list[str] | str | None) -> list[str]:
     return unique
 
 
-@asynccontextmanager
-async def _managed_stream_session(
-    ipc_state: IPCStateDep,
-    request_id: int,
-    queue: asyncio.Queue[ResponseDeltaDict],
-):
-    loop = asyncio.get_running_loop()
-    ipc_state.active_request_queues[request_id] = QueueRegistration(
-        loop=loop, queue=queue
-    )
-    try:
-        yield queue
-    finally:
-        ipc_state.active_request_queues.pop(request_id, None)
-        try:
-            while True:
-                queue.get_nowait()
-                queue.task_done()
-        except asyncio.QueueEmpty:
-            pass
-
-
 @chat_router.post(
     "/chat/completions",
     summary="Create a chat completion",
@@ -99,48 +77,12 @@ async def handle_completion_request(
     """
     Handles requests to the `/v1/chat/completions` endpoint.
     """
-    logger.info(f"Chat completion request for model: {request.model}")
+    logger.info("Chat completion request for model: %s", request.model)
 
     try:
-        model_state, canonical_id = await model_registry.schedule_model(request.model)
-    except ModelResolutionError as exc:
-        logger.error("Model resolution error: %s", exc)
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"message": str(exc), "candidates": exc.candidates},
-        ) from exc
-
-    if model_state in {ModelLoadState.LOADING, ModelLoadState.DOWNLOADING}:
-        status_text = (
-            "downloading" if model_state == ModelLoadState.DOWNLOADING else "loading"
-        )
-        payload = {
-            "status": status_text,
-            "message": "Model download in progress. Retry after a short delay.",
-            "model_id": canonical_id,
-        }
-        return JSONResponse(
-            status_code=status.HTTP_202_ACCEPTED,
-            content=payload,
-            headers={"Retry-After": "30"},
-        )
-
-    if model_state == ModelLoadState.FAILED:
-        error_detail = model_registry.get_error(canonical_id) or "Model failed to load."
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=error_detail,
-        )
-
-    model_info = model_registry.get_if_ready(canonical_id)
-    if not model_info:
-        # Defensive: model should be ready at this point. Surface as server error if not.
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=(
-                f"Model '{canonical_id}' reported READY but no runtime info was found."
-            ),
-        )
+        canonical_id, model_info = await resolve_model(model_registry, request.model)
+    except _ModelNotReadyError as exc:
+        return exc.response
 
     formatter = model_info.formatter
     model_path = model_info.model_path
@@ -252,7 +194,7 @@ async def handle_completion_request(
     response_queue = asyncio.Queue[ResponseDeltaDict]()
     exit_stack = AsyncExitStack()
     await exit_stack.enter_async_context(
-        _managed_stream_session(ipc_state, current_request_id, response_queue)
+        managed_stream_session(ipc_state, current_request_id, response_queue)
     )
 
     try:
@@ -306,22 +248,24 @@ async def handle_completion_request(
             + response_data["completion_tokens"],
         )
         final_response = ChatCompletionResponse(
-            id=generate_chat_completion_id(),  # Generate final ID
+            id=generate_chat_completion_id(),
             created=get_current_timestamp(),
             model=request.model,
             choices=response_data["choices"],
             usage=usage,
         )
         logger.info("Non-streaming request %d successful.", current_request_id)
-        await exit_stack.aclose()
         return final_response
+    except HTTPException:
+        raise
     except Exception as e:
-        await exit_stack.aclose()
-        logger.error(f"Error submitting request: {e}", exc_info=True)
+        logger.error("Error submitting request: %s", e, exc_info=True)
         raise HTTPException(
             status_code=500,
             detail="An unexpected error occurred during completion.",
         ) from e
+    finally:
+        await exit_stack.aclose()
 
 
 async def gather_non_streaming_batch_response(

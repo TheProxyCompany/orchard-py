@@ -124,7 +124,7 @@ class IPCState:
         parts = msg_bytes.split(b"\x00", 1)
         if len(parts) != 2:
             utf8_body = msg_bytes.decode("utf-8", errors="replace")
-            logger.warning(f"Received malformed event message: {utf8_body}")
+            logger.warning("Received malformed event message: %s", utf8_body)
             return
 
         topic_part, json_body = parts
@@ -133,7 +133,7 @@ class IPCState:
         try:
             payload = json.loads(json_body)
         except Exception as e:
-            logger.error(f"Failed to parse engine event payload: {e!s}")
+            logger.error("Failed to parse engine event payload: %s", e)
             return
 
         if event_name == "telemetry" and ctx is not None:
@@ -159,7 +159,7 @@ class IPCState:
                 )
             return
 
-        logger.warning(f"Received unknown engine event '{event_name}'.")
+        logger.warning("Received unknown engine event '%s'.", event_name)
 
     @staticmethod
     async def run_ipc_listener(ipc_state: IPCState) -> None:

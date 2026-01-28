@@ -52,3 +52,6 @@ dev = [
     "pre-commit",
     "ty>=0.0.1a29",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["tests"]
