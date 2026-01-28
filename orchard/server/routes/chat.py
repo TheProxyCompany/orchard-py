@@ -229,8 +229,6 @@ async def handle_completion_request(
                 finally:
                     await exit_stack.aclose()
 
-            # Streaming: exit_stack ownership transfers to event_stream() generator.
-            # Do NOT close it here — the generator's finally block handles cleanup.
             return EventSourceResponse(
                 content=event_stream(),
                 media_type="text/event-stream",
@@ -257,18 +255,17 @@ async def handle_completion_request(
             usage=usage,
         )
         logger.info("Non-streaming request %d successful.", current_request_id)
-        await exit_stack.aclose()
         return final_response
     except HTTPException:
-        await exit_stack.aclose()
         raise
     except Exception as e:
-        await exit_stack.aclose()
         logger.error("Error submitting request: %s", e, exc_info=True)
         raise HTTPException(
             status_code=500,
             detail="An unexpected error occurred during completion.",
         ) from e
+    finally:
+        await exit_stack.aclose()
 
 
 async def gather_non_streaming_batch_response(
