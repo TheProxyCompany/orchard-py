@@ -14,7 +14,6 @@ from orchard.server.models.responses.tools import (
     ToolUseMode,
 )
 
-
 # --- Content Parts (for message content) ---
 
 

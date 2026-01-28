@@ -10,8 +10,8 @@ from orchard.app.ipc_dispatch import QueueRegistration
 from orchard.app.model_registry import (
     ModelInfo,
     ModelLoadState,
-    ModelResolutionError,
     ModelRegistry,
+    ModelResolutionError,
 )
 from orchard.ipc.utils import ResponseDeltaDict, release_delta_resources
 

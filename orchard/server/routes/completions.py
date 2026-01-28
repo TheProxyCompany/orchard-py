@@ -7,7 +7,6 @@ from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import JSONResponse
 
 from orchard.app.ipc_dispatch import QueueRegistration
-from orchard.server.routes._common import _ModelNotReadyError, resolve_model
 from orchard.ipc.serialization import _build_request_payload
 from orchard.ipc.utils import (
     ResponseDeltaDict,
@@ -23,6 +22,7 @@ from orchard.server.models.completions import (
     CompletionResponse,
     CompletionUsage,
 )
+from orchard.server.routes._common import _ModelNotReadyError, resolve_model
 from orchard.server.routes.chat import (
     gather_non_streaming_batch_response,
 )

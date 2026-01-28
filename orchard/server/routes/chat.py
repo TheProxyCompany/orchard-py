@@ -11,11 +11,6 @@ from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
 
-from orchard.server.routes._common import (
-    _ModelNotReadyError,
-    managed_stream_session,
-    resolve_model,
-)
 from orchard.ipc.serialization import _build_request_payload
 from orchard.ipc.utils import (
     ResponseDeltaDict,
@@ -37,6 +32,11 @@ from orchard.server.models.chat.logprobs import ChatCompletionLogProbs
 from orchard.server.models.chat.output import (
     generate_chat_completion_id,
     get_current_timestamp,
+)
+from orchard.server.routes._common import (
+    _ModelNotReadyError,
+    managed_stream_session,
+    resolve_model,
 )
 from orchard.server.utils.batching import normalize_chat_request
 
