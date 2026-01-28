@@ -3,9 +3,12 @@ import builtins
 import json
 import logging
 import random
+from collections.abc import AsyncIterable
+from contextlib import AsyncExitStack, asynccontextmanager
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, status
+from sse_starlette.sse import EventSourceResponse
 
 from orchard.app.ipc_dispatch import QueueRegistration
 from orchard.app.model_registry import (
@@ -25,11 +28,37 @@ from orchard.server.dependencies import IPCStateDep, ModelRegistryDep
 from orchard.server.exceptions import InferenceError
 from orchard.server.models.reasoning import normalize_reasoning_value
 from orchard.server.models.responses import (
+    ContentPartAddedEvent,
+    ContentPartDoneEvent,
+    FunctionCallArgumentsDeltaEvent,
+    FunctionCallArgumentsDoneEvent,
+    IncompleteDetails,
+    InputTokensDetails,
+    OutputFunctionCall,
     OutputMessage,
+    OutputReasoning,
+    OutputStatus,
     OutputTextContent,
+    OutputItemAddedEvent,
+    OutputItemDoneEvent,
+    OutputTextDeltaEvent,
+    OutputTextDoneEvent,
+    OutputTokensDetails,
+    ReasoningContent,
+    ReasoningDeltaEvent,
+    ReasoningDoneEvent,
+    ResponseCompletedEvent,
+    ResponseCreatedEvent,
+    ResponseFailedEvent,
+    ResponseIncompleteEvent,
+    ResponseInProgressEvent,
     ResponseObject,
     ResponseRequest,
+    ResponseStreamState,
     ResponseUsage,
+    StreamErrorEvent,
+    generate_response_id,
+    get_current_timestamp,
 )
 
 logger = logging.getLogger(__name__)
@@ -37,9 +66,33 @@ logger = logging.getLogger(__name__)
 responses_router = APIRouter()
 
 
+@asynccontextmanager
+async def _managed_stream_session(
+    ipc_state: IPCStateDep,
+    request_id: int,
+    queue: asyncio.Queue[ResponseDeltaDict],
+):
+    """Context manager for streaming session lifecycle."""
+    loop = asyncio.get_running_loop()
+    ipc_state.active_request_queues[request_id] = QueueRegistration(
+        loop=loop, queue=queue
+    )
+    try:
+        yield queue
+    finally:
+        ipc_state.active_request_queues.pop(request_id, None)
+        try:
+            while True:
+                leftover = queue.get_nowait()
+                release_delta_resources(leftover)
+                queue.task_done()
+        except asyncio.QueueEmpty:
+            pass
+
+
 @responses_router.post(
     "/responses",
-    response_model=ResponseObject,
+    response_model=None,  # Disable automatic response model to support streaming
     summary="Create a model response",
     tags=["Responses"],
 )
@@ -47,7 +100,7 @@ async def handle_response_request(
     request: ResponseRequest,
     ipc_state: IPCStateDep,
     model_registry: ModelRegistryDep,
-) -> ResponseObject:
+) -> ResponseObject | EventSourceResponse:
     """Handle multimodal requests to the `/v1/responses` endpoint."""
     logger.info("Handling response request for model: %s", request.model)
 
@@ -64,6 +117,7 @@ async def handle_response_request(
         logger.info("Model %s still loading for responses request.", canonical_id)
         return ResponseObject(
             model=request.model,
+            status=OutputStatus.IN_PROGRESS,
             output=[
                 OutputMessage(
                     content=[
@@ -74,10 +128,14 @@ async def handle_response_request(
                 )
             ],
             usage=ResponseUsage(input_tokens=0, output_tokens=0, total_tokens=0),
+            metadata=request.metadata,
             min_p=request.min_p,
             top_p=request.top_p,
             top_k=request.top_k,
             temperature=request.temperature,
+            presence_penalty=request.presence_penalty,
+            frequency_penalty=request.frequency_penalty,
+            truncation=request.truncation,
             parallel_tool_calls=request.parallel_tool_calls or False,
             tool_choice=request.tool_choice,
             tools=request.tools or [],
@@ -111,7 +169,7 @@ async def handle_response_request(
         messages_for_template, image_buffers, capabilities, content_order = (
             build_multimodal_messages(
                 formatter=formatter,
-                items=request.items,
+                items=request.get_message_items(),
                 instructions=request.instructions,
             )
         )
@@ -181,11 +239,10 @@ async def handle_response_request(
     reasoning_effort = normalize_reasoning_value(request.reasoning)
 
     response_queue: asyncio.Queue[ResponseDeltaDict] = asyncio.Queue()
-    loop = asyncio.get_running_loop()
-    ipc_state.active_request_queues[current_request_id] = QueueRegistration(
-        loop=loop, queue=response_queue
+    exit_stack = AsyncExitStack()
+    await exit_stack.enter_async_context(
+        _managed_stream_session(ipc_state, current_request_id, response_queue)
     )
-    logger.debug("Registered queue for response request %d.", current_request_id)
 
     try:
         prompt_bytes = prompt_text.encode("utf-8")
@@ -207,9 +264,9 @@ async def handle_response_request(
             },
             "logits_params": {
                 "top_logprobs": 0,
-                "frequency_penalty": 0.0,
+                "frequency_penalty": request.frequency_penalty or 0.0,
                 "logit_bias": {},
-                "presence_penalty": 0.0,
+                "presence_penalty": request.presence_penalty or 0.0,
                 "repetition_context_size": 60,
                 "repetition_penalty": 1.0,
             },
@@ -250,16 +307,29 @@ async def handle_response_request(
             len(layout_segments),
             len(image_buffers),
         )
+
         if request.stream:
-            logger.info(
-                "Streaming requested for response %d but not yet implemented.",
-                current_request_id,
-            )
-            raise HTTPException(
-                status_code=status.HTTP_501_NOT_IMPLEMENTED,
-                detail="Streaming responses are not yet supported for this endpoint.",
+            logger.debug("Starting streaming response for request %d", current_request_id)
+            response_id = generate_response_id()
+
+            async def event_stream() -> AsyncIterable[dict[str, str]]:
+                try:
+                    async for event in stream_response_generator(
+                        request_id=current_request_id,
+                        queue=response_queue,
+                        response_id=response_id,
+                        model_name=request.model,
+                    ):
+                        yield event
+                finally:
+                    await exit_stack.aclose()
+
+            return EventSourceResponse(
+                content=event_stream(),
+                media_type="text/event-stream",
             )
 
+        # Non-streaming path
         aggregated = await gather_non_streaming_response(
             current_request_id, response_queue
         )
@@ -268,20 +338,28 @@ async def handle_response_request(
             input_tokens=aggregated["prompt_tokens"],
             output_tokens=aggregated["completion_tokens"],
             total_tokens=aggregated["total_tokens"],
-        )
-
-        response_message = OutputMessage(
-            content=[OutputTextContent(text=aggregated["content"])]
+            input_tokens_details=InputTokensDetails(
+                cached_tokens=aggregated["cached_tokens"],
+            ),
+            output_tokens_details=OutputTokensDetails(
+                reasoning_tokens=aggregated["reasoning_tokens"],
+            ),
         )
 
         response = ResponseObject(
             model=request.model,
-            output=[response_message],
+            output=aggregated["output"],
             usage=usage,
+            completed_at=aggregated.get("completed_at"),
+            incomplete_details=aggregated.get("incomplete_details"),
+            metadata=request.metadata,
             min_p=request.min_p,
             top_p=request.top_p,
             top_k=request.top_k,
             temperature=request.temperature,
+            presence_penalty=request.presence_penalty,
+            frequency_penalty=request.frequency_penalty,
+            truncation=request.truncation,
             parallel_tool_calls=request.parallel_tool_calls or False,
             tool_choice=request.tool_choice,
             tools=request.tools or [],
@@ -289,10 +367,13 @@ async def handle_response_request(
         )
 
         logger.info("Response request %d completed successfully.", current_request_id)
+        await exit_stack.aclose()
         return response
     except HTTPException:
+        await exit_stack.aclose()
         raise
     except InferenceError as exc:
+        await exit_stack.aclose()
         logger.error(
             "Inference error during response request %d: %s",
             current_request_id,
@@ -303,6 +384,7 @@ async def handle_response_request(
             detail=str(exc),
         ) from exc
     except Exception as exc:  # pragma: no cover - defensive
+        await exit_stack.aclose()
         logger.exception(
             "Failed to process multimodal response request %d: %s",
             current_request_id,
@@ -312,27 +394,13 @@ async def handle_response_request(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred during response generation.",
         ) from exc
-    finally:
-        binding = ipc_state.active_request_queues.pop(current_request_id, None)
-        if binding is not None:
-            queue = binding.queue
-            logger.debug(
-                "Cleaning up queue for response request %d.", current_request_id
-            )
-            try:
-                while True:
-                    leftover = queue.get_nowait()
-                    release_delta_resources(leftover)
-                    queue.task_done()
-            except asyncio.QueueEmpty:
-                pass
 
 
 async def gather_non_streaming_response(
     request_id: int,
     queue: asyncio.Queue[ResponseDeltaDict],
 ) -> dict[str, Any]:
-    """Aggregate non-streaming deltas into a final multimodal response payload."""
+    """Aggregate non-streaming deltas into a final response with proper output items."""
 
     def _coerce_int(value: Any) -> int | None:
         if value is None:
@@ -347,14 +415,19 @@ async def gather_non_streaming_response(
             )
             return None
 
-    accumulated_parts: list[str] = []
+    # Track output items by output_index
+    output_items: dict[int, dict[str, Any]] = {}
     usage_counts = {
         "prompt_tokens": 0,
         "completion_tokens": 0,
         "total_tokens": 0,
+        "cached_tokens": 0,
+        "reasoning_tokens": 0,
     }
     usage_payload: dict[str, Any] | None = None
     error_detail: str | None = None
+    finish_reason: str | None = None
+    completed_at: int | None = None
 
     while True:
         try:
@@ -370,62 +443,83 @@ async def gather_non_streaming_response(
                     logger.debug(
                         "Received empty delta for response request %d", request_id
                     )
-                else:
-                    if delta.get("error"):
-                        error_detail = str(delta["error"])
-                    else:
-                        status_value = str(delta.get("status", "")).lower()
-                        finish_value = str(delta.get("finish_reason", "")).lower()
-                        if status_value == "error" or finish_value == "error":
-                            error_detail = str(
-                                delta.get("content")
-                                or delta.get("message")
-                                or delta.get("error")
-                                or "Response generation failed."
-                            )
+                    continue
 
+                if delta.get("error"):
+                    error_detail = str(delta["error"])
+                else:
+                    status_value = str(delta.get("status", "")).lower()
+                    finish_value = str(delta.get("finish_reason", "")).lower()
+                    if status_value == "error" or finish_value == "error":
+                        error_detail = str(
+                            delta.get("content")
+                            or delta.get("message")
+                            or delta.get("error")
+                            or "Response generation failed."
+                        )
+
+                # Process state_events from PIE
+                state_events = delta.get("state_events", [])
+                for event in state_events:
+                    _process_state_event_for_output(event, output_items)
+
+                # Also handle legacy content field for backwards compatibility
+                if not state_events:
                     delta_content = delta.get("content")
                     if delta_content:
-                        accumulated_parts.append(str(delta_content))
+                        if 0 not in output_items:
+                            output_items[0] = {
+                                "type": "message",
+                                "content": "",
+                            }
+                        output_items[0]["content"] += str(delta_content)
 
-                    if usage := delta.get("usage"):
-                        if isinstance(usage, dict):
-                            usage_payload = usage
+                # Extract usage from delta
+                if usage := delta.get("usage"):
+                    if isinstance(usage, dict):
+                        usage_payload = usage
 
+                for source_key, target_key in (
+                    ("prompt_token_count", "prompt_tokens"),
+                    ("prompt_tokens", "prompt_tokens"),
+                    ("input_tokens", "prompt_tokens"),
+                    ("completion_token_count", "completion_tokens"),
+                    ("completion_tokens", "completion_tokens"),
+                    ("output_tokens", "completion_tokens"),
+                    ("total_token_count", "total_tokens"),
+                    ("total_tokens", "total_tokens"),
+                    ("cached_token_count", "cached_tokens"),
+                    ("reasoning_tokens", "reasoning_tokens"),
+                ):
+                    if source_key in delta:
+                        value = _coerce_int(delta.get(source_key))
+                        if value is not None:
+                            usage_counts[target_key] = value
+
+                if usage_payload:
                     for source_key, target_key in (
-                        ("prompt_token_count", "prompt_tokens"),
                         ("prompt_tokens", "prompt_tokens"),
                         ("input_tokens", "prompt_tokens"),
-                        ("completion_token_count", "completion_tokens"),
                         ("completion_tokens", "completion_tokens"),
                         ("output_tokens", "completion_tokens"),
-                        ("total_token_count", "total_tokens"),
                         ("total_tokens", "total_tokens"),
                     ):
-                        if source_key in delta:
-                            value = _coerce_int(delta.get(source_key))
+                        if source_key in usage_payload:
+                            value = _coerce_int(usage_payload.get(source_key))
                             if value is not None:
                                 usage_counts[target_key] = value
 
-                    if usage_payload:
-                        for source_key, target_key in (
-                            ("prompt_tokens", "prompt_tokens"),
-                            ("input_tokens", "prompt_tokens"),
-                            ("completion_tokens", "completion_tokens"),
-                            ("output_tokens", "completion_tokens"),
-                            ("total_tokens", "total_tokens"),
-                        ):
-                            if source_key in usage_payload:
-                                value = _coerce_int(usage_payload.get(source_key))
-                                if value is not None:
-                                    usage_counts[target_key] = value
+                # Track finish reason for incomplete_details
+                if fr := delta.get("finish_reason"):
+                    finish_reason = str(fr).lower()
 
-                    if delta.get("is_final_delta", False):
-                        logger.debug(
-                            "Received final delta for response request %d",
-                            request_id,
-                        )
-                        break
+                if delta.get("is_final_delta", False):
+                    completed_at = get_current_timestamp()
+                    logger.debug(
+                        "Received final delta for response request %d",
+                        request_id,
+                    )
+                    break
             finally:
                 queue.task_done()
                 if delta:
@@ -444,9 +538,484 @@ async def gather_non_streaming_response(
             usage_counts["prompt_tokens"] + usage_counts["completion_tokens"]
         )
 
+    # Build final output items
+    output = _build_output_items(output_items)
+
+    # Determine if response was incomplete
+    incomplete_details = None
+    if finish_reason in ("length", "max_tokens", "max_output_tokens"):
+        incomplete_details = IncompleteDetails(reason="max_output_tokens")
+    elif finish_reason == "content_filter":
+        incomplete_details = IncompleteDetails(reason="content_filter")
+
     return {
-        "content": "".join(accumulated_parts),
+        "output": output,
         "prompt_tokens": usage_counts["prompt_tokens"],
         "completion_tokens": usage_counts["completion_tokens"],
         "total_tokens": usage_counts["total_tokens"],
+        "cached_tokens": usage_counts["cached_tokens"],
+        "reasoning_tokens": usage_counts["reasoning_tokens"],
+        "completed_at": completed_at,
+        "incomplete_details": incomplete_details,
+    }
+
+
+def _process_state_event_for_output(
+    event: dict[str, Any],
+    output_items: dict[int, dict[str, Any]],
+) -> None:
+    """Process a single state event and update output_items tracking."""
+    event_type = event.get("event_type")
+    item_type = event.get("item_type", "message")
+    output_index = event.get("output_index", 0)
+    identifier = event.get("identifier", "")
+
+    if output_index not in output_items:
+        output_items[output_index] = {
+            "type": item_type,
+            "content": "",
+            "identifier": identifier,
+        }
+
+    item = output_items[output_index]
+
+    if event_type == "content_delta":
+        delta_text = event.get("delta", "")
+        item["content"] += delta_text
+    elif event_type == "item_completed":
+        # Mark as completed, capture final value if present
+        item["completed"] = True
+        if "value" in event:
+            item["value"] = event["value"]
+
+
+def _build_output_items(
+    output_items: dict[int, dict[str, Any]],
+) -> list[OutputMessage | OutputFunctionCall | OutputReasoning]:
+    """Build final output item models from accumulated state."""
+    result: list[OutputMessage | OutputFunctionCall | OutputReasoning] = []
+
+    for output_index in sorted(output_items.keys()):
+        item = output_items[output_index]
+        item_type = item.get("type", "message")
+        content = item.get("content", "")
+        identifier = item.get("identifier", "")
+
+        if item_type == "message":
+            result.append(
+                OutputMessage(
+                    status=OutputStatus.COMPLETED,
+                    content=[OutputTextContent(text=content)] if content else [],
+                )
+            )
+        elif item_type == "function_call":
+            # Extract function name from identifier (format: "tool_call:function_name")
+            function_name = ""
+            if identifier.startswith("tool_call:"):
+                function_name = identifier[len("tool_call:") :]
+            result.append(
+                OutputFunctionCall(
+                    name=function_name,
+                    arguments=content,
+                    status=OutputStatus.COMPLETED,
+                )
+            )
+        elif item_type == "reasoning":
+            result.append(
+                OutputReasoning(
+                    status=OutputStatus.COMPLETED,
+                    content=[ReasoningContent(text=content)] if content else [],
+                )
+            )
+
+    # If no items were built, create a default empty message
+    if not result:
+        result.append(OutputMessage(status=OutputStatus.COMPLETED, content=[]))
+
+    return result
+
+
+async def stream_response_generator(
+    request_id: int,
+    queue: asyncio.Queue[ResponseDeltaDict],
+    response_id: str,
+    model_name: str,
+) -> AsyncIterable[dict[str, str]]:
+    """Generate Open Responses SSE events from PIE deltas with state_events."""
+    stream_state = ResponseStreamState(response_id=response_id, model=model_name)
+
+    # Emit response.created
+    yield _format_sse_event(
+        ResponseCreatedEvent(
+            sequence_number=stream_state.next_sequence_number(),
+            response=stream_state.snapshot(),
+        )
+    )
+
+    # Emit response.in_progress
+    yield _format_sse_event(
+        ResponseInProgressEvent(
+            sequence_number=stream_state.next_sequence_number(),
+            response=stream_state.snapshot(),
+        )
+    )
+
+    error_occurred = False
+    error_detail: str | None = None
+    finish_reason: str | None = None
+
+    while True:
+        try:
+            delta = await asyncio.wait_for(queue.get(), timeout=30.0)
+        except TimeoutError:
+            logger.error(
+                "Timeout waiting for delta for streaming request %d", request_id
+            )
+            error_occurred = True
+            error_detail = "Timeout receiving response from engine."
+            break
+        else:
+            try:
+                if not delta:
+                    continue
+
+                if delta.get("error"):
+                    error_occurred = True
+                    error_detail = str(delta["error"])
+                    break
+
+                status_value = str(delta.get("status", "")).lower()
+                finish_value = str(delta.get("finish_reason", "")).lower()
+                if status_value == "error" or finish_value == "error":
+                    error_occurred = True
+                    error_detail = str(
+                        delta.get("content")
+                        or delta.get("message")
+                        or delta.get("error")
+                        or "Response generation failed."
+                    )
+                    break
+
+                # Process state_events
+                state_events = delta.get("state_events", [])
+                for event in state_events:
+                    async for sse_event in _process_state_event_for_streaming(
+                        event, stream_state
+                    ):
+                        yield sse_event
+
+                # Handle legacy content field for backwards compatibility
+                if not state_events:
+                    delta_content = delta.get("content")
+                    if delta_content:
+                        # Treat as message content delta
+                        item = stream_state.get_or_create_item(0, "message")
+                        if item.accumulated_content == "":
+                            # First content - emit item added events
+                            yield _format_sse_event(
+                                OutputItemAddedEvent(
+                                    sequence_number=stream_state.next_sequence_number(),
+                                    output_index=0,
+                                    item=item.to_skeleton(),
+                                )
+                            )
+                            yield _format_sse_event(
+                                ContentPartAddedEvent(
+                                    sequence_number=stream_state.next_sequence_number(),
+                                    item_id=item.item_id,
+                                    output_index=0,
+                                    content_index=0,
+                                    part=OutputTextContent(text=""),
+                                )
+                            )
+                        item.accumulated_content += str(delta_content)
+                        yield _format_sse_event(
+                            OutputTextDeltaEvent(
+                                sequence_number=stream_state.next_sequence_number(),
+                                item_id=item.item_id,
+                                output_index=0,
+                                content_index=0,
+                                delta=str(delta_content),
+                            )
+                        )
+
+                # Extract usage info
+                if usage := delta.get("usage"):
+                    if isinstance(usage, dict):
+                        stream_state.usage = ResponseUsage(
+                            input_tokens=usage.get("input_tokens", 0),
+                            output_tokens=usage.get("output_tokens", 0),
+                            total_tokens=usage.get("total_tokens", 0),
+                            input_tokens_details=InputTokensDetails(
+                                cached_tokens=usage.get("cached_tokens", 0),
+                            ),
+                            output_tokens_details=OutputTokensDetails(
+                                reasoning_tokens=usage.get("reasoning_tokens", 0),
+                            ),
+                        )
+
+                # Extract token details from delta (PIE sends these at top level)
+                cached_tokens = delta.get("cached_token_count")
+                reasoning_tokens = delta.get("reasoning_tokens")
+                if cached_tokens is not None or reasoning_tokens is not None:
+                    current_usage = stream_state.usage or ResponseUsage(
+                        input_tokens=0, output_tokens=0, total_tokens=0
+                    )
+                    stream_state.usage = ResponseUsage(
+                        input_tokens=current_usage.input_tokens,
+                        output_tokens=current_usage.output_tokens,
+                        total_tokens=current_usage.total_tokens,
+                        input_tokens_details=InputTokensDetails(
+                            cached_tokens=cached_tokens or 0,
+                        ),
+                        output_tokens_details=OutputTokensDetails(
+                            reasoning_tokens=reasoning_tokens or 0,
+                        ),
+                    )
+
+                # Track finish reason for incomplete detection
+                if fr := delta.get("finish_reason"):
+                    finish_reason = str(fr).lower()
+
+                if delta.get("is_final_delta", False):
+                    logger.debug(
+                        "Received final delta for streaming request %d", request_id
+                    )
+                    break
+            finally:
+                queue.task_done()
+                if delta:
+                    release_delta_resources(delta)
+
+    # Emit completion events for all items
+    for output_index, item in sorted(stream_state.items.items()):
+        if item.status != OutputStatus.COMPLETED:
+            item.status = OutputStatus.COMPLETED
+            # Emit done events based on item type
+            if item.item_type == "message":
+                yield _format_sse_event(
+                    OutputTextDoneEvent(
+                        sequence_number=stream_state.next_sequence_number(),
+                        item_id=item.item_id,
+                        output_index=output_index,
+                        content_index=0,
+                        text=item.accumulated_content,
+                    )
+                )
+                yield _format_sse_event(
+                    ContentPartDoneEvent(
+                        sequence_number=stream_state.next_sequence_number(),
+                        item_id=item.item_id,
+                        output_index=output_index,
+                        content_index=0,
+                        part=OutputTextContent(text=item.accumulated_content),
+                    )
+                )
+            elif item.item_type == "function_call":
+                yield _format_sse_event(
+                    FunctionCallArgumentsDoneEvent(
+                        sequence_number=stream_state.next_sequence_number(),
+                        item_id=item.item_id,
+                        output_index=output_index,
+                        arguments=item.accumulated_content,
+                    )
+                )
+            elif item.item_type == "reasoning":
+                yield _format_sse_event(
+                    ReasoningDoneEvent(
+                        sequence_number=stream_state.next_sequence_number(),
+                        item_id=item.item_id,
+                        output_index=output_index,
+                        content_index=0,
+                        text=item.accumulated_content,
+                    )
+                )
+
+            yield _format_sse_event(
+                OutputItemDoneEvent(
+                    sequence_number=stream_state.next_sequence_number(),
+                    output_index=output_index,
+                    item=item.to_completed(),
+                )
+            )
+
+    # Emit final response event
+    if error_occurred:
+        stream_state.status = OutputStatus.FAILED
+        yield _format_sse_event(
+            ResponseFailedEvent(
+                sequence_number=stream_state.next_sequence_number(),
+                response=stream_state.snapshot(),
+            )
+        )
+        if error_detail:
+            yield _format_sse_event(
+                StreamErrorEvent(
+                    sequence_number=stream_state.next_sequence_number(),
+                    error={"message": error_detail, "type": "inference_error"},
+                )
+            )
+    else:
+        # Set completed_at timestamp
+        stream_state.completed_at = get_current_timestamp()
+
+        # Determine if response was incomplete (truncated)
+        is_incomplete = finish_reason in ("length", "max_tokens", "max_output_tokens")
+        if is_incomplete:
+            stream_state.status = OutputStatus.INCOMPLETE
+            stream_state.incomplete_details = IncompleteDetails(reason="max_output_tokens")
+            yield _format_sse_event(
+                ResponseIncompleteEvent(
+                    sequence_number=stream_state.next_sequence_number(),
+                    response=stream_state.snapshot(),
+                )
+            )
+        elif finish_reason == "content_filter":
+            stream_state.status = OutputStatus.INCOMPLETE
+            stream_state.incomplete_details = IncompleteDetails(reason="content_filter")
+            yield _format_sse_event(
+                ResponseIncompleteEvent(
+                    sequence_number=stream_state.next_sequence_number(),
+                    response=stream_state.snapshot(),
+                )
+            )
+        else:
+            stream_state.status = OutputStatus.COMPLETED
+            yield _format_sse_event(
+                ResponseCompletedEvent(
+                    sequence_number=stream_state.next_sequence_number(),
+                    response=stream_state.snapshot(),
+                )
+            )
+
+    logger.info("SSE stream for responses request %d completed", request_id)
+
+
+async def _process_state_event_for_streaming(
+    event: dict[str, Any],
+    stream_state: ResponseStreamState,
+) -> AsyncIterable[dict[str, str]]:
+    """Process a single PSE state event and yield Open Responses SSE events."""
+    event_type = event.get("event_type")
+    item_type = event.get("item_type", "message")
+    output_index = event.get("output_index", 0)
+    identifier = event.get("identifier", "")
+
+    item = stream_state.get_or_create_item(output_index, item_type, identifier)
+
+    if event_type == "item_started":
+        # Emit output_item.added
+        yield _format_sse_event(
+            OutputItemAddedEvent(
+                sequence_number=stream_state.next_sequence_number(),
+                output_index=output_index,
+                item=item.to_skeleton(),
+            )
+        )
+        # Emit content_part.added for items with content
+        if item_type in ("message", "reasoning"):
+            if item_type == "message":
+                part = OutputTextContent(text="")
+            else:
+                part = ReasoningContent(text="")
+            yield _format_sse_event(
+                ContentPartAddedEvent(
+                    sequence_number=stream_state.next_sequence_number(),
+                    item_id=item.item_id,
+                    output_index=output_index,
+                    content_index=0,
+                    part=part,
+                )
+            )
+
+    elif event_type == "content_delta":
+        delta_text = event.get("delta", "")
+        item.accumulated_content += delta_text
+
+        if item_type == "message":
+            yield _format_sse_event(
+                OutputTextDeltaEvent(
+                    sequence_number=stream_state.next_sequence_number(),
+                    item_id=item.item_id,
+                    output_index=output_index,
+                    content_index=0,
+                    delta=delta_text,
+                )
+            )
+        elif item_type == "function_call":
+            yield _format_sse_event(
+                FunctionCallArgumentsDeltaEvent(
+                    sequence_number=stream_state.next_sequence_number(),
+                    item_id=item.item_id,
+                    output_index=output_index,
+                    delta=delta_text,
+                )
+            )
+        elif item_type == "reasoning":
+            yield _format_sse_event(
+                ReasoningDeltaEvent(
+                    sequence_number=stream_state.next_sequence_number(),
+                    item_id=item.item_id,
+                    output_index=output_index,
+                    content_index=0,
+                    delta=delta_text,
+                )
+            )
+
+    elif event_type == "item_completed":
+        item.status = OutputStatus.COMPLETED
+        # Emit done events
+        if item_type == "message":
+            yield _format_sse_event(
+                OutputTextDoneEvent(
+                    sequence_number=stream_state.next_sequence_number(),
+                    item_id=item.item_id,
+                    output_index=output_index,
+                    content_index=0,
+                    text=item.accumulated_content,
+                )
+            )
+            yield _format_sse_event(
+                ContentPartDoneEvent(
+                    sequence_number=stream_state.next_sequence_number(),
+                    item_id=item.item_id,
+                    output_index=output_index,
+                    content_index=0,
+                    part=OutputTextContent(text=item.accumulated_content),
+                )
+            )
+        elif item_type == "function_call":
+            yield _format_sse_event(
+                FunctionCallArgumentsDoneEvent(
+                    sequence_number=stream_state.next_sequence_number(),
+                    item_id=item.item_id,
+                    output_index=output_index,
+                    arguments=item.accumulated_content,
+                )
+            )
+        elif item_type == "reasoning":
+            yield _format_sse_event(
+                ReasoningDoneEvent(
+                    sequence_number=stream_state.next_sequence_number(),
+                    item_id=item.item_id,
+                    output_index=output_index,
+                    content_index=0,
+                    text=item.accumulated_content,
+                )
+            )
+
+        yield _format_sse_event(
+            OutputItemDoneEvent(
+                sequence_number=stream_state.next_sequence_number(),
+                output_index=output_index,
+                item=item.to_completed(),
+            )
+        )
+
+
+def _format_sse_event(event: Any) -> dict[str, str]:
+    """Format a streaming event for SSE transport."""
+    return {
+        "event": event.type,
+        "data": event.model_dump_json(exclude_none=True),
     }

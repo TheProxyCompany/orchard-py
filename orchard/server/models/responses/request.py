@@ -1,6 +1,6 @@
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from orchard.server.models.reasoning import (
     DEFAULT_BOOLEAN_REASONING_EFFORT,
@@ -13,6 +13,9 @@ from orchard.server.models.responses.tools import (
     FunctionID,
     ToolUseMode,
 )
+
+
+# --- Content Parts (for message content) ---
 
 
 class InputText(BaseModel):
@@ -29,13 +32,70 @@ class InputImage(BaseModel):
     image_url: str = Field(
         description="Data URL containing Base64-encoded image bytes."
     )
+    detail: Literal["low", "high", "auto"] = Field(
+        default="auto",
+        description="Image detail level for processing.",
+    )
 
 
 ContentPart = Annotated[InputText | InputImage, Field(discriminator="type")]
 
 
+# --- Input Item Types (discriminated by `type` field) ---
+
+
+class InputMessageItem(BaseModel):
+    """A message item in the input."""
+
+    type: Literal["message"] = "message"
+    role: Literal["user", "assistant", "system", "developer"] = Field(
+        description="Role of the message author."
+    )
+    content: str | list[ContentPart] = Field(
+        description="Message content as raw text or structured content parts."
+    )
+
+
+class InputFunctionCall(BaseModel):
+    """A function call from a previous assistant turn."""
+
+    type: Literal["function_call"] = "function_call"
+    call_id: str = Field(description="Unique identifier for this function call.")
+    name: str = Field(description="Name of the function that was called.")
+    arguments: str = Field(description="JSON-encoded arguments passed to the function.")
+
+
+class InputFunctionCallOutput(BaseModel):
+    """The result of a function call."""
+
+    type: Literal["function_call_output"] = "function_call_output"
+    call_id: str = Field(description="The call_id of the function call this is responding to.")
+    output: str = Field(description="The output of the function call.")
+
+
+class InputReasoning(BaseModel):
+    """Reasoning content from a previous turn."""
+
+    type: Literal["reasoning"] = "reasoning"
+    summary: list[dict] | None = Field(
+        default=None,
+        description="Summary of the reasoning (if available).",
+    )
+    encrypted_content: str | None = Field(
+        default=None,
+        description="Encrypted reasoning content for continuation.",
+    )
+
+
+InputItem = Annotated[
+    InputMessageItem | InputFunctionCall | InputFunctionCallOutput | InputReasoning,
+    Field(discriminator="type"),
+]
+
+
+# Legacy alias for backwards compatibility
 class InputMessage(BaseModel):
-    """Represents a single input message."""
+    """Represents a single input message (legacy format)."""
 
     role: str = Field(description="Role of the message author.")
     content: str | list[ContentPart] = Field(
@@ -60,15 +120,19 @@ class ResponseReasoning(BaseModel):
 
 
 class ResponseRequest(BaseModel):
-    """Defines the request schema for the /v1/responses endpoint (MVP)."""
+    """Defines the request schema for the /v1/responses endpoint."""
 
     model: str = Field(description="Model ID used to generate the response.")
-    items: list[InputMessage] = Field(
-        description="Ordered input messages for the request."
+    input: str | list[InputItem] = Field(
+        description="Input as a string (shorthand for user message) or array of items."
     )
     stream: bool | None = Field(
         default=None,
         description="Whether to stream the response.",
+    )
+    truncation: Literal["auto", "disabled"] | None = Field(
+        default=None,
+        description="Controls whether server can truncate input when it exceeds context window.",
     )
     parallel_tool_calls: bool | None = Field(
         default=None,
@@ -95,6 +159,18 @@ class ResponseRequest(BaseModel):
         le=1.0,
         description="Nucleus sampling threshold.",
     )
+    presence_penalty: float | None = Field(
+        default=None,
+        ge=-2.0,
+        le=2.0,
+        description="Penalizes new tokens based on whether they appear in the text so far.",
+    )
+    frequency_penalty: float | None = Field(
+        default=None,
+        ge=-2.0,
+        le=2.0,
+        description="Penalizes new tokens based on their frequency in the text so far.",
+    )
     top_k: int | None = Field(
         default=None,
         ge=1,
@@ -106,6 +182,12 @@ class ResponseRequest(BaseModel):
         ge=0.0,
         le=1.0,
         description="Minimum probability threshold for token consideration.",
+    )
+    top_logprobs: int | None = Field(
+        default=None,
+        ge=0,
+        le=20,
+        description="Number of top log probabilities to return per token.",
     )
     tool_choice: ToolUseMode | FunctionID = Field(
         default=ToolUseMode.AUTO,
@@ -127,6 +209,27 @@ class ResponseRequest(BaseModel):
         default=None,
         description="Optional configuration for reasoning effort.",
     )
+    include: list[str] | None = Field(
+        default=None,
+        description="What optional data to include in response (e.g., 'reasoning.encrypted_content', 'message.output_text.logprobs').",
+    )
+    metadata: dict[str, str] | None = Field(
+        default=None,
+        description="Key-value pairs attached to the response for tracking.",
+    )
+    # Persistence parameters - accepted but ignored (orchard-py is stateless)
+    previous_response_id: str | None = Field(
+        default=None,
+        description="Ignored. Response chaining requires server-side storage.",
+    )
+    store: bool | None = Field(
+        default=None,
+        description="Ignored. Response persistence requires storage.",
+    )
+    background: bool | None = Field(
+        default=None,
+        description="Ignored. Async polling requires storage and task queue.",
+    )
 
     @field_validator("reasoning", mode="before")
     @classmethod
@@ -138,3 +241,20 @@ class ResponseRequest(BaseModel):
         if value is True:
             return {"effort": DEFAULT_BOOLEAN_REASONING_EFFORT}
         return value
+
+    @model_validator(mode="after")
+    def _normalize_string_input(self) -> "ResponseRequest":
+        """Convert string input to a single user message item."""
+        if isinstance(self.input, str):
+            object.__setattr__(
+                self,
+                "input",
+                [InputMessageItem(role="user", content=self.input)],
+            )
+        return self
+
+    def get_message_items(self) -> list[InputMessageItem]:
+        """Extract only message items from input (for template rendering)."""
+        if isinstance(self.input, str):
+            return [InputMessageItem(role="user", content=self.input)]
+        return [item for item in self.input if isinstance(item, InputMessageItem)]
