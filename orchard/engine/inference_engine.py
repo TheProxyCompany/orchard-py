@@ -75,7 +75,8 @@ class InferenceEngine:
         if load_models:
             try:
                 loop = asyncio.get_running_loop()
-                loop.create_task(self.load_models(load_models))
+                task = loop.create_task(self.load_models(load_models))
+                task.add_done_callback(lambda t: t.result() if not t.cancelled() else None)
             except RuntimeError:
                 asyncio.run(self.load_models(load_models))
 

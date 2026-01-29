@@ -1,6 +1,5 @@
 import httpx
 import pytest
-
 from helpers import parse_sse_events
 
 pytestmark = pytest.mark.asyncio
