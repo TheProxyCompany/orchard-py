@@ -295,10 +295,13 @@ async def handle_response_request(
         )
 
         logger.info("Response request %d completed successfully.", current_request_id)
+        await exit_stack.aclose()
         return response
     except HTTPException:
+        await exit_stack.aclose()
         raise
     except InferenceError as exc:
+        await exit_stack.aclose()
         logger.error(
             "Inference error during response request %d: %s",
             current_request_id,
@@ -309,6 +312,7 @@ async def handle_response_request(
             detail=str(exc),
         ) from exc
     except Exception as exc:  # pragma: no cover - defensive
+        await exit_stack.aclose()
         logger.exception(
             "Failed to process multimodal response request %d: %s",
             current_request_id,
@@ -318,8 +322,6 @@ async def handle_response_request(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred during response generation.",
         ) from exc
-    finally:
-        await exit_stack.aclose()
 
 
 async def gather_non_streaming_response(
