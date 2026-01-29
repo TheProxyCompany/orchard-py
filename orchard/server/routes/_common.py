@@ -124,6 +124,7 @@ def extract_usage(delta: ResponseDeltaDict, counts: dict[str, int]) -> None:
         ("completion_token_count", "completion_tokens"),
         ("completion_tokens", "completion_tokens"),
         ("output_tokens", "completion_tokens"),
+        ("generation_len", "completion_tokens"),
         ("total_token_count", "total_tokens"),
         ("total_tokens", "total_tokens"),
         ("cached_token_count", "cached_tokens"),
