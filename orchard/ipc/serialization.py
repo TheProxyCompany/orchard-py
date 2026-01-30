@@ -244,6 +244,16 @@ def _build_request_payload(
         else:
             tool_schemas_str = _coerce_bytes(tool_schemas_value).decode("utf-8")
 
+        tool_calling_tokens_raw = prompt.get("tool_calling_tokens") or {}
+        tool_calling_tokens = {
+            "call_start": str(tool_calling_tokens_raw.get("call_start", "")),
+            "call_end": str(tool_calling_tokens_raw.get("call_end", "")),
+            "section_start": str(tool_calling_tokens_raw.get("section_start", "")),
+            "section_end": str(tool_calling_tokens_raw.get("section_end", "")),
+            "name_separator": str(tool_calling_tokens_raw.get("name_separator", "")),
+        }
+        max_tool_calls = int(prompt.get("max_tool_calls") or 0)
+
         response_format_value = prompt.get("response_format_json", "")
         if isinstance(response_format_value, str):
             response_format_str = response_format_value
@@ -317,6 +327,8 @@ def _build_request_payload(
                 "repetition_penalty": repetition_penalty,
                 "stop_sequences": stop_sequences,
                 "tool_schemas_json": tool_schemas_str,
+                "tool_calling_tokens": tool_calling_tokens,
+                "max_tool_calls": max_tool_calls,
                 "response_format_json": response_format_str,
                 "logit_bias": logit_bias_entries,
                 "task_name": task_name_str,
