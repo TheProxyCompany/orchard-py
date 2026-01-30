@@ -110,9 +110,15 @@ async def handle_response_request(
             detail="Response request must include at least one content segment.",
         )
 
+    tools_payload = (
+        [tool.to_dict() for tool in request.tools] if request.tools else None
+    )
+
     try:
         prompt_text = formatter.apply_template(
-            messages_for_template, reasoning=request.reasoning is not None
+            messages_for_template,
+            reasoning=request.reasoning is not None,
+            tools=tools_payload,
         )
         logger.debug("Prompt text: %s", prompt_text)
     except Exception as exc:  # pragma: no cover - defensive

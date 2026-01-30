@@ -76,6 +76,7 @@ class ChatFormatter:
         add_generation_prompt: bool = True,
         reasoning: bool = False,
         task: str | None = None,
+        tools: list[dict[str, Any]] | None = None,
     ) -> str:
         """
         Applies the loaded chat template to a conversation.
@@ -85,6 +86,7 @@ class ChatFormatter:
             add_generation_prompt: Whether to add the assistant prompt turn.
             reasoning: Whether to add the conditional reasoning prompt logic.
             task: Optional task name for task-specific formatting (e.g., "caption_normal", "detect").
+            tools: Optional list of tool/function schemas to include in the prompt.
         Returns:
             A single, fully formatted string ready for tokenization.
         """
@@ -101,5 +103,6 @@ class ChatFormatter:
             "reasoning": reasoning,
             "task": task,
             "roles": self.control_tokens.roles.model_dump(),
+            "tools": tools,
         }
         return self.template.render(**context)

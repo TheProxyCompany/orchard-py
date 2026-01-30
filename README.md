@@ -43,7 +43,7 @@ responses = client.chat_batch(
 
 ## Model Profiles
 
-Chat templates and control tokens are loaded from the [orchard-models](https://github.com/TheProxyCompany/orchard-models) submodule at `orchard/formatter/profiles/`. This provides a single source of truth shared across all Orchard SDKs (Python, Rust, Swift). See that repo for the list of supported model families.
+Chat templates and control tokens are loaded from the [Pantheon](https://github.com/TheProxyCompany/Pantheon) submodule at `orchard/formatter/profiles/`. This provides a single source of truth shared across all Orchard SDKs (Python, Rust, Swift). See that repo for the list of supported model families.
 
 ## Requirements
 
@@ -55,7 +55,7 @@ Chat templates and control tokens are loaded from the [orchard-models](https://g
 
 - [orchard-rs](https://github.com/TheProxyCompany/orchard-rs) - Rust client
 - [orchard-swift](https://github.com/TheProxyCompany/orchard-swift) - Swift client
-- [orchard-models](https://github.com/TheProxyCompany/orchard-models) - Model profiles
+- [Pantheon](https://github.com/TheProxyCompany/Pantheon) - Model profiles
 
 ## License
 
