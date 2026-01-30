@@ -182,7 +182,7 @@ async def test_responses_streaming_completed_snapshot(live_server):
         "model": MODEL_ID,
         "input": "Hi",
         "temperature": 0.0,
-        "max_output_tokens": 8,
+        "max_output_tokens": 64,
         "stream": True,
     }
 

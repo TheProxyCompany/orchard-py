@@ -8,6 +8,7 @@ def parse_sse_events(raw: str) -> list[dict]:
     current_data: str = ""
 
     for line in raw.split("\n"):
+        line = line.rstrip("\r")
         if line.startswith("event:"):
             current_event = line[len("event:") :].strip()
         elif line.startswith("data:"):

@@ -273,12 +273,14 @@ async def handle_response_request(
             ),
         )
 
+        incomplete_details = aggregated.get("incomplete_details")
         response = ResponseObject(
             model=request.model,
             output=aggregated["output"],
             usage=usage,
+            status=OutputStatus.INCOMPLETE if incomplete_details else OutputStatus.COMPLETED,
             completed_at=aggregated.get("completed_at"),
-            incomplete_details=aggregated.get("incomplete_details"),
+            incomplete_details=incomplete_details,
             metadata=request.metadata,
             min_p=request.min_p,
             top_p=request.top_p,
