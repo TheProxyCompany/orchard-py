@@ -176,15 +176,8 @@ async def handle_completion_request(
         if instance.reasoning_effort is not None:
             payload["reasoning_effort"] = instance.reasoning_effort
 
-        # Pass tool_calling tokens from model profile
-        tc = formatter.control_tokens.tool_calling
-        payload["tool_calling_tokens"] = {
-            "call_start": tc.call_start,
-            "call_end": tc.call_end,
-            "section_start": tc.section_start,
-            "section_end": tc.section_end,
-            "name_separator": tc.name_separator,
-        }
+        payload["tool_calling_tokens"] = formatter.get_tool_calling_tokens()
+        payload["tool_choice"] = request.tool_choice.to_dict() if request.tool_choice else "auto"
         prompt_payloads.append(payload)
 
     current_request_id = await ipc_state.get_next_request_id()

@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
+import yaml
 from jinja2 import Environment, FileSystemLoader
 
 from orchard.formatter.control_tokens import ControlTokens, load_control_tokens
@@ -64,6 +65,12 @@ class ChatFormatter:
 
         self.control_tokens: ControlTokens = load_control_tokens(profile_dir)
 
+        # 2b. Load capabilities manifest
+        caps_path = profile_dir / "capabilities.yaml"
+        self.capabilities: dict[str, Any] = (
+            yaml.safe_load(caps_path.read_text()) if caps_path.exists() else {}
+        )
+
         # 3. Set up Jinja2 environment
         self.jinja_env = Environment(
             loader=FileSystemLoader(profile_dir), trim_blocks=True, lstrip_blocks=True
@@ -77,6 +84,7 @@ class ChatFormatter:
         reasoning: bool = False,
         task: str | None = None,
         tools: list[dict[str, Any]] | None = None,
+        prefill: str | None = None,
     ) -> str:
         """
         Applies the loaded chat template to a conversation.
@@ -87,6 +95,7 @@ class ChatFormatter:
             reasoning: Whether to add the conditional reasoning prompt logic.
             task: Optional task name for task-specific formatting (e.g., "caption_normal", "detect").
             tools: Optional list of tool/function schemas to include in the prompt.
+            prefill: Optional string to prefill the assistant response with.
         Returns:
             A single, fully formatted string ready for tokenization.
         """
@@ -98,11 +107,33 @@ class ChatFormatter:
             "end_of_message": self.control_tokens.end_of_message,
             "start_image_token": self.control_tokens.start_image_token,
             "end_image_token": self.control_tokens.end_image_token,
-            "thinking_start_token": self.control_tokens.thinking_start_token,
-            "thinking_end_token": self.control_tokens.thinking_end_token,
             "reasoning": reasoning,
             "task": task,
             "roles": self.control_tokens.roles.model_dump(),
             "tools": tools,
+            "prefill": prefill,
+            "capabilities": self.capabilities,
         }
         return self.template.render(**context)
+
+    def get_coord_placeholder(self) -> str | None:
+        """Extract coord placeholder from capabilities.yaml (pointing or gaze_detection)."""
+        for cap_name in ("pointing", "gaze_detection"):
+            cap = self.capabilities.get(cap_name, {})
+            placeholder = cap.get("placeholders", {}).get("coord")
+            if placeholder:
+                return placeholder
+        return None
+
+    def get_tool_calling_tokens(self) -> dict[str, str]:
+        """Extract tool calling delimiter tokens from capabilities.yaml."""
+        tool_caps = self.capabilities.get("tool_calling", {})
+        fmt = (tool_caps.get("formats") or [{}])[0]
+        tokens = fmt.get("tokens", {})
+        return {
+            "call_start": tokens.get("start", ""),
+            "call_end": tokens.get("end", ""),
+            "section_start": tokens.get("section_start", ""),
+            "section_end": tokens.get("section_end", ""),
+            "name_separator": tokens.get("name_separator", ""),
+        }

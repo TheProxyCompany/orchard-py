@@ -133,13 +133,7 @@ async def handle_completion_request(
                 "num_candidates": num_candidates,
                 "best_of": num_candidates,
                 "final_candidates": final_candidates,
-                "tool_calling_tokens": {
-                    "call_start": formatter.control_tokens.tool_calling.call_start,
-                    "call_end": formatter.control_tokens.tool_calling.call_end,
-                    "section_start": formatter.control_tokens.tool_calling.section_start,
-                    "section_end": formatter.control_tokens.tool_calling.section_end,
-                    "name_separator": formatter.control_tokens.tool_calling.name_separator,
-                },
+                "tool_calling_tokens": formatter.get_tool_calling_tokens(),
             }
         )
         fanout_counts.append(num_candidates)

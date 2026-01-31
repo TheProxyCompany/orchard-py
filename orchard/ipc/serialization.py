@@ -254,6 +254,14 @@ def _build_request_payload(
         }
         max_tool_calls = int(prompt.get("max_tool_calls") or 0)
 
+        tool_choice_value = prompt.get("tool_choice", "auto")
+        if isinstance(tool_choice_value, dict):
+            tool_choice_str = json.dumps(tool_choice_value)
+        elif isinstance(tool_choice_value, str):
+            tool_choice_str = tool_choice_value
+        else:
+            tool_choice_str = str(tool_choice_value)
+
         response_format_value = prompt.get("response_format_json", "")
         if isinstance(response_format_value, str):
             response_format_str = response_format_value
@@ -328,6 +336,7 @@ def _build_request_payload(
                 "stop_sequences": stop_sequences,
                 "tool_schemas_json": tool_schemas_str,
                 "tool_calling_tokens": tool_calling_tokens,
+                "tool_choice": tool_choice_str,
                 "max_tool_calls": max_tool_calls,
                 "response_format_json": response_format_str,
                 "logit_bias": logit_bias_entries,

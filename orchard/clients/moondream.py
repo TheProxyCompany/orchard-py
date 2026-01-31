@@ -28,11 +28,6 @@ class MoondreamClient(Client):
         super().__init__(ipc_state, model_registry)
         self.model_info = model_registry.ensure_ready_sync(self.model_id)
         self.control_tokens = self.model_info.formatter.control_tokens
-        self._capability_token_strings = {
-            name: value
-            for name, value in (self.control_tokens.capabilities or {}).items()
-            if isinstance(value, str)
-        }
         fallback_tokens = {
             "start_ground": 7,
             "placeholder": 8,

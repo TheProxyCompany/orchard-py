@@ -392,9 +392,7 @@ class Client:
                 info.formatter.control_tokens.start_image_token
                 or info.formatter.default_image_placeholder,
                 info.formatter.should_clip_image_placeholder,
-                coord_placeholder=info.formatter.control_tokens.capabilities.get(
-                    "coord_placeholder"
-                ),
+                coord_placeholder=info.formatter.get_coord_placeholder(),
             )
         except ValueError as exc:
             raise ValueError(f"Invalid multimodal layout: {exc}") from exc
@@ -405,9 +403,7 @@ class Client:
             )
 
         # Strip coord placeholders from prompt text (they're handled by layout segments)
-        coord_placeholder = info.formatter.control_tokens.capabilities.get(
-            "coord_placeholder"
-        )
+        coord_placeholder = info.formatter.get_coord_placeholder()
         if coord_placeholder:
             prompt_text = prompt_text.replace(coord_placeholder, "")
 
@@ -479,13 +475,8 @@ class Client:
             "final_candidates": final_candidates,
             "task_name": kwargs.get("task_name"),
             "reasoning_effort": reasoning_effort,
-            "tool_calling_tokens": {
-                "call_start": info.formatter.control_tokens.tool_calling.call_start,
-                "call_end": info.formatter.control_tokens.tool_calling.call_end,
-                "section_start": info.formatter.control_tokens.tool_calling.section_start,
-                "section_end": info.formatter.control_tokens.tool_calling.section_end,
-                "name_separator": info.formatter.control_tokens.tool_calling.name_separator,
-            },
+            "tool_calling_tokens": info.formatter.get_tool_calling_tokens(),
+            "tool_choice": kwargs.get("tool_choice", "auto"),
         }
         logger.debug(
             f"Submitting request {request_id} for model {model_id} with response channel id: {response_channel_id}"
@@ -577,9 +568,7 @@ class Client:
                     info.formatter.control_tokens.start_image_token
                     or info.formatter.default_image_placeholder,
                     info.formatter.should_clip_image_placeholder,
-                    coord_placeholder=info.formatter.control_tokens.capabilities.get(
-                        "coord_placeholder"
-                    ),
+                    coord_placeholder=info.formatter.get_coord_placeholder(),
                 )
             except ValueError as exc:
                 raise ValueError(f"Invalid multimodal layout: {exc}") from exc
@@ -589,9 +578,7 @@ class Client:
                     info.formatter.default_image_placeholder, ""
                 )
 
-            coord_placeholder = info.formatter.control_tokens.capabilities.get(
-                "coord_placeholder"
-            )
+            coord_placeholder = info.formatter.get_coord_placeholder()
             if coord_placeholder:
                 prompt_text = prompt_text.replace(coord_placeholder, "")
 
@@ -634,13 +621,8 @@ class Client:
                     "final_candidates": final_candidates,
                     "task_name": kwargs.get("task_name"),
                     "reasoning_effort": reasoning_effort,
-                    "tool_calling_tokens": {
-                        "call_start": info.formatter.control_tokens.tool_calling.call_start,
-                        "call_end": info.formatter.control_tokens.tool_calling.call_end,
-                        "section_start": info.formatter.control_tokens.tool_calling.section_start,
-                        "section_end": info.formatter.control_tokens.tool_calling.section_end,
-                        "name_separator": info.formatter.control_tokens.tool_calling.name_separator,
-                    },
+                    "tool_calling_tokens": info.formatter.get_tool_calling_tokens(),
+                    "tool_choice": kwargs.get("tool_choice", "auto"),
                 }
             )
 

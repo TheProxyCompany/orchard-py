@@ -210,13 +210,8 @@ async def handle_response_request(
             "task": request.task,
             "reasoning_effort": reasoning_effort,
             "max_tool_calls": request.max_tool_calls,
-            "tool_calling_tokens": {
-                "call_start": formatter.control_tokens.tool_calling.call_start,
-                "call_end": formatter.control_tokens.tool_calling.call_end,
-                "section_start": formatter.control_tokens.tool_calling.section_start,
-                "section_end": formatter.control_tokens.tool_calling.section_end,
-                "name_separator": formatter.control_tokens.tool_calling.name_separator,
-            },
+            "tool_calling_tokens": formatter.get_tool_calling_tokens(),
+            "tool_choice": request.tool_choice.to_dict() if request.tool_choice else "auto",
         }
         request_bytes = _build_request_payload(
             request_id=current_request_id,
