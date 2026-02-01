@@ -1,3 +1,4 @@
+import json
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -47,7 +48,7 @@ class InputMessageItem(BaseModel):
     """A message item in the input."""
 
     type: Literal["message"] = "message"
-    role: Literal["user", "assistant", "system", "developer"] = Field(
+    role: Literal["user", "assistant", "system", "developer", "tool"] = Field(
         description="Role of the message author."
     )
     content: str | list[ContentPart] = Field(
@@ -260,7 +261,27 @@ class ResponseRequest(BaseModel):
         return self
 
     def get_message_items(self) -> list[InputMessageItem]:
-        """Extract only message items from input (for template rendering)."""
+        """Convert all input items to message items for template rendering.
+
+        InputFunctionCall → assistant message with tool call JSON.
+        InputFunctionCallOutput → tool message with output.
+        InputReasoning → skipped (not representable as text).
+        """
         if isinstance(self.input, str):
             return [InputMessageItem(role="user", content=self.input)]
-        return [item for item in self.input if isinstance(item, InputMessageItem)]
+        messages: list[InputMessageItem] = []
+        for item in self.input:
+            if isinstance(item, InputMessageItem):
+                messages.append(item)
+            elif isinstance(item, InputFunctionCall):
+                call_json = json.dumps(
+                    {"name": item.name, "arguments": item.arguments}
+                )
+                messages.append(
+                    InputMessageItem(role="assistant", content=call_json)
+                )
+            elif isinstance(item, InputFunctionCallOutput):
+                messages.append(
+                    InputMessageItem(role="tool", content=item.output)
+                )
+        return messages

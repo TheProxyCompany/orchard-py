@@ -13,6 +13,7 @@ _IMAGE_SPAN_STRUCT = struct.Struct("<Q")
 _SEGMENT_TYPE_TEXT = 0
 _SEGMENT_TYPE_IMAGE = 1
 _SEGMENT_TYPE_CAPABILITY = 2
+_SEGMENT_TYPE_TOOLBOX = 3
 
 _REQUEST_TYPE_CODES = {
     "generation": 0,
@@ -115,6 +116,8 @@ def _encode_layout(
             elif seg_type == "capability":
                 # Capability segments use length=0 in binary layout (actual data is in JSON)
                 segments.append((_SEGMENT_TYPE_CAPABILITY, 0))
+            elif seg_type == "toolbox":
+                segments.append((_SEGMENT_TYPE_TOOLBOX, length))
             else:
                 raise ValueError(f"Unsupported layout segment type: {seg_type}")
 
@@ -122,7 +125,9 @@ def _encode_layout(
         return b"", 0
 
     layout_text_bytes = sum(
-        length for seg_type, length in segments if seg_type == _SEGMENT_TYPE_TEXT
+        length
+        for seg_type, length in segments
+        if seg_type in (_SEGMENT_TYPE_TEXT, _SEGMENT_TYPE_TOOLBOX)
     )
     layout_image_bytes = sum(
         length for seg_type, length in segments if seg_type == _SEGMENT_TYPE_IMAGE

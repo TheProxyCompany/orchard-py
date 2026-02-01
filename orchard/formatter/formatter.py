@@ -77,13 +77,19 @@ class ChatFormatter:
         )
         self.template = self.jinja_env.get_template("chat_template.jinja")
 
+        # 4. Load toolbox template (optional — not all models support tool calling)
+        self.toolbox_template = (
+            self.jinja_env.get_template("toolbox.jinja")
+            if (profile_dir / "toolbox.jinja").exists()
+            else None
+        )
+
     def apply_template(
         self,
         conversation: list[dict[str, Any]],
         add_generation_prompt: bool = True,
         reasoning: bool = False,
         task: str | None = None,
-        tools: list[dict[str, Any]] | None = None,
         prefill: str | None = None,
     ) -> str:
         """
@@ -94,7 +100,6 @@ class ChatFormatter:
             add_generation_prompt: Whether to add the assistant prompt turn.
             reasoning: Whether to add the conditional reasoning prompt logic.
             task: Optional task name for task-specific formatting (e.g., "caption_normal", "detect").
-            tools: Optional list of tool/function schemas to include in the prompt.
             prefill: Optional string to prefill the assistant response with.
         Returns:
             A single, fully formatted string ready for tokenization.
@@ -110,7 +115,6 @@ class ChatFormatter:
             "reasoning": reasoning,
             "task": task,
             "roles": self.control_tokens.roles.model_dump(),
-            "tools": tools,
             "prefill": prefill,
             "capabilities": self.capabilities,
         }
@@ -124,6 +128,18 @@ class ChatFormatter:
             if placeholder:
                 return placeholder
         return None
+
+    def render_toolbox(self, tools: list[dict[str, Any]]) -> str | None:
+        """Render tool definitions into model-specific toolbox text.
+
+        Returns None if the model has no toolbox template or no tools are provided.
+        """
+        if not self.toolbox_template or not tools:
+            return None
+        return self.toolbox_template.render(
+            tools=tools,
+            capabilities=self.capabilities,
+        )
 
     def get_tool_calling_tokens(self) -> dict[str, str]:
         """Extract tool calling delimiter tokens from capabilities.yaml."""

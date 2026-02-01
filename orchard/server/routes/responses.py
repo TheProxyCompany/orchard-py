@@ -110,15 +110,10 @@ async def handle_response_request(
             detail="Response request must include at least one content segment.",
         )
 
-    tools_payload = (
-        [tool.to_dict() for tool in request.tools] if request.tools else None
-    )
-
     try:
         prompt_text = formatter.apply_template(
             messages_for_template,
             reasoning=request.reasoning is not None,
-            tools=tools_payload,
         )
         logger.debug("Prompt text: %s", prompt_text)
     except Exception as exc:  # pragma: no cover - defensive
@@ -127,6 +122,13 @@ async def handle_response_request(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to render chat template.",
         ) from exc
+
+    # Tool definitions — used for both toolbox rendering and PSE grammar compilation
+    tools_payload = (
+        [tool.to_dict() for tool in request.tools] if request.tools else None
+    )
+    tool_schemas_json = json.dumps(tools_payload) if tools_payload else ""
+    toolbox_text = formatter.render_toolbox(tools_payload) if tools_payload else None
 
     try:
         layout_segments = build_multimodal_layout(
@@ -147,6 +149,12 @@ async def handle_response_request(
     if formatter.should_clip_image_placeholder:
         prompt_text = prompt_text.replace(formatter.default_image_placeholder, "")
 
+    # Prepend toolbox segment to layout and prompt bytes
+    if toolbox_text:
+        toolbox_bytes = toolbox_text.encode("utf-8")
+        layout_segments.insert(0, {"type": "toolbox", "length": len(toolbox_bytes)})
+        prompt_text = toolbox_text + prompt_text
+
     current_request_id = await ipc_state.get_next_request_id()
     logger.debug(
         "Generated request ID %d for responses submission.", current_request_id
@@ -159,11 +167,6 @@ async def handle_response_request(
     min_p = request.min_p if request.min_p is not None else 0.0
     max_output_tokens = request.max_output_tokens or 0
     rng_seed = random.randint(0, 2**32 - 1)
-
-    tools_payload = (
-        [tool.to_dict() for tool in request.tools] if request.tools else None
-    )
-    tool_schemas_json = json.dumps(tools_payload) if tools_payload else ""
 
     response_format_json = json.dumps(request.text.to_dict()) if request.text else ""
     reasoning_effort = normalize_reasoning_value(request.reasoning)
