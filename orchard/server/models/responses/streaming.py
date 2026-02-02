@@ -18,9 +18,9 @@ from orchard.server.models.responses.output import (
     ResponseUsage,
     generate_message_id,
     generate_response_id,
-    generate_tool_call_id,
     get_current_timestamp,
 )
+from orchard.server.models.tools import generate_tool_call_id
 
 # --- Response Lifecycle Events ---
 
@@ -266,6 +266,7 @@ class StreamingOutputItem:
         self.call_id = call_id
         self.function_name = function_name
         self.accumulated_content = ""
+        self.accumulated_arguments = ""
         self.content_index = 0
         self.status = OutputStatus.IN_PROGRESS
 
@@ -277,7 +278,7 @@ class StreamingOutputItem:
                 status=OutputStatus.IN_PROGRESS,
                 content=[],
             )
-        elif self.item_type == "function_call":
+        elif self.item_type == "tool_call":
             return OutputFunctionCall(
                 id=self.item_id,
                 call_id=self.call_id or generate_tool_call_id(),
@@ -301,12 +302,12 @@ class StreamingOutputItem:
                 status=OutputStatus.COMPLETED,
                 content=[OutputTextContent(text=self.accumulated_content)],
             )
-        elif self.item_type == "function_call":
+        elif self.item_type == "tool_call":
             return OutputFunctionCall(
                 id=self.item_id,
                 call_id=self.call_id or generate_tool_call_id(),
                 name=self.function_name or "",
-                arguments=self.accumulated_content,
+                arguments=self.accumulated_arguments,
                 status=OutputStatus.COMPLETED,
             )
         else:  # reasoning
@@ -350,11 +351,9 @@ class ResponseStreamState:
             call_id = None
             function_name = None
 
-            if item_type == "function_call" and identifier:
-                # identifier format: "tool_call:function_name"
+            if item_type == "tool_call" and identifier:
                 call_id = generate_tool_call_id()
-                if identifier.startswith("tool_call:"):
-                    function_name = identifier[len("tool_call:") :]
+                function_name = identifier.removeprefix("tool_call:")
 
             self.items[output_index] = StreamingOutputItem(
                 item_id=item_id,

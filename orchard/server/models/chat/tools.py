@@ -1,37 +1,8 @@
 from __future__ import annotations
 
-import secrets
-from enum import Enum
 from typing import Literal
 
 from pydantic import BaseModel, Field
-
-TOOL_CALL_ID_PREFIX = "call-"
-
-
-def generate_tool_call_id(prefix: str = TOOL_CALL_ID_PREFIX) -> str:
-    """Generates a unique identifier string for a tool call."""
-    random_part = secrets.token_urlsafe(22)
-    return f"{prefix}{random_part}"
-
-
-class ChatCompletionToolUsage(BaseModel):
-    """Represents the usage of a tool in a chat completion."""
-
-    class UsedFunction(BaseModel):
-        """Represents a function that was used in a chat completion."""
-
-        name: str | None = Field(
-            default=None, description="The name of the function to call."
-        )
-        arguments: str = Field(
-            default="",
-            description="The arguments to pass to the function. JSON encoded.",
-        )
-
-    type: Literal["function"] = "function"
-    id: str = Field(description="The unique identifier of the tool.")
-    function: UsedFunction = Field(description="The function that was used.")
 
 
 class ChatCompletionToolChoice(BaseModel):
@@ -47,17 +18,6 @@ class ChatCompletionToolChoice(BaseModel):
 
     def to_dict(self):
         return {"type": "function", "name": self.function.name}
-
-
-class ChatCompletionToolUseMode(Enum):
-    """Controls which (if any) tool is called by the model."""
-
-    AUTO = "auto"
-    REQUIRED = "required"
-    NONE = "none"
-
-    def to_dict(self):
-        return self.value
 
 
 class ChatCompletionFunction(BaseModel):

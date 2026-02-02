@@ -13,6 +13,7 @@ from orchard.server.models.responses.tools import (
     FunctionID,
     ToolUseMode,
 )
+from orchard.server.models.tools import generate_tool_call_id
 
 # --- Constants ---
 RESPONSE_ID_PREFIX = "resp_"
@@ -21,7 +22,6 @@ MESSAGE_ID_PREFIX = "msg_"
 MESSAGE_OBJECT = "message"
 OUTPUT_TEXT_OBJECT = "output_text"
 FUNCTION_CALL_ID_PREFIX = "fc_"
-TOOL_CALL_ID_PREFIX = "call_"
 
 
 def generate_message_id(prefix: str = MESSAGE_ID_PREFIX) -> str:
@@ -30,16 +30,11 @@ def generate_message_id(prefix: str = MESSAGE_ID_PREFIX) -> str:
 
 
 def generate_response_id(prefix: str = RESPONSE_ID_PREFIX) -> str:
-    random_part = secrets.token_urlsafe(22)  # Adjust length as needed
-    return f"{prefix}{random_part}"
-
-
-def generate_function_call_id(prefix: str = FUNCTION_CALL_ID_PREFIX) -> str:
     random_part = secrets.token_urlsafe(22)
     return f"{prefix}{random_part}"
 
 
-def generate_tool_call_id(prefix: str = TOOL_CALL_ID_PREFIX) -> str:
+def generate_function_call_id(prefix: str = FUNCTION_CALL_ID_PREFIX) -> str:
     random_part = secrets.token_urlsafe(22)
     return f"{prefix}{random_part}"
 

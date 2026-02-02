@@ -19,9 +19,8 @@ from orchard.server.models.chat.format import (
 from orchard.server.models.chat.tools import (
     ChatCompletionTool,
     ChatCompletionToolChoice,
-    ChatCompletionToolUsage,
-    ChatCompletionToolUseMode,
 )
+from orchard.server.models.tools import ToolCall, ToolUseMode
 from orchard.server.models.reasoning import normalize_reasoning_value
 
 ReasoningInput = bool | str | dict[str, Any] | None
@@ -32,7 +31,7 @@ class ChatMessage(BaseModel):
 
     role: str | None = Field(default="", description="The role of the messages author.")
     content: str | None = Field(description="The contents of the message.")
-    tool_calls: list[ChatCompletionToolUsage] = Field(
+    tool_calls: list[ToolCall] = Field(
         default_factory=list,
         description="The tool calls that were made in the message.",
     )
@@ -96,7 +95,7 @@ class ChatCompletionRequest(BaseModel):
         default=None,
         description="Whether to allow the model to run tool calls in parallel.",
     )
-    tool_choice: ChatCompletionToolUseMode | ChatCompletionToolChoice | None = Field(
+    tool_choice: ToolUseMode | ChatCompletionToolChoice | None = Field(
         default=None,
         description="Controls which (if any) tool is called by the model.",
     )

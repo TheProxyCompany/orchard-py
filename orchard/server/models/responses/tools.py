@@ -1,7 +1,8 @@
-from enum import Enum
 from typing import Literal
 
 from pydantic import BaseModel, Field
+
+from orchard.server.models.tools import ToolUseMode
 
 
 class Function(BaseModel):
@@ -32,17 +33,6 @@ class Function(BaseModel):
             "strict": self.strict,
             "required": ["name", "arguments"],
         }
-
-
-class ToolUseMode(Enum):
-    """Controls which (if any) tool is called by the model."""
-
-    AUTO = "auto"
-    REQUIRED = "required"
-    NONE = "none"
-
-    def to_dict(self):
-        return self.value
 
 
 class FunctionID(BaseModel):

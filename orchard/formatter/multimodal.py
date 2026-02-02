@@ -144,9 +144,13 @@ def build_multimodal_messages(
     for message_index, message in enumerate(items):
         role = _normalize_role(_get_field(message, "role"), available_roles)
         content = _get_field(message, "content")
+        tool_calls = _get_field(message, "tool_calls")
 
         if isinstance(content, str):
-            messages.append({"role": role, "content": content})
+            msg: dict[str, Any] = {"role": role, "content": content}
+            if tool_calls:
+                msg["tool_calls"] = tool_calls
+            messages.append(msg)
             continue
 
         if not isinstance(content, (list | tuple)):
@@ -207,7 +211,10 @@ def build_multimodal_messages(
                 )
                 raise ValueError(f"Unsupported content type: {part_type}")
 
-        messages.append({"role": role, "content": parts})
+        msg = {"role": role, "content": parts}
+        if tool_calls:
+            msg["tool_calls"] = tool_calls
+        messages.append(msg)
 
     return messages, image_buffers, capabilities, content_order
 

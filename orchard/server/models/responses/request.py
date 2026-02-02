@@ -1,4 +1,3 @@
-import json
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -14,6 +13,7 @@ from orchard.server.models.responses.tools import (
     FunctionID,
     ToolUseMode,
 )
+from orchard.server.models.tools import ToolCall, ToolCallFunction
 
 # --- Content Parts (for message content) ---
 
@@ -53,6 +53,14 @@ class InputMessageItem(BaseModel):
     )
     content: str | list[ContentPart] = Field(
         description="Message content as raw text or structured content parts."
+    )
+    tool_calls: list[ToolCall] | None = Field(
+        default=None,
+        description="Tool calls made in this message (assistant messages only).",
+    )
+    tool_call_id: str | None = Field(
+        default=None,
+        description="The call_id this tool message is responding to (tool messages only).",
     )
 
 
@@ -261,10 +269,10 @@ class ResponseRequest(BaseModel):
         return self
 
     def get_message_items(self) -> list[InputMessageItem]:
-        """Convert all input items to message items for template rendering.
+        """Convert input items into a uniform list of message items.
 
-        InputFunctionCall → assistant message with tool call JSON.
-        InputFunctionCallOutput → tool message with output.
+        InputFunctionCall → assistant message with tool_calls.
+        InputFunctionCallOutput → tool message with call_id.
         InputReasoning → skipped (not representable as text).
         """
         if isinstance(self.input, str):
@@ -274,14 +282,27 @@ class ResponseRequest(BaseModel):
             if isinstance(item, InputMessageItem):
                 messages.append(item)
             elif isinstance(item, InputFunctionCall):
-                call_json = json.dumps(
-                    {"name": item.name, "arguments": item.arguments}
-                )
                 messages.append(
-                    InputMessageItem(role="assistant", content=call_json)
+                    InputMessageItem(
+                        role="assistant",
+                        content="",
+                        tool_calls=[
+                            ToolCall(
+                                id=item.call_id,
+                                function=ToolCallFunction(
+                                    name=item.name,
+                                    arguments=item.arguments,
+                                ),
+                            )
+                        ],
+                    )
                 )
             elif isinstance(item, InputFunctionCallOutput):
                 messages.append(
-                    InputMessageItem(role="tool", content=item.output)
+                    InputMessageItem(
+                        role="tool",
+                        content=item.output,
+                        tool_call_id=item.call_id,
+                    )
                 )
         return messages

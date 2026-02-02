@@ -385,17 +385,6 @@ async def gather_non_streaming_response(
                 for event in state_events:
                     _process_state_event_for_output(event, output_items)
 
-                # Also handle legacy content field for backwards compatibility
-                if not state_events:
-                    delta_content = delta.get("content")
-                    if delta_content:
-                        if 0 not in output_items:
-                            output_items[0] = {
-                                "type": "message",
-                                "content": "",
-                            }
-                        output_items[0]["content"] += str(delta_content)
-
                 # Extract usage from delta
                 extract_usage(delta, usage_counts)
 
@@ -464,19 +453,30 @@ def _process_state_event_for_output(
         output_items[output_index] = {
             "type": item_type,
             "content": "",
+            "arguments": "",
             "identifier": identifier,
         }
 
     item = output_items[output_index]
 
+    # Sub-item events (e.g. "arguments" within a tool call).
+    if item_type == "tool_call" and identifier == "arguments":
+        if event_type == "content_delta":
+            item["arguments"] += event.get("delta", "")
+        elif event_type == "item_completed" and "value" in event:
+            item["arguments"] = str(event["value"])
+        return
+
+    # Top-level item events.
     if event_type == "content_delta":
-        delta_text = event.get("delta", "")
-        item["content"] += delta_text
+        item["content"] += event.get("delta", "")
     elif event_type == "item_completed":
-        # Mark as completed, capture final value if present
         item["completed"] = True
-        if "value" in event:
-            item["value"] = event["value"]
+        if item_type == "tool_call":
+            item["identifier"] = identifier
+        elif "value" in event:
+            item["content"] = str(event["value"])
+
 
 
 def _build_output_items(
@@ -498,15 +498,12 @@ def _build_output_items(
                     content=[OutputTextContent(text=content)] if content else [],
                 )
             )
-        elif item_type == "function_call":
-            # Extract function name from identifier (format: "tool_call:function_name")
-            function_name = ""
-            if identifier.startswith("tool_call:"):
-                function_name = identifier[len("tool_call:") :]
+        elif item_type == "tool_call":
+            function_name = identifier.removeprefix("tool_call:")
             result.append(
                 OutputFunctionCall(
                     name=function_name,
-                    arguments=content,
+                    arguments=item.get("arguments", ""),
                     status=OutputStatus.COMPLETED,
                 )
             )
@@ -586,48 +583,13 @@ async def stream_response_generator(
                     )
                     break
 
-                # Process state_events
-                state_events = delta.get("state_events", [])
+                # Process state_events from PIE
+                state_events = delta.get("state_events") or []
                 for event in state_events:
                     async for sse_event in _process_state_event_for_streaming(
                         event, stream_state
                     ):
                         yield sse_event
-
-                # Handle legacy content field for backwards compatibility
-                if not state_events:
-                    delta_content = delta.get("content")
-                    if delta_content:
-                        # Treat as message content delta
-                        item = stream_state.get_or_create_item(0, "message")
-                        if item.accumulated_content == "":
-                            # First content - emit item added events
-                            yield _format_sse_event(
-                                OutputItemAddedEvent(
-                                    sequence_number=stream_state.next_sequence_number(),
-                                    output_index=0,
-                                    item=item.to_skeleton(),
-                                )
-                            )
-                            yield _format_sse_event(
-                                ContentPartAddedEvent(
-                                    sequence_number=stream_state.next_sequence_number(),
-                                    item_id=item.item_id,
-                                    output_index=0,
-                                    content_index=0,
-                                    part=OutputTextContent(text=""),
-                                )
-                            )
-                        item.accumulated_content += str(delta_content)
-                        yield _format_sse_event(
-                            OutputTextDeltaEvent(
-                                sequence_number=stream_state.next_sequence_number(),
-                                item_id=item.item_id,
-                                output_index=0,
-                                content_index=0,
-                                delta=str(delta_content),
-                            )
-                        )
 
                 # Extract usage info
                 if usage := delta.get("usage"):
@@ -703,7 +665,7 @@ async def stream_response_generator(
                         part=OutputTextContent(text=item.accumulated_content),
                     )
                 )
-            elif item.item_type == "function_call":
+            elif item.item_type == "tool_call":
                 yield _format_sse_event(
                     FunctionCallArgumentsDoneEvent(
                         sequence_number=stream_state.next_sequence_number(),
@@ -800,8 +762,33 @@ async def _process_state_event_for_streaming(
 
     item = stream_state.get_or_create_item(output_index, item_type, identifier)
 
+    # Sub-item events (e.g. "arguments" within a tool call) are handled
+    # separately from top-level item events.
+    if item_type == "tool_call" and identifier == "arguments":
+        delta_text = event.get("delta", "")
+        if event_type == "content_delta":
+            item.accumulated_arguments += delta_text
+            yield _format_sse_event(
+                FunctionCallArgumentsDeltaEvent(
+                    sequence_number=stream_state.next_sequence_number(),
+                    item_id=item.item_id,
+                    output_index=output_index,
+                    delta=delta_text,
+                )
+            )
+        elif event_type == "item_completed":
+            yield _format_sse_event(
+                FunctionCallArgumentsDoneEvent(
+                    sequence_number=stream_state.next_sequence_number(),
+                    item_id=item.item_id,
+                    output_index=output_index,
+                    arguments=item.accumulated_arguments,
+                )
+            )
+        return
+
+    # Top-level item events.
     if event_type == "item_started":
-        # Emit output_item.added
         yield _format_sse_event(
             OutputItemAddedEvent(
                 sequence_number=stream_state.next_sequence_number(),
@@ -809,26 +796,31 @@ async def _process_state_event_for_streaming(
                 item=item.to_skeleton(),
             )
         )
-        # Emit content_part.added for items with content
-        if item_type in ("message", "reasoning"):
-            if item_type == "message":
-                part = OutputTextContent(text="")
-            else:
-                part = ReasoningContent(text="")
+        if item_type == "message":
             yield _format_sse_event(
                 ContentPartAddedEvent(
                     sequence_number=stream_state.next_sequence_number(),
                     item_id=item.item_id,
                     output_index=output_index,
                     content_index=0,
-                    part=part,
+                    part=OutputTextContent(text=""),
                 )
             )
+        elif item_type == "reasoning":
+            yield _format_sse_event(
+                ContentPartAddedEvent(
+                    sequence_number=stream_state.next_sequence_number(),
+                    item_id=item.item_id,
+                    output_index=output_index,
+                    content_index=0,
+                    part=ReasoningContent(text=""),
+                )
+            )
+        return
 
-    elif event_type == "content_delta":
+    if event_type == "content_delta":
         delta_text = event.get("delta", "")
         item.accumulated_content += delta_text
-
         if item_type == "message":
             yield _format_sse_event(
                 OutputTextDeltaEvent(
@@ -836,15 +828,6 @@ async def _process_state_event_for_streaming(
                     item_id=item.item_id,
                     output_index=output_index,
                     content_index=0,
-                    delta=delta_text,
-                )
-            )
-        elif item_type == "function_call":
-            yield _format_sse_event(
-                FunctionCallArgumentsDeltaEvent(
-                    sequence_number=stream_state.next_sequence_number(),
-                    item_id=item.item_id,
-                    output_index=output_index,
                     delta=delta_text,
                 )
             )
@@ -858,10 +841,10 @@ async def _process_state_event_for_streaming(
                     delta=delta_text,
                 )
             )
+        return
 
-    elif event_type == "item_completed":
+    if event_type == "item_completed":
         item.status = OutputStatus.COMPLETED
-        # Emit done events
         if item_type == "message":
             yield _format_sse_event(
                 OutputTextDoneEvent(
@@ -881,15 +864,8 @@ async def _process_state_event_for_streaming(
                     part=OutputTextContent(text=item.accumulated_content),
                 )
             )
-        elif item_type == "function_call":
-            yield _format_sse_event(
-                FunctionCallArgumentsDoneEvent(
-                    sequence_number=stream_state.next_sequence_number(),
-                    item_id=item.item_id,
-                    output_index=output_index,
-                    arguments=item.accumulated_content,
-                )
-            )
+        elif item_type == "tool_call":
+            item.function_name = identifier.removeprefix("tool_call:")
         elif item_type == "reasoning":
             yield _format_sse_event(
                 ReasoningDoneEvent(
