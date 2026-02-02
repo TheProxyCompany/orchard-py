@@ -132,12 +132,21 @@ async def handle_completion_request(
             [tool.to_dict() for tool in instance.tools] if instance.tools else None
         )
         tool_schemas_str = json.dumps(tools_payload) if tools_payload else ""
+        toolbox_text = formatter.render_toolbox(tools_payload) if tools_payload else None
         response_format_str = (
             json.dumps(instance.response_format.to_dict())
             if instance.response_format
             else ""
         )
-        prompt_bytes = prompt_text.encode("utf-8")
+
+        conversation_bytes = prompt_text.encode("utf-8")
+        layout: list[dict[str, Any]] = [
+            {"type": "text", "length": len(conversation_bytes)}
+        ]
+        if toolbox_text:
+            toolbox_bytes = toolbox_text.encode("utf-8")
+            layout.append({"type": "toolbox", "length": len(toolbox_bytes)})
+            prompt_text = prompt_text + toolbox_text
 
         payload: dict[str, Any] = {
             "prompt": prompt_text,
@@ -161,12 +170,7 @@ async def handle_completion_request(
             "tool_schemas_json": tool_schemas_str,
             "response_format_json": response_format_str,
             "image_buffers": [],
-            "layout": [
-                {
-                    "type": "text",
-                    "length": len(prompt_bytes),
-                }
-            ],
+            "layout": layout,
             "num_candidates": instance.best_of,
             "best_of": instance.best_of,
             "final_candidates": instance.final_candidates,

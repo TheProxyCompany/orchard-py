@@ -149,11 +149,13 @@ async def handle_response_request(
     if formatter.should_clip_image_placeholder:
         prompt_text = prompt_text.replace(formatter.default_image_placeholder, "")
 
-    # Prepend toolbox segment to layout and prompt bytes
+    # Append toolbox segment — position in byte stream doesn't matter
+    # (independent RoPE + global attention), but appending preserves prefix cache
+    # for the conversation pages before it.
     if toolbox_text:
         toolbox_bytes = toolbox_text.encode("utf-8")
-        layout_segments.insert(0, {"type": "toolbox", "length": len(toolbox_bytes)})
-        prompt_text = toolbox_text + prompt_text
+        layout_segments.append({"type": "toolbox", "length": len(toolbox_bytes)})
+        prompt_text = prompt_text + toolbox_text
 
     current_request_id = await ipc_state.get_next_request_id()
     logger.debug(

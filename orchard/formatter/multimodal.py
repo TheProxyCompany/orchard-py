@@ -123,7 +123,7 @@ def build_multimodal_messages(
     Returns:
         Tuple of (messages, image_buffers, capabilities, content_order).
         content_order is a list of (type, index) tuples indicating the order of
-        multimodal content parts (e.g., [("image", 0), ("capability", 0), ("text", 0)]).
+        multimodal content parts (e.g., [("image", 0), ("text", 0)]).
     """
     roles_model = formatter.control_tokens.roles.model_dump()
     available_roles = {name for name, value in roles_model.items() if value}
@@ -131,7 +131,7 @@ def build_multimodal_messages(
     messages: list[dict[str, Any]] = []
     image_buffers: list[bytes] = []
     capabilities: list[CapabilityInput] = []
-    content_order: list[tuple[str, int]] = []  # Track order of multimodal parts
+    content_order: list[tuple[str, int]] = []
 
     if instructions:
         system_role = (

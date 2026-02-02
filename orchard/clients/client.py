@@ -407,6 +407,15 @@ class Client:
         if coord_placeholder:
             prompt_text = prompt_text.replace(coord_placeholder, "")
 
+        tools_payload = kwargs.get("tools")
+        toolbox_text = (
+            info.formatter.render_toolbox(tools_payload) if tools_payload else None
+        )
+        if toolbox_text:
+            toolbox_bytes = toolbox_text.encode("utf-8")
+            layout_segments.append({"type": "toolbox", "length": len(toolbox_bytes)})
+            prompt_text = prompt_text + toolbox_text
+
         prompt_bytes = prompt_text.encode("utf-8")
 
         temperature = float(kwargs.get("temperature", 1.0))
@@ -426,7 +435,7 @@ class Client:
         }
 
         stop_sequences = self._normalize_stop_sequences(kwargs.get("stop"))
-        tool_schemas_json = self._serialize_tools(kwargs.get("tools"))
+        tool_schemas_json = self._serialize_tools(tools_payload)
         response_format_json = self._serialize_optional_payload(
             kwargs.get("response_format")
         )
@@ -523,7 +532,11 @@ class Client:
             int(k): float(v) for k, v in (kwargs.get("logit_bias") or {}).items()
         }
         stop_sequences = self._normalize_stop_sequences(kwargs.get("stop"))
-        tool_schemas_json = self._serialize_tools(kwargs.get("tools"))
+        tools_payload = kwargs.get("tools")
+        tool_schemas_json = self._serialize_tools(tools_payload)
+        toolbox_text = (
+            info.formatter.render_toolbox(tools_payload) if tools_payload else None
+        )
         response_format_json = self._serialize_optional_payload(
             kwargs.get("response_format")
         )
@@ -581,6 +594,11 @@ class Client:
             coord_placeholder = info.formatter.get_coord_placeholder()
             if coord_placeholder:
                 prompt_text = prompt_text.replace(coord_placeholder, "")
+
+            if toolbox_text:
+                toolbox_bytes = toolbox_text.encode("utf-8")
+                layout_segments.append({"type": "toolbox", "length": len(toolbox_bytes)})
+                prompt_text = prompt_text + toolbox_text
 
             prompt_bytes = prompt_text.encode("utf-8")
             capabilities_payload = [
