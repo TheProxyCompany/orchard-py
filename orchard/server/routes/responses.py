@@ -115,7 +115,6 @@ async def handle_response_request(
             messages_for_template,
             reasoning=request.reasoning is not None,
         )
-        logger.debug("Prompt text: %s", prompt_text)
     except Exception as exc:  # pragma: no cover - defensive
         logger.exception("Failed to render chat template: %s", exc)
         raise HTTPException(
@@ -149,13 +148,13 @@ async def handle_response_request(
     if formatter.should_clip_image_placeholder:
         prompt_text = prompt_text.replace(formatter.default_image_placeholder, "")
 
-    # Append toolbox segment — position in byte stream doesn't matter
-    # (independent RoPE + global attention), but appending preserves prefix cache
-    # for the conversation pages before it.
+    logger.info("Prompt text: %s", prompt_text)
+    # prepend toolbox segment — position in byte stream doesn't matter (independent RoPE + global attention)
     if toolbox_text:
+        logger.info("Toolbox text: %s", toolbox_text)
         toolbox_bytes = toolbox_text.encode("utf-8")
-        layout_segments.append({"type": "toolbox", "length": len(toolbox_bytes)})
-        prompt_text = prompt_text + toolbox_text
+        layout_segments.insert(0, {"type": "toolbox", "length": len(toolbox_bytes)})
+        prompt_text = toolbox_text + prompt_text
 
     current_request_id = await ipc_state.get_next_request_id()
     logger.debug(

@@ -10,7 +10,6 @@ from orchard.formatter.control_tokens import ControlTokens, load_control_tokens
 
 logger = logging.getLogger(__name__)
 
-
 def determine_model_type(config: dict) -> str:
     """Determine the model type from the model path."""
     model_type = config.get("model_type", "llama")
@@ -22,6 +21,11 @@ def determine_model_type(config: dict) -> str:
 
     return model_type
 
+# from https://github.com/huggingface/transformers/blob/7769f660935b5d48b73bf6711d0a78b6f8f98739/src/transformers/utils/chat_template_utils.py#L447C1-L451C1
+def tojson(x, ensure_ascii=False, indent=None, separators=None, sort_keys=False):
+    # We override the built-in tojson filter because Jinja's default filter escapes HTML characters
+    # We also expose some options like custom indents and separators
+    return json.dumps(x, ensure_ascii=ensure_ascii, indent=indent, separators=separators, sort_keys=sort_keys)
 
 class ChatFormatter:
     """
@@ -75,6 +79,7 @@ class ChatFormatter:
         self.jinja_env = Environment(
             loader=FileSystemLoader(profile_dir), trim_blocks=True, lstrip_blocks=True
         )
+        self.jinja_env.filters["tojson"] = tojson
         self.template = self.jinja_env.get_template("chat_template.jinja")
 
         # 4. Load toolbox template (optional — not all models support tool calling)
@@ -139,6 +144,9 @@ class ChatFormatter:
         return self.toolbox_template.render(
             tools=tools,
             capabilities=self.capabilities,
+            roles=self.control_tokens.roles.model_dump(),
+            begin_of_text=self.control_tokens.begin_of_text,
+            end_of_sequence=self.control_tokens.end_of_sequence,
         )
 
     def get_tool_calling_tokens(self) -> dict[str, str]:
