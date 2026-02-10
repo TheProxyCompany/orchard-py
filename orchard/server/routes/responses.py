@@ -191,7 +191,7 @@ async def handle_response_request(
                 "rng_seed": rng_seed,
             },
             "logits_params": {
-                "top_logprobs": 0,
+                "top_logprobs": request.top_logprobs or 0,
                 "frequency_penalty": request.frequency_penalty or 0.0,
                 "logit_bias": {},
                 "presence_penalty": request.presence_penalty or 0.0,
@@ -205,7 +205,7 @@ async def handle_response_request(
             "num_candidates": 1,
             "best_of": 1,
             "final_candidates": 1,
-            "task": request.task,
+            "task_name": request.task,
             "reasoning_effort": reasoning_effort,
             "max_tool_calls": request.max_tool_calls,
             "tool_calling_tokens": formatter.get_tool_calling_tokens(),

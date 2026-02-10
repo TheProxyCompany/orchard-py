@@ -172,7 +172,7 @@ async def handle_completion_request(
             "final_candidates": instance.final_candidates,
         }
         if instance.task is not None:
-            payload["task"] = instance.task
+            payload["task_name"] = instance.task
         if instance.reasoning_effort is not None:
             payload["reasoning_effort"] = instance.reasoning_effort
 
