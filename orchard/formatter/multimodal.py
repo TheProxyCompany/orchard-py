@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import json
 import logging
 import re
 import struct
@@ -111,6 +112,19 @@ def _get_field(candidate: Any, key: str, default: Any = None) -> Any:
     return getattr(candidate, key, default)
 
 
+def _parse_tool_calls(tool_calls: Any) -> list[dict[str, Any]]:
+    """Parse tool calls so that function.arguments is a dict, not a JSON string."""
+    parsed = []
+    for tc in tool_calls:
+        tc_dict = tc if isinstance(tc, dict) else tc.model_dump()
+        fn = tc_dict.get("function", {})
+        args = fn.get("arguments", "")
+        if isinstance(args, str) and args:
+            fn["arguments"] = json.loads(args)
+        parsed.append(tc_dict)
+    return parsed
+
+
 def build_multimodal_messages(
     formatter: ChatFormatter,
     items: Iterable[Any],
@@ -144,7 +158,8 @@ def build_multimodal_messages(
     for message_index, message in enumerate(items):
         role = _normalize_role(_get_field(message, "role"), available_roles)
         content = _get_field(message, "content")
-        tool_calls = _get_field(message, "tool_calls")
+        raw_tool_calls = _get_field(message, "tool_calls")
+        tool_calls = _parse_tool_calls(raw_tool_calls) if raw_tool_calls else None
 
         if isinstance(content, str):
             msg: dict[str, Any] = {"role": role, "content": content}

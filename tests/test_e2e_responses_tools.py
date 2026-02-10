@@ -34,7 +34,18 @@ async def test_responses_tool_call_non_streaming(live_server):
     """Model emits a function call when given tools and a triggering prompt."""
     payload = {
         "model": MODEL_ID,
-        "input": "What's the weather in San Francisco?",
+        "input": [
+            {
+                "type": "message",
+                "role": "system",
+                "content": "You are a helpful assistant with tool calling capabilities. When you receive a tool call response, use the output to format an answer to the orginal user question.",
+            },
+            {
+                "type": "message",
+                "role": "user",
+                "content": "What's the weather in San Francisco?",
+            },
+        ],
         "tools": [WEATHER_TOOL],
         "tool_choice": "required",
         "temperature": 0.0,
@@ -71,7 +82,18 @@ async def test_responses_tool_call_streaming(live_server):
     """Streaming tool call produces the correct SSE event sequence."""
     payload = {
         "model": MODEL_ID,
-        "input": "What's the weather in San Francisco?",
+        "input": [
+            {
+                "type": "message",
+                "role": "system",
+                "content": "You are a helpful assistant with tool calling capabilities. When you receive a tool call response, use the output to format an answer to the orginal user question.",
+            },
+            {
+                "type": "message",
+                "role": "user",
+                "content": "What's the weather in San Francisco?",
+            },
+        ],
         "tools": [WEATHER_TOOL],
         "tool_choice": "required",
         "temperature": 0.0,
@@ -130,7 +152,18 @@ async def test_responses_tool_result_continuation(live_server):
     # Turn 1: trigger tool call
     payload_1 = {
         "model": MODEL_ID,
-        "input": "What's the weather in San Francisco?",
+        "input": [
+            {
+                "type": "message",
+                "role": "system",
+                "content": "You are a helpful assistant with tool calling capabilities. When you receive a tool call response, use the output to format an answer to the orginal user question.",
+            },
+            {
+                "type": "message",
+                "role": "user",
+                "content": "What's the weather in San Francisco?",
+            },
+        ],
         "tools": [WEATHER_TOOL],
         "tool_choice": "required",
         "temperature": 0.0,
@@ -151,6 +184,11 @@ async def test_responses_tool_result_continuation(live_server):
     payload_2 = {
         "model": MODEL_ID,
         "input": [
+            {
+                "type": "message",
+                "role": "system",
+                "content": "You are a helpful assistant with tool calling capabilities. When you receive a tool call response, use the output to format an answer to the orginal user question.",
+            },
             {
                 "type": "message",
                 "role": "user",
