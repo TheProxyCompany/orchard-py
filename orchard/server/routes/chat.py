@@ -122,17 +122,17 @@ async def handle_completion_request(
         messages_as_dicts = [
             msg.model_dump(exclude_none=True) for msg in instance.messages
         ]
-        prompt_text = formatter.apply_template(
-            messages_as_dicts, reasoning=instance.reasoning_effort is not None
-        )
-        logger.info("Prompt text: %s", prompt_text)
-        stop_sequences = _dedupe_stop_sequences(instance.stop_sequences)
-
         tools_payload = (
             [tool.to_dict() for tool in instance.tools] if instance.tools else None
         )
         tool_schemas_str = json.dumps(tools_payload) if tools_payload else ""
-        toolbox_text = formatter.render_toolbox(tools_payload) if tools_payload else None
+        prompt_text = formatter.apply_template(
+            messages_as_dicts,
+            reasoning=instance.reasoning_effort is not None,
+            tools=tools_payload,
+        )
+        logger.info("Prompt text: %s", prompt_text)
+        stop_sequences = _dedupe_stop_sequences(instance.stop_sequences)
         response_format_str = (
             json.dumps(instance.response_format.to_dict())
             if instance.response_format
@@ -143,10 +143,6 @@ async def handle_completion_request(
         layout: list[dict[str, Any]] = [
             {"type": "text", "length": len(conversation_bytes)}
         ]
-        if toolbox_text:
-            toolbox_bytes = toolbox_text.encode("utf-8")
-            layout.append({"type": "toolbox", "length": len(toolbox_bytes)})
-            prompt_text = prompt_text + toolbox_text
 
         payload: dict[str, Any] = {
             "prompt": prompt_text,
@@ -181,7 +177,9 @@ async def handle_completion_request(
             payload["reasoning_effort"] = instance.reasoning_effort
 
         payload["tool_calling_tokens"] = formatter.get_tool_calling_tokens()
-        payload["tool_choice"] = request.tool_choice.to_dict() if request.tool_choice else "auto"
+        payload["tool_choice"] = (
+            request.tool_choice.to_dict() if request.tool_choice else "auto"
+        )
         prompt_payloads.append(payload)
 
     current_request_id = await ipc_state.get_next_request_id()

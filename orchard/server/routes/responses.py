@@ -110,10 +110,17 @@ async def handle_response_request(
             detail="Response request must include at least one content segment.",
         )
 
+    # Tool definitions — used for template rendering and PSE grammar compilation
+    tools_payload = (
+        [tool.to_dict() for tool in request.tools] if request.tools else None
+    )
+    tool_schemas_json = json.dumps(tools_payload) if tools_payload else ""
+
     try:
         prompt_text = formatter.apply_template(
             messages_for_template,
             reasoning=request.reasoning is not None,
+            tools=tools_payload,
         )
     except Exception as exc:  # pragma: no cover - defensive
         logger.exception("Failed to render chat template: %s", exc)
@@ -121,13 +128,6 @@ async def handle_response_request(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to render chat template.",
         ) from exc
-
-    # Tool definitions — used for both toolbox rendering and PSE grammar compilation
-    tools_payload = (
-        [tool.to_dict() for tool in request.tools] if request.tools else None
-    )
-    tool_schemas_json = json.dumps(tools_payload) if tools_payload else ""
-    toolbox_text = formatter.render_toolbox(tools_payload) if tools_payload else None
 
     try:
         layout_segments = build_multimodal_layout(
@@ -149,12 +149,6 @@ async def handle_response_request(
         prompt_text = prompt_text.replace(formatter.default_image_placeholder, "")
 
     logger.info("Prompt text: %s", prompt_text)
-    # prepend toolbox segment — position in byte stream doesn't matter (independent RoPE + global attention)
-    if toolbox_text:
-        logger.info("Toolbox text: %s", toolbox_text)
-        toolbox_bytes = toolbox_text.encode("utf-8")
-        layout_segments.insert(0, {"type": "toolbox", "length": len(toolbox_bytes)})
-        prompt_text = toolbox_text + prompt_text
 
     current_request_id = await ipc_state.get_next_request_id()
     logger.debug(
@@ -215,7 +209,9 @@ async def handle_response_request(
             "reasoning_effort": reasoning_effort,
             "max_tool_calls": request.max_tool_calls,
             "tool_calling_tokens": formatter.get_tool_calling_tokens(),
-            "tool_choice": request.tool_choice.to_dict() if request.tool_choice else "auto",
+            "tool_choice": request.tool_choice.to_dict()
+            if request.tool_choice
+            else "auto",
         }
         request_bytes = _build_request_payload(
             request_id=current_request_id,
@@ -283,7 +279,9 @@ async def handle_response_request(
             model=request.model,
             output=aggregated["output"],
             usage=usage,
-            status=OutputStatus.INCOMPLETE if incomplete_details else OutputStatus.COMPLETED,
+            status=OutputStatus.INCOMPLETE
+            if incomplete_details
+            else OutputStatus.COMPLETED,
             completed_at=aggregated.get("completed_at"),
             incomplete_details=incomplete_details,
             metadata=request.metadata,
@@ -475,7 +473,6 @@ def _process_state_event_for_output(
             item["identifier"] = identifier
         elif "value" in event:
             item["content"] = str(event["value"])
-
 
 
 def _build_output_items(

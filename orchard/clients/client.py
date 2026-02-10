@@ -378,10 +378,12 @@ class Client:
         if not messages_for_template:
             raise ValueError("Chat request must include at least one content segment.")
 
+        tools_payload = kwargs.get("tools")
         prompt_text = info.formatter.apply_template(
             messages_for_template,
             reasoning=reasoning_flag,
             task=kwargs.get("task_name"),
+            tools=tools_payload,
         )
         try:
             layout_segments = build_multimodal_layout(
@@ -406,15 +408,6 @@ class Client:
         coord_placeholder = info.formatter.get_coord_placeholder()
         if coord_placeholder:
             prompt_text = prompt_text.replace(coord_placeholder, "")
-
-        tools_payload = kwargs.get("tools")
-        toolbox_text = (
-            info.formatter.render_toolbox(tools_payload) if tools_payload else None
-        )
-        if toolbox_text:
-            toolbox_bytes = toolbox_text.encode("utf-8")
-            layout_segments.append({"type": "toolbox", "length": len(toolbox_bytes)})
-            prompt_text = prompt_text + toolbox_text
 
         prompt_bytes = prompt_text.encode("utf-8")
 
@@ -534,9 +527,6 @@ class Client:
         stop_sequences = self._normalize_stop_sequences(kwargs.get("stop"))
         tools_payload = kwargs.get("tools")
         tool_schemas_json = self._serialize_tools(tools_payload)
-        toolbox_text = (
-            info.formatter.render_toolbox(tools_payload) if tools_payload else None
-        )
         response_format_json = self._serialize_optional_payload(
             kwargs.get("response_format")
         )
@@ -571,6 +561,7 @@ class Client:
                 messages_for_template,
                 reasoning=reasoning_flag,
                 task=kwargs.get("task_name"),
+                tools=tools_payload,
             )
             try:
                 layout_segments = build_multimodal_layout(
@@ -594,11 +585,6 @@ class Client:
             coord_placeholder = info.formatter.get_coord_placeholder()
             if coord_placeholder:
                 prompt_text = prompt_text.replace(coord_placeholder, "")
-
-            if toolbox_text:
-                toolbox_bytes = toolbox_text.encode("utf-8")
-                layout_segments.append({"type": "toolbox", "length": len(toolbox_bytes)})
-                prompt_text = prompt_text + toolbox_text
 
             prompt_bytes = prompt_text.encode("utf-8")
             capabilities_payload = [

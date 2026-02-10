@@ -10,6 +10,7 @@ from orchard.formatter.control_tokens import ControlTokens, load_control_tokens
 
 logger = logging.getLogger(__name__)
 
+
 def determine_model_type(config: dict) -> str:
     """Determine the model type from the model path."""
     model_type = config.get("model_type", "llama")
@@ -21,11 +22,19 @@ def determine_model_type(config: dict) -> str:
 
     return model_type
 
+
 # from https://github.com/huggingface/transformers/blob/7769f660935b5d48b73bf6711d0a78b6f8f98739/src/transformers/utils/chat_template_utils.py#L447C1-L451C1
 def tojson(x, ensure_ascii=False, indent=None, separators=None, sort_keys=False):
     # We override the built-in tojson filter because Jinja's default filter escapes HTML characters
     # We also expose some options like custom indents and separators
-    return json.dumps(x, ensure_ascii=ensure_ascii, indent=indent, separators=separators, sort_keys=sort_keys)
+    return json.dumps(
+        x,
+        ensure_ascii=ensure_ascii,
+        indent=indent,
+        separators=separators,
+        sort_keys=sort_keys,
+    )
+
 
 class ChatFormatter:
     """
@@ -82,13 +91,6 @@ class ChatFormatter:
         self.jinja_env.filters["tojson"] = tojson
         self.template = self.jinja_env.get_template("chat_template.jinja")
 
-        # 4. Load toolbox template (optional — not all models support tool calling)
-        self.toolbox_template = (
-            self.jinja_env.get_template("toolbox.jinja")
-            if (profile_dir / "toolbox.jinja").exists()
-            else None
-        )
-
     def apply_template(
         self,
         conversation: list[dict[str, Any]],
@@ -96,6 +98,7 @@ class ChatFormatter:
         reasoning: bool = False,
         task: str | None = None,
         prefill: str | None = None,
+        tools: list[dict[str, Any]] | None = None,
     ) -> str:
         """
         Applies the loaded chat template to a conversation.
@@ -106,6 +109,7 @@ class ChatFormatter:
             reasoning: Whether to add the conditional reasoning prompt logic.
             task: Optional task name for task-specific formatting (e.g., "caption_normal", "detect").
             prefill: Optional string to prefill the assistant response with.
+            tools: Optional list of tool schema dicts to render inline.
         Returns:
             A single, fully formatted string ready for tokenization.
         """
@@ -122,6 +126,7 @@ class ChatFormatter:
             "roles": self.control_tokens.roles.model_dump(),
             "prefill": prefill,
             "capabilities": self.capabilities,
+            "tools": tools,
         }
         return self.template.render(**context)
 
@@ -133,21 +138,6 @@ class ChatFormatter:
             if placeholder:
                 return placeholder
         return None
-
-    def render_toolbox(self, tools: list[dict[str, Any]]) -> str | None:
-        """Render tool definitions into model-specific toolbox text.
-
-        Returns None if the model has no toolbox template or no tools are provided.
-        """
-        if not self.toolbox_template or not tools:
-            return None
-        return self.toolbox_template.render(
-            tools=tools,
-            capabilities=self.capabilities,
-            roles=self.control_tokens.roles.model_dump(),
-            begin_of_text=self.control_tokens.begin_of_text,
-            end_of_sequence=self.control_tokens.end_of_sequence,
-        )
 
     def get_tool_calling_tokens(self) -> dict[str, str]:
         """Extract tool calling delimiter tokens from capabilities.yaml."""
