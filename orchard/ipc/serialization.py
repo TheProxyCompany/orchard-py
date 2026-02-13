@@ -245,12 +245,22 @@ def _build_request_payload(
             tool_schemas_str = _coerce_bytes(tool_schemas_value).decode("utf-8")
 
         tool_calling_tokens_raw = prompt.get("tool_calling_tokens") or {}
+        raw_formats = tool_calling_tokens_raw.get("formats") or []
+        formats: list[dict[str, str]] = []
+        for format_entry in raw_formats:
+            if not isinstance(format_entry, dict):
+                continue
+            formats.append(
+                {
+                    "call_start": str(format_entry.get("call_start", "")),
+                    "call_end": str(format_entry.get("call_end", "")),
+                }
+            )
+
         tool_calling_tokens = {
-            "call_start": str(tool_calling_tokens_raw.get("call_start", "")),
-            "call_end": str(tool_calling_tokens_raw.get("call_end", "")),
+            "formats": formats,
             "section_start": str(tool_calling_tokens_raw.get("section_start", "")),
             "section_end": str(tool_calling_tokens_raw.get("section_end", "")),
-            "name_separator": str(tool_calling_tokens_raw.get("name_separator", "")),
         }
         max_tool_calls = int(prompt.get("max_tool_calls") or 0)
 

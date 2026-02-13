@@ -139,15 +139,29 @@ class ChatFormatter:
                 return placeholder
         return None
 
-    def get_tool_calling_tokens(self) -> dict[str, str]:
+    def get_tool_calling_tokens(self) -> dict[str, Any]:
         """Extract tool calling delimiter tokens from capabilities.yaml."""
         tool_caps = self.capabilities.get("tool_calling", {})
-        fmt = (tool_caps.get("formats") or [{}])[0]
-        tokens = fmt.get("tokens", {})
+        formats = tool_caps.get("formats") or []
+
+        serialized_formats: list[dict[str, str]] = []
+        section_start = ""
+        section_end = ""
+
+        for index, fmt in enumerate(formats):
+            tokens = fmt.get("tokens", {})
+            serialized_formats.append(
+                {
+                    "call_start": tokens.get("start", ""),
+                    "call_end": tokens.get("end", ""),
+                }
+            )
+            if index == 0:
+                section_start = tokens.get("section_start", "")
+                section_end = tokens.get("section_end", "")
+
         return {
-            "call_start": tokens.get("start", ""),
-            "call_end": tokens.get("end", ""),
-            "section_start": tokens.get("section_start", ""),
-            "section_end": tokens.get("section_end", ""),
-            "name_separator": tokens.get("name_separator", ""),
+            "formats": serialized_formats,
+            "section_start": section_start,
+            "section_end": section_end,
         }
