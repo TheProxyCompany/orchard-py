@@ -2,10 +2,12 @@ import json
 import logging
 import os
 import signal
+import subprocess
 import threading
 import time
 from collections.abc import Callable, Iterable
 from pathlib import Path
+from sys import platform
 
 import pynng
 
@@ -14,8 +16,21 @@ from orchard.ipc import endpoints as ipc_endpoints
 logger = logging.getLogger(__name__)
 
 
+def _pid_is_zombie(pid: int) -> bool:
+    if platform != "darwin":
+        return False
+    result = subprocess.run(
+        ["ps", "-o", "state=", "-p", str(pid)], capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        return False
+    return result.stdout.strip().startswith("Z")
+
+
 def pid_is_alive(pid: int) -> bool:
     if pid <= 0:
+        return False
+    if _pid_is_zombie(pid):
         return False
     try:
         os.kill(pid, 0)
@@ -156,6 +171,7 @@ def wait_for_exit(pid: int, timeout: float) -> bool:
                 waitpid_supported = False
         if not pid_is_alive(pid):
             return True
+        time.sleep(0.05)
     if waitpid_supported:
         try:
             finished_pid, _ = os.waitpid(pid, os.WNOHANG)
