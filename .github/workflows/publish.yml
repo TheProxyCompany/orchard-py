@@ -16,13 +16,19 @@ jobs:
         with:
           token: ${{ secrets.GH_PAT }}
           fetch-depth: 0
+          submodules: recursive
 
-      - name: Setup Python environment
+      - name: Install uv
         run: |
-          python3 -m venv .venv
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Setup build environment
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          uv venv .venv
           source .venv/bin/activate
-          pip install --upgrade pip
-          pip install build twine tomli tomli-w
+          uv pip install build twine tomli tomli-w
 
       - name: Bump version
         id: version
@@ -65,11 +71,28 @@ jobs:
           source .venv/bin/activate
           python -m build
 
+      - name: Verify wheel contains profiles
+        run: |
+          source .venv/bin/activate
+          if ! unzip -l dist/*.whl | grep "formatter/profiles/llama3"; then
+            echo "ERROR: Wheel does not contain formatter profiles. Aborting."
+            exit 1
+          fi
+
       - name: Validate package
         run: |
           source .venv/bin/activate
-          pip install dist/*.whl
-          python -c "from orchard.clients import Client; print('orchard import OK')"
+          uv pip install dist/*.whl
+          python -c "
+          from orchard.clients import Client; print('import OK')
+          from orchard.formatter.formatter import Formatter
+          from pathlib import Path
+          import importlib.resources
+          profiles = Path(importlib.resources.files('orchard')) / 'formatter' / 'profiles'
+          assert (profiles / 'llama3').is_dir(), f'llama3 profile missing at {profiles}'
+          assert (profiles / 'moondream3').is_dir(), f'moondream3 profile missing at {profiles}'
+          print('profiles OK')
+          "
 
       - name: Publish to PyPI
         env:
