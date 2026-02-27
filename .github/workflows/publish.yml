@@ -85,7 +85,7 @@ jobs:
           uv pip install dist/*.whl
           python -c "
           from orchard.clients import Client; print('import OK')
-          from orchard.formatter.formatter import Formatter
+          from orchard.formatter.formatter import ChatFormatter
           from pathlib import Path
           import importlib.resources
           profiles = Path(importlib.resources.files('orchard')) / 'formatter' / 'profiles'
