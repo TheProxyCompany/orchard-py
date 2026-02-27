@@ -6,19 +6,31 @@ import logging
 import random
 import threading
 from collections.abc import AsyncIterator, Iterator
-from typing import Any
+from typing import Any, Literal, TypeVar, overload
 
 from orchard.app.ipc_dispatch import IPCState, QueueRegistration
 from orchard.app.model_registry import ModelRegistry
+from orchard.clients.responses import (
+    ResponseEvent,
+    ResponsesRequest,
+    aggregate_non_streaming_response,
+    iter_response_events,
+)
 from orchard.engine import ClientDelta, ClientResponse, UsageStats
 from orchard.formatter.multimodal import (
     build_multimodal_layout,
     build_multimodal_messages,
 )
 from orchard.ipc.serialization import _build_request_payload
-from orchard.ipc.utils import ResponseDeltaDict, release_delta_resources
+from orchard.ipc.utils import (
+    ResponseDeltaDict,
+    normalise_delta_payload,
+    release_delta_resources,
+)
+from orchard.server.models.responses import OutputTextDeltaEvent, ResponseObject
 
 logger = logging.getLogger(__name__)
+T = TypeVar("T")
 
 
 class Client:
@@ -88,6 +100,54 @@ class Client:
                     release_delta_resources(leftover)
                 except asyncio.QueueEmpty:
                     break
+
+    async def _async_process_raw_stream(
+        self,
+        response_queue: asyncio.Queue[ResponseDeltaDict],
+    ) -> AsyncIterator[ResponseDeltaDict]:
+        """Yield raw response deltas for Responses API event mapping."""
+        # Intentionally mirrors _async_process_stream, but yields raw payloads
+        # (including state_events) instead of ClientDelta objects.
+        try:
+            while True:
+                delta = await response_queue.get()
+                normalise_delta_payload(delta)
+                should_stop = bool(delta.get("is_final_delta"))
+
+                try:
+                    yield delta
+                finally:
+                    release_delta_resources(delta)
+
+                if should_stop:
+                    break
+        finally:
+            while not response_queue.empty():
+                try:
+                    leftover = response_queue.get_nowait()
+                    release_delta_resources(leftover)
+                except asyncio.QueueEmpty:
+                    break
+
+    def _build_responses_request(
+        self,
+        *,
+        request: ResponsesRequest | None,
+        input: str | list[dict[str, Any]] | None,
+        stream: bool,
+        **kwargs: Any,
+    ) -> ResponsesRequest:
+        if request is not None:
+            return request
+        if input is None:
+            raise ValueError("Responses request requires either 'input' or 'request'.")
+
+        request_payload: dict[str, Any] = {"input": input, "stream": stream}
+        request_payload.update(kwargs)
+        filtered_payload = {
+            key: value for key, value in request_payload.items() if value is not None
+        }
+        return ResponsesRequest(**filtered_payload)
 
     @staticmethod
     def _is_batched_messages(messages: list) -> bool:
@@ -174,6 +234,162 @@ class Client:
             if not stream or not stream_managed_cleanup:
                 _cleanup_queue()
 
+    @overload
+    async def aresponses(
+        self,
+        model_id: str,
+        *,
+        input: str | list[dict[str, Any]] | None = None,
+        request: ResponsesRequest | None = None,
+        stream: Literal[False] = False,
+        instructions: str | None = None,
+        tools: list[Any] | None = None,
+        tool_choice: str | dict[str, Any] | None = None,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        top_k: int | None = None,
+        min_p: float | None = None,
+        max_output_tokens: int | None = None,
+        frequency_penalty: float | None = None,
+        presence_penalty: float | None = None,
+        top_logprobs: int | None = None,
+        reasoning: Any | None = None,
+        metadata: dict[str, str] | None = None,
+        **kwargs: Any,
+    ) -> ResponseObject: ...
+
+    @overload
+    async def aresponses(
+        self,
+        model_id: str,
+        *,
+        input: str | list[dict[str, Any]] | None = None,
+        request: ResponsesRequest | None = None,
+        stream: Literal[True],
+        instructions: str | None = None,
+        tools: list[Any] | None = None,
+        tool_choice: str | dict[str, Any] | None = None,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        top_k: int | None = None,
+        min_p: float | None = None,
+        max_output_tokens: int | None = None,
+        frequency_penalty: float | None = None,
+        presence_penalty: float | None = None,
+        top_logprobs: int | None = None,
+        reasoning: Any | None = None,
+        metadata: dict[str, str] | None = None,
+        **kwargs: Any,
+    ) -> AsyncIterator[ResponseEvent]: ...
+
+    async def aresponses(
+        self,
+        model_id: str,
+        *,
+        input: str | list[dict[str, Any]] | None = None,
+        request: ResponsesRequest | None = None,
+        stream: bool = False,
+        instructions: str | None = None,
+        tools: list[Any] | None = None,
+        tool_choice: str | dict[str, Any] | None = None,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        top_k: int | None = None,
+        min_p: float | None = None,
+        max_output_tokens: int | None = None,
+        frequency_penalty: float | None = None,
+        presence_penalty: float | None = None,
+        top_logprobs: int | None = None,
+        reasoning: Any | None = None,
+        metadata: dict[str, str] | None = None,
+        **kwargs: Any,
+    ) -> ResponseObject | AsyncIterator[ResponseEvent]:
+        """Run a Responses API request over IPC.
+
+        Args:
+            model_id: Model ID to execute against.
+            input: String or item-list input (common path).
+            request: Optional pre-built `ResponsesRequest` for power users.
+            stream: When True, returns a typed event stream.
+            kwargs: Additional Responses fields (for example `text`, `max_tool_calls`).
+        Returns:
+            `ResponseObject` for non-streaming calls, or `AsyncIterator[ResponseEvent]`.
+        Example:
+            `resp = await client.aresponses("llama3", input="hi")`
+            `events = await client.aresponses("llama3", input="hi", stream=True)`
+        """
+        request_kwargs: dict[str, Any] = {
+            "instructions": instructions,
+            "tools": tools,
+            "tool_choice": tool_choice,
+            "temperature": temperature,
+            "top_p": top_p,
+            "top_k": top_k,
+            "min_p": min_p,
+            "max_output_tokens": max_output_tokens,
+            "frequency_penalty": frequency_penalty,
+            "presence_penalty": presence_penalty,
+            "top_logprobs": top_logprobs,
+            "reasoning": reasoning,
+            "metadata": metadata,
+        }
+        request_kwargs.update(kwargs)
+        response_request = self._build_responses_request(
+            request=request,
+            input=input,
+            stream=stream,
+            **request_kwargs,
+        )
+
+        request_id = await self._ipc_state.get_next_request_id()
+        response_queue: asyncio.Queue[ResponseDeltaDict] = asyncio.Queue()
+        owner_loop = asyncio.get_running_loop()
+        self._ipc_state.active_request_queues[request_id] = QueueRegistration(
+            loop=owner_loop, queue=response_queue
+        )
+        queue_cleared = False
+        stream_managed_cleanup = False
+
+        def _cleanup_queue() -> None:
+            nonlocal queue_cleared
+            if queue_cleared:
+                return
+            queue_cleared = True
+            self._ipc_state.active_request_queues.pop(request_id, None)
+
+        try:
+            await self._asubmit_request(
+                request_id,
+                model_id,
+                response_request.to_messages(),
+                **response_request.to_submit_kwargs(),
+            )
+
+            async def _response_stream() -> AsyncIterator[ResponseEvent]:
+                try:
+                    async for event in iter_response_events(
+                        self._async_process_raw_stream(response_queue),
+                        model_id=model_id,
+                    ):
+                        yield event
+                finally:
+                    _cleanup_queue()
+
+            if response_request.stream:
+                stream_managed_cleanup = True
+                return _response_stream()
+
+            deltas = [
+                delta async for delta in self._async_process_raw_stream(response_queue)
+            ]
+            _cleanup_queue()
+            return aggregate_non_streaming_response(
+                deltas, model_id, response_request
+            )
+        finally:
+            if not response_request.stream or not stream_managed_cleanup:
+                _cleanup_queue()
+
     def chat(
         self,
         model_id: str,
@@ -222,6 +438,64 @@ class Client:
             # Could be ClientResponse or list[ClientResponse]
             return result
 
+    def responses(
+        self,
+        model_id: str,
+        **kwargs: Any,
+    ) -> ResponseObject | Iterator[ResponseEvent]:
+        """Synchronous wrapper for Responses API IPC calls.
+
+        Args:
+            model_id: Model ID to execute against.
+            kwargs: Same keyword arguments accepted by `aresponses`.
+        Returns:
+            `ResponseObject` for non-streaming calls, or `Iterator[ResponseEvent]`.
+        Example:
+            `resp = client.responses("llama3", input="hi")`
+            `for event in client.responses("llama3", input="hi", stream=True): ...`
+        """
+        if (
+            not self._sync_loop
+            or not self._sync_thread
+            or not self._sync_thread.is_alive()
+        ):
+            self._start_sync_event_loop()
+
+        assert self._sync_loop, "Sync loop not initialized"
+        future = asyncio.run_coroutine_threadsafe(
+            self.aresponses(model_id, **kwargs),
+            self._sync_loop,
+        )
+        result = future.result()
+
+        if isinstance(result, AsyncIterator):
+            return self._sync_iterator_bridge(result)
+
+        assert not isinstance(result, AsyncIterator)
+        return result
+
+    async def aresponses_text(
+        self,
+        model_id: str,
+        **kwargs: Any,
+    ) -> AsyncIterator[str]:
+        """Stream only text delta chunks from `response.output_text.delta` events."""
+        stream = await self.aresponses(model_id, stream=True, **kwargs)
+        async for event in stream:
+            if isinstance(event, OutputTextDeltaEvent):
+                yield event.delta
+
+    def responses_text(
+        self,
+        model_id: str,
+        **kwargs: Any,
+    ) -> Iterator[str]:
+        """Stream only text delta chunks from synchronous Responses calls."""
+        stream = self.responses(model_id, stream=True, **kwargs)
+        for event in stream:
+            if isinstance(event, OutputTextDeltaEvent):
+                yield event.delta
+
     def _start_sync_event_loop(self) -> None:
         """Starts a dedicated event loop in a background thread for sync calls."""
         if self._sync_thread and self._sync_thread.is_alive():
@@ -241,12 +515,10 @@ class Client:
         self._sync_thread.start()
         loop_started.wait()  # Ensure the loop is running before we try to use it
 
-    def _sync_iterator_bridge(
-        self, async_iterator: AsyncIterator[ClientDelta]
-    ) -> Iterator[ClientDelta]:
+    def _sync_iterator_bridge(self, async_iterator: AsyncIterator[T]) -> Iterator[T]:
         """Bridges an async iterator to a sync iterator."""
 
-        async def _next_delta() -> ClientDelta:
+        async def _next_delta() -> T:
             return await async_iterator.__anext__()
 
         while True:

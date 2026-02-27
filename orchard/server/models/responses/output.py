@@ -312,3 +312,20 @@ class ResponseObject(BaseModel):
         default=None,
         description="Reasoning configuration used.",
     )
+
+    @property
+    def output_text(self) -> str:
+        """Concatenate all assistant output text parts into a single string."""
+        chunks: list[str] = []
+        for item in self.output:
+            if isinstance(item, OutputMessage):
+                for part in item.content:
+                    chunks.append(part.text)
+        return "".join(chunks)
+
+    @property
+    def tool_calls(self) -> list[OutputFunctionCall]:
+        """Return all function-call output items in this response."""
+        return [
+            item for item in self.output if isinstance(item, OutputFunctionCall)
+        ]
