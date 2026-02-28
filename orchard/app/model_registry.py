@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import time
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from pathlib import Path
@@ -13,6 +14,7 @@ from orchard.app.model_resolver import (
     ModelResolver,
     ResolvedModel,
 )
+from orchard.engine.multiprocess import pid_is_alive, read_pid_file
 from orchard.formatter import ChatFormatter
 
 if TYPE_CHECKING:
@@ -115,10 +117,11 @@ class ModelRegistry:
             )
 
         try:
-            if timeout is None:
-                await waiter
-            else:
-                await asyncio.wait_for(waiter, timeout)
+            await self._await_activation_with_engine_liveness(
+                canonical_id=canonical_id,
+                waiter=waiter,
+                timeout=timeout,
+            )
         except Exception as exc:
             async with self._lock:
                 entry = self._entries.get(canonical_id)
@@ -484,6 +487,60 @@ class ModelRegistry:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+    @staticmethod
+    def _engine_pid_file() -> Path:
+        home = Path.home()
+        mac_cache = home / "Library" / "Caches"
+        base = mac_cache if mac_cache.exists() else home / ".cache"
+        return base / "com.theproxycompany" / "engine.pid"
+
+    @classmethod
+    def _engine_pid_alive(cls) -> tuple[bool | None, int | None]:
+        pid_file = cls._engine_pid_file()
+        pid = read_pid_file(pid_file)
+        if pid is None:
+            return None, None
+        return pid_is_alive(pid), pid
+
+    async def _await_activation_with_engine_liveness(
+        self,
+        *,
+        canonical_id: str,
+        waiter: asyncio.Future,
+        timeout: float | None,
+    ) -> None:
+        poll_interval_s = 0.25
+        deadline = None if timeout is None else (time.monotonic() + timeout)
+
+        while True:
+            if waiter.done():
+                await waiter
+                return
+
+            alive, pid = self._engine_pid_alive()
+            if alive is False:
+                pid_suffix = f" (pid={pid})" if pid else ""
+                raise RuntimeError(
+                    f"Engine process exited while activating '{canonical_id}'{pid_suffix}."
+                )
+
+            if deadline is not None:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError(
+                        f"Timed out waiting for model '{canonical_id}' activation."
+                    )
+                step_timeout = min(poll_interval_s, remaining)
+            else:
+                step_timeout = poll_interval_s
+
+            try:
+                await asyncio.wait_for(asyncio.shield(waiter), timeout=step_timeout)
+                await waiter
+                return
+            except TimeoutError:
+                continue
+
     def _parse_capabilities(self, response: dict) -> dict | None:
         try:
             data_field = response.get("data", {})
