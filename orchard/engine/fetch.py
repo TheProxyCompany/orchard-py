@@ -18,7 +18,7 @@ from filelock import FileLock
 
 dotenv.load_dotenv()
 
-MANIFEST_URL = "https://prod.proxy.ing/functions/v1/get-release-manifest"
+MANIFEST_URL = "https://orchard.theproxycompany.com/manifest"
 DEFAULT_CHANNEL = "stable"
 ORCHARD_HOME = Path.home() / ".orchard"
 
