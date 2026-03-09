@@ -44,6 +44,38 @@ async def test_client_chat_non_streaming(
 
 
 @pytest.mark.parametrize("model_id", ["meta-llama/Llama-3.1-8B-Instruct", "moondream3"])
+async def test_client_chat_non_streaming_batched_waits_for_all_prompts(
+    client: Client,
+    model_id: str,
+) -> None:
+    responses = await client.achat(
+        model_id,
+        [
+            [{"role": "user", "content": "Reply with exactly one word: yes"}],
+            [
+                {
+                    "role": "user",
+                    "content": "Reply with exactly ten lowercase words separated by spaces.",
+                }
+            ],
+        ],
+        stream=False,
+        temperature=0.0,
+        max_generated_tokens=10,
+    )
+
+    assert isinstance(responses, list)
+    assert len(responses) == 2
+    assert all(isinstance(response, ClientResponse) for response in responses)
+
+    for response in responses:
+        assert response.text.strip()
+        assert response.finish_reason is not None
+        assert response.deltas
+        assert response.deltas[-1].is_final
+
+
+@pytest.mark.parametrize("model_id", ["meta-llama/Llama-3.1-8B-Instruct", "moondream3"])
 @pytest.mark.parametrize(
     "prompt",
     [

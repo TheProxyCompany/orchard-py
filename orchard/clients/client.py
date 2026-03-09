@@ -64,9 +64,12 @@ class Client:
         return resolved
 
     async def _async_process_stream(
-        self, response_queue: asyncio.Queue[ResponseDeltaDict]
+        self,
+        response_queue: asyncio.Queue[ResponseDeltaDict],
+        expected_final_prompt_count: int = 1,
     ) -> AsyncIterator[ClientDelta]:
         """The core async stream processor."""
+        completed_prompt_indexes: set[int] = set()
         try:
             while True:
                 delta = await response_queue.get()
@@ -81,7 +84,18 @@ class Client:
                     sanitized_delta.pop(key, None)
 
                 client_delta = ClientDelta.model_validate(sanitized_delta)
-                should_stop = client_delta.is_final
+                should_stop = False
+                if client_delta.is_final:
+                    if expected_final_prompt_count <= 1:
+                        should_stop = True
+                    elif client_delta.prompt_index is None:
+                        should_stop = True
+                    else:
+                        completed_prompt_indexes.add(client_delta.prompt_index)
+                        should_stop = (
+                            len(completed_prompt_indexes)
+                            >= expected_final_prompt_count
+                        )
 
                 try:
                     yield client_delta
@@ -225,7 +239,11 @@ class Client:
                 return _stream_generator()
             else:
                 deltas = [
-                    delta async for delta in self._async_process_stream(response_queue)
+                    delta
+                    async for delta in self._async_process_stream(
+                        response_queue,
+                        batch_size if is_batched else 1,
+                    )
                 ]
                 _cleanup_queue()
                 responses = self._aggregate_batch_response(deltas, batch_size)
