@@ -64,26 +64,12 @@ class Client:
         return resolved
 
     async def _async_process_stream(
-        self,
-        response_queue: asyncio.Queue[ResponseDeltaDict],
-        *,
-        request_id: int | None = None,
+        self, response_queue: asyncio.Queue[ResponseDeltaDict]
     ) -> AsyncIterator[ClientDelta]:
         """The core async stream processor."""
         try:
             while True:
                 delta = await response_queue.get()
-                logger.debug(
-                    "Client stream delta received request_id=%s prompt_index=%s "
-                    "candidate_index=%s is_final=%s finish_reason=%s tokens=%d content_len=%d",
-                    delta.get("request_id", request_id),
-                    delta.get("prompt_index"),
-                    delta.get("candidate_index"),
-                    delta.get("is_final_delta"),
-                    delta.get("finish_reason"),
-                    len(delta.get("tokens") or []),
-                    len(delta.get("content") or ""),
-                )
 
                 sanitized_delta = dict(delta)
                 # Clear SHM-related fields before yielding
@@ -226,20 +212,10 @@ class Client:
             await self._asubmit_request_batch(
                 request_id, model_id, conversations, **kwargs
             )
-            logger.debug(
-                "Client achat submitted request_id=%d model_id=%s batch_size=%d stream=%s",
-                request_id,
-                model_id,
-                batch_size,
-                stream,
-            )
 
             async def _stream_generator() -> AsyncIterator[ClientDelta]:
                 try:
-                    async for delta in self._async_process_stream(
-                        response_queue,
-                        request_id=request_id,
-                    ):
+                    async for delta in self._async_process_stream(response_queue):
                         yield delta
                 finally:
                     _cleanup_queue()
@@ -248,24 +224,11 @@ class Client:
                 stream_managed_cleanup = True
                 return _stream_generator()
             else:
-                logger.debug(
-                    "Client achat waiting for non-streaming completion request_id=%d",
-                    request_id,
-                )
                 deltas = [
-                    delta
-                    async for delta in self._async_process_stream(
-                        response_queue,
-                        request_id=request_id,
-                    )
+                    delta async for delta in self._async_process_stream(response_queue)
                 ]
                 _cleanup_queue()
                 responses = self._aggregate_batch_response(deltas, batch_size)
-                logger.debug(
-                    "Client achat completed request_id=%d with %d delta(s)",
-                    request_id,
-                    len(deltas),
-                )
                 return responses if is_batched else responses[0]
         finally:
             if not stream or not stream_managed_cleanup:
