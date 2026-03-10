@@ -21,7 +21,12 @@ from orchard.engine.fetch import (
     get_engine_path,
 )
 from orchard.engine.global_context import GlobalContext, global_context
-from orchard.engine.io import close_sockets, get_engine_file_paths, initialize_sockets
+from orchard.engine.io import (
+    EnginePaths,
+    close_sockets,
+    get_engine_file_paths,
+    initialize_sockets,
+)
 from orchard.engine.multiprocess import (
     filter_alive_pids,
     pid_is_alive,
@@ -248,7 +253,7 @@ class InferenceEngine:
             write_ref_pids(self._paths.refs_file, alive_refs)
 
         try:
-            self.initialize_global_context(global_context)
+            self.initialize_global_context(global_context, self._paths)
         except Exception:
             # Roll back PID registration if initialization fails
             with self._lock:
@@ -388,7 +393,7 @@ class InferenceEngine:
         return channel_id
 
     @staticmethod
-    def initialize_global_context(ctx: GlobalContext) -> None:
+    def initialize_global_context(ctx: GlobalContext, paths: EnginePaths) -> None:
         """Initializes the singleton app state components in a thread-safe way."""
         with ctx.lock:
             ctx.ref_count += 1
@@ -402,6 +407,7 @@ class InferenceEngine:
                 # Initialize IPC State container
                 ctx.ipc_state = IPCState(ctx)
                 ctx.ipc_state.response_channel_id = response_channel_id
+                ctx.ipc_state.engine_pid_file = paths.pid_file
 
                 # Create Model Registry
                 ctx.model_registry = ModelRegistry(ctx.ipc_state)

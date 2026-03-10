@@ -3,18 +3,23 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 import weakref
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 
 import pynng
 
 from orchard.engine.global_context import GlobalContext
+from orchard.engine.multiprocess import pid_is_alive, read_pid_file
 from orchard.ipc.utils import ResponseDeltaDict
 
 logger = logging.getLogger(__name__)
 
 EVENT_TOPIC_PREFIX = b"__PIE_EVENT__:"
+ENGINE_LIVENESS_POLL_INTERVAL_S = 5.0
+RESPONSE_RECV_TIMEOUT_MS = 1000
 
 
 class IPCDispatcher:
@@ -69,6 +74,7 @@ class IPCState:
         self._lock = asyncio.Lock()
         self.response_topic_prefix: bytes = b""
         self.response_topic_prefix_len: int = 0
+        self.engine_pid_file: Path | None = None
 
         self.global_context = weakref.ref(global_context)
 
@@ -161,6 +167,13 @@ class IPCState:
 
         logger.warning("Received unknown engine event '%s'.", event_name)
 
+    def engine_process_is_alive(self) -> bool:
+        if self.engine_pid_file is None:
+            return True
+
+        pid = read_pid_file(self.engine_pid_file)
+        return pid is not None and pid_is_alive(pid)
+
     @staticmethod
     async def run_ipc_listener(ipc_state: IPCState) -> None:
         """
@@ -173,6 +186,7 @@ class IPCState:
         if not sub_socket:
             logger.critical("Response socket not initialized. Dispatcher cannot run.")
             return
+        sub_socket.recv_timeout = RESPONSE_RECV_TIMEOUT_MS
 
         dispatcher = IPCDispatcher()
         resp_topic_prefix = f"resp:{ipc_state.response_channel_id:x}:".encode()
@@ -183,11 +197,22 @@ class IPCState:
         dispatcher.register_handler(EVENT_TOPIC_PREFIX, IPCState.handle_engine_event)
 
         try:
+            last_engine_check = 0.0
             while True:
+                now = time.monotonic()
+                if now - last_engine_check >= ENGINE_LIVENESS_POLL_INTERVAL_S:
+                    last_engine_check = now
+                    if not ipc_state.engine_process_is_alive():
+                        logger.error(
+                            "PIE is no longer alive; shutting down response dispatcher."
+                        )
+                        break
                 try:
                     msg = await sub_socket.arecv_msg()
                     if not dispatcher.dispatch(ipc_state, msg.bytes):
                         logger.warning("Received IPC message with unregistered prefix.")
+                except pynng.Timeout:
+                    continue
                 except pynng.Closed:
                     logger.info("Response socket closed, dispatcher shutting down.")
                     break
