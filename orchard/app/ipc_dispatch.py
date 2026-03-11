@@ -165,6 +165,26 @@ class IPCState:
                 )
             return
 
+        if event_name == "model_load_failed":
+            model_id = payload.get("model_id")
+            if not model_id:
+                logger.warning("Received model_load_failed event without model_id.")
+                return
+
+            if ctx and ctx.model_registry:
+                try:
+                    ctx.model_registry.handle_model_load_failed(payload)
+                except Exception:
+                    logger.exception(
+                        "Failed to handle model_load_failed event for '%s'.",
+                        model_id,
+                    )
+            else:
+                logger.warning(
+                    "Received model_load_failed but no model registry is available."
+                )
+            return
+
         logger.warning("Received unknown engine event '%s'.", event_name)
 
     def engine_process_is_alive(self) -> bool:

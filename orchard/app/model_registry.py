@@ -484,6 +484,30 @@ class ModelRegistry:
         entry.activation_future = None
         entry.activation_loop = None
 
+    def handle_model_load_failed(self, payload: dict) -> None:
+        """Handle model_load_failed events emitted by the engine."""
+        model_id = payload.get("model_id")
+        if not model_id:
+            logger.warning("Received model_load_failed event without model_id.")
+            return
+
+        error = payload.get("error")
+        if not isinstance(error, str) or not error:
+            error = f"Model '{model_id}' failed to load."
+
+        canonical_id = self._canonicalize(model_id) or model_id
+        entry = self._entries.get(canonical_id)
+        if not entry:
+            logger.debug(
+                "Received model_load_failed for unknown model '%s'.", model_id
+            )
+            return
+
+        if entry.state != ModelLoadState.ACTIVATING:
+            return
+
+        self._set_activation_failed(entry, error)
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
@@ -577,17 +601,21 @@ class ModelRegistry:
             entry = self._entries.get(model_id)
             if not entry:
                 return
-            entry.error = reason
-            entry.state = ModelLoadState.FAILED
-            if entry.activation_future and not entry.activation_future.done():
-                if entry.activation_loop:
-                    entry.activation_loop.call_soon_threadsafe(
-                        entry.activation_future.set_exception, RuntimeError(reason)
-                    )
-                else:
-                    entry.activation_future.set_exception(RuntimeError(reason))
-            entry.activation_future = None
-            entry.activation_loop = None
+            self._set_activation_failed(entry, reason)
+
+    @staticmethod
+    def _set_activation_failed(entry: ModelEntry, reason: str) -> None:
+        entry.error = reason
+        entry.state = ModelLoadState.FAILED
+        if entry.activation_future and not entry.activation_future.done():
+            if entry.activation_loop:
+                entry.activation_loop.call_soon_threadsafe(
+                    entry.activation_future.set_exception, RuntimeError(reason)
+                )
+            else:
+                entry.activation_future.set_exception(RuntimeError(reason))
+        entry.activation_future = None
+        entry.activation_loop = None
 
     def _canonicalize(self, model_id: str) -> str | None:
         """Convert a model ID to its canonical form if known."""
