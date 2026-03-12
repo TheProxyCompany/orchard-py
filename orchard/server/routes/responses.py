@@ -135,8 +135,7 @@ async def handle_response_request(
             image_buffers,
             capabilities,
             content_order,
-            formatter.control_tokens.start_image_token
-            or formatter.default_image_placeholder,
+            formatter.image_placeholder,
             formatter.should_clip_image_placeholder,
         )
     except ValueError as exc:
@@ -146,7 +145,7 @@ async def handle_response_request(
         ) from exc
 
     if formatter.should_clip_image_placeholder:
-        prompt_text = prompt_text.replace(formatter.default_image_placeholder, "")
+        prompt_text = prompt_text.replace(formatter.image_placeholder, "")
 
     logger.info("Prompt text: %s", prompt_text)
 

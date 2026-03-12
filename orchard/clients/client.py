@@ -681,8 +681,7 @@ class Client:
                 image_buffers,
                 capabilities,
                 content_order,
-                info.formatter.control_tokens.start_image_token
-                or info.formatter.default_image_placeholder,
+                info.formatter.image_placeholder,
                 info.formatter.should_clip_image_placeholder,
                 coord_placeholder=info.formatter.get_coord_placeholder(),
             )
@@ -691,7 +690,7 @@ class Client:
 
         if info.formatter.should_clip_image_placeholder:
             prompt_text = prompt_text.replace(
-                info.formatter.default_image_placeholder, ""
+                info.formatter.image_placeholder, ""
             )
 
         # Strip coord placeholders from prompt text (they're handled by layout segments)
@@ -859,8 +858,7 @@ class Client:
                     image_buffers,
                     capabilities,
                     content_order,
-                    info.formatter.control_tokens.start_image_token
-                    or info.formatter.default_image_placeholder,
+                    info.formatter.image_placeholder,
                     info.formatter.should_clip_image_placeholder,
                     coord_placeholder=info.formatter.get_coord_placeholder(),
                 )
@@ -869,7 +867,7 @@ class Client:
 
             if info.formatter.should_clip_image_placeholder:
                 prompt_text = prompt_text.replace(
-                    info.formatter.default_image_placeholder, ""
+                    info.formatter.image_placeholder, ""
                 )
 
             coord_placeholder = info.formatter.get_coord_placeholder()

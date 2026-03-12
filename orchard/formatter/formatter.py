@@ -42,18 +42,34 @@ class ChatFormatter:
     """
 
     @property
-    def should_clip_image_placeholder(self) -> bool:
-        """Whether to clip the image placeholder. If the model does not have a start image token, we need to clip the image placeholder."""
-        has_start_token = (
-            self.control_tokens.start_image_token is not None
-            and self.control_tokens.start_image_token != ""
-        )
-        return not has_start_token
+    def image_placeholder(self) -> str:
+        """Resolve the image placeholder token from capabilities or control tokens."""
+        vision = self.capabilities.get("vision", {})
+        # Explicit placeholder (e.g. moondream: vision.placeholders.image)
+        placeholder = vision.get("placeholders", {}).get("image")
+        if placeholder:
+            return placeholder
+        # Vision start token (e.g. gemma: vision.tokens.start)
+        start = vision.get("tokens", {}).get("start")
+        if start:
+            return start
+        # Legacy fallback to control_tokens
+        if self.control_tokens.start_image_token:
+            return self.control_tokens.start_image_token
+        return "<|image|>"
 
     @property
-    def default_image_placeholder(self) -> str:
-        """The default image placeholder to use if the model does not have a start image token."""
-        return "<|image|>"
+    def should_clip_image_placeholder(self) -> bool:
+        """Whether to clip the image placeholder from text segments.
+
+        If the placeholder is a real token (has a start_image_token or vision.tokens.start),
+        it stays in the text for tokenization. If it's a synthetic placeholder
+        (like <|image|>), it gets clipped.
+        """
+        vision = self.capabilities.get("vision", {})
+        has_vision_tokens = bool(vision.get("tokens", {}).get("start"))
+        has_start_token = bool(self.control_tokens.start_image_token)
+        return not (has_vision_tokens or has_start_token)
 
     def __init__(self, model_path: str):
         self.model_path = Path(model_path)
