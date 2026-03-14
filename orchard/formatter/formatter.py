@@ -23,6 +23,19 @@ def determine_model_type(config: dict) -> str:
     return model_type
 
 
+def find_shared_template_dir(profile_dir: Path) -> Path | None:
+    direct_root = profile_dir.parent
+    if direct_root and (direct_root / "tool_macros.jinja").is_file():
+        return direct_root
+
+    for ancestor in profile_dir.parents:
+        candidate = ancestor / "Pantheon"
+        if (candidate / "tool_macros.jinja").is_file():
+            return candidate
+
+    return None
+
+
 # from https://github.com/huggingface/transformers/blob/7769f660935b5d48b73bf6711d0a78b6f8f98739/src/transformers/utils/chat_template_utils.py#L447C1-L451C1
 def tojson(x, ensure_ascii=False, indent=None, separators=None, sort_keys=False):
     # We override the built-in tojson filter because Jinja's default filter escapes HTML characters
@@ -101,8 +114,13 @@ class ChatFormatter:
         )
 
         # 3. Set up Jinja2 environment
+        loader_paths = [str(profile_dir)]
+        shared_template_dir = find_shared_template_dir(profile_dir)
+        if shared_template_dir is not None:
+            loader_paths.append(str(shared_template_dir))
+
         self.jinja_env = Environment(
-            loader=FileSystemLoader(profile_dir), trim_blocks=True, lstrip_blocks=True
+            loader=FileSystemLoader(loader_paths), trim_blocks=True, lstrip_blocks=True
         )
         self.jinja_env.filters["tojson"] = tojson
         self.template = self.jinja_env.get_template("chat_template.jinja")
@@ -168,6 +186,7 @@ class ChatFormatter:
             tokens = fmt.get("tokens", {})
             serialized_formats.append(
                 {
+                    "name": fmt.get("name", ""),
                     "call_start": tokens.get("start", ""),
                     "call_end": tokens.get("end", ""),
                 }

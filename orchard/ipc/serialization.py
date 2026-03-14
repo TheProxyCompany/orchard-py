@@ -252,6 +252,7 @@ def _build_request_payload(
                 continue
             formats.append(
                 {
+                    "name": str(format_entry.get("name", "")),
                     "call_start": str(format_entry.get("call_start", "")),
                     "call_end": str(format_entry.get("call_end", "")),
                 }
