@@ -98,6 +98,7 @@ def initialize_sockets(
     ipc_state.request_socket.recv_max_size = 0
     dial_with_retry(ipc_state.request_socket, ipc_endpoints.REQUEST_URL)
     ipc_state.response_socket = pynng.Sub0()
+    ipc_state.response_socket.recv_buffer_size = 1024
     ipc_state.response_socket.recv_max_size = 0
     ipc_state.response_socket.subscribe(f"resp:{response_channel_id:x}".encode("ascii"))
     ipc_state.response_socket.subscribe(ipc_endpoints.EVENT_TOPIC_PREFIX)
