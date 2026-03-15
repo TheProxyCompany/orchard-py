@@ -451,6 +451,9 @@ def _process_state_event_for_output(
             "content": "",
             "arguments": "",
             "identifier": identifier,
+            "function_name": identifier.removeprefix("tool_call:")
+            if item_type == "tool_call"
+            else "",
         }
 
     item = output_items[output_index]
@@ -470,6 +473,11 @@ def _process_state_event_for_output(
         item["completed"] = True
         if item_type == "tool_call":
             item["identifier"] = identifier
+            parsed_tool_call = _parse_tool_call_completion_value(event.get("value"))
+            if parsed_tool_call is not None:
+                item["function_name"], item["arguments"] = parsed_tool_call
+            elif not item.get("function_name"):
+                item["function_name"] = identifier.removeprefix("tool_call:")
         elif "value" in event:
             item["content"] = str(event["value"])
 
@@ -484,7 +492,6 @@ def _build_output_items(
         item = output_items[output_index]
         item_type = item.get("type", "message")
         content = item.get("content", "")
-        identifier = item.get("identifier", "")
 
         if item_type == "message":
             result.append(
@@ -494,10 +501,9 @@ def _build_output_items(
                 )
             )
         elif item_type == "tool_call":
-            function_name = identifier.removeprefix("tool_call:")
             result.append(
                 OutputFunctionCall(
-                    name=function_name,
+                    name=item.get("function_name", ""),
                     arguments=item.get("arguments", ""),
                     status=OutputStatus.COMPLETED,
                 )
@@ -666,7 +672,7 @@ async def stream_response_generator(
                         sequence_number=stream_state.next_sequence_number(),
                         item_id=item.item_id,
                         output_index=output_index,
-                        arguments=item.accumulated_content,
+                        arguments=item.accumulated_arguments,
                     )
                 )
             elif item.item_type == "reasoning":
@@ -772,14 +778,8 @@ async def _process_state_event_for_streaming(
                 )
             )
         elif event_type == "item_completed":
-            yield _format_sse_event(
-                FunctionCallArgumentsDoneEvent(
-                    sequence_number=stream_state.next_sequence_number(),
-                    item_id=item.item_id,
-                    output_index=output_index,
-                    arguments=item.accumulated_arguments,
-                )
-            )
+            if "value" in event:
+                item.accumulated_arguments = str(event["value"])
         return
 
     # Top-level item events.
@@ -860,7 +860,20 @@ async def _process_state_event_for_streaming(
                 )
             )
         elif item_type == "tool_call":
-            item.function_name = identifier.removeprefix("tool_call:")
+            parsed_tool_call = _parse_tool_call_completion_value(event.get("value"))
+            if parsed_tool_call is not None:
+                item.function_name, item.accumulated_arguments = parsed_tool_call
+            elif not item.function_name:
+                item.function_name = identifier.removeprefix("tool_call:")
+
+            yield _format_sse_event(
+                FunctionCallArgumentsDoneEvent(
+                    sequence_number=stream_state.next_sequence_number(),
+                    item_id=item.item_id,
+                    output_index=output_index,
+                    arguments=item.accumulated_arguments,
+                )
+            )
         elif item_type == "reasoning":
             yield _format_sse_event(
                 ReasoningDoneEvent(
@@ -887,3 +900,26 @@ def _format_sse_event(event: Any) -> dict[str, str]:
         "event": event.type,
         "data": event.model_dump_json(exclude_none=True),
     }
+
+
+def _parse_tool_call_completion_value(value: Any) -> tuple[str, str] | None:
+    structured_value = value
+    if isinstance(value, str):
+        try:
+            structured_value = json.loads(value)
+        except json.JSONDecodeError:
+            return None
+
+    if not isinstance(structured_value, dict):
+        return None
+
+    function_name = structured_value.get("name")
+    if not isinstance(function_name, str) or not function_name:
+        return None
+
+    try:
+        arguments = json.dumps(structured_value.get("arguments", {}))
+    except (TypeError, ValueError):
+        return None
+
+    return function_name, arguments

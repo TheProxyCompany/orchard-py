@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from orchard.clients.responses import (
     ResponsesRequest,
+    aggregate_non_streaming_response,
     finish_reason_to_incomplete,
     iter_response_events,
 )
@@ -199,3 +202,152 @@ async def test_delta_to_event_mapping_streaming() -> None:
     assert completed_event.response.usage is not None
     assert completed_event.response.usage.input_tokens == 8
     assert completed_event.response.usage.output_tokens == 2
+
+
+def test_non_streaming_tool_call_uses_structured_completion_value() -> None:
+    response = aggregate_non_streaming_response(
+        [
+            {
+                "request_id": 1,
+                "is_final_delta": False,
+                "state_events": [
+                    {
+                        "event_type": "content_delta",
+                        "item_type": "tool_call",
+                        "output_index": 0,
+                        "identifier": "arguments",
+                        "delta": 'location="Tokyo", verbose=True',
+                    }
+                ],
+            },
+            {
+                "request_id": 1,
+                "is_final_delta": True,
+                "finish_reason": "stop",
+                "state_events": [
+                    {
+                        "event_type": "item_completed",
+                        "item_type": "tool_call",
+                        "output_index": 0,
+                        "identifier": "tool_call:get_weather",
+                        "value": json.dumps(
+                            {
+                                "name": "get_weather",
+                                "arguments": {
+                                    "location": "Tokyo",
+                                    "verbose": True,
+                                    "limit": None,
+                                },
+                            }
+                        ),
+                    }
+                ],
+            },
+        ],
+        model_id="test-model",
+        request=ResponsesRequest.from_text("test"),
+    )
+
+    call = response.tool_calls[0]
+    assert call.name == "get_weather"
+    assert json.loads(call.arguments) == {
+        "location": "Tokyo",
+        "verbose": True,
+        "limit": None,
+    }
+
+
+@pytest.mark.asyncio
+async def test_streaming_tool_call_done_uses_structured_completion_value() -> None:
+    deltas = [
+        {
+            "request_id": 1,
+            "is_final_delta": False,
+            "state_events": [
+                {
+                    "event_type": "item_started",
+                    "item_type": "tool_call",
+                    "output_index": 0,
+                    "identifier": "tool_call:get_weather",
+                    "delta": "",
+                },
+                {
+                    "event_type": "content_delta",
+                    "item_type": "tool_call",
+                    "output_index": 0,
+                    "identifier": "arguments",
+                    "delta": 'location="Tokyo", verbose=True',
+                },
+                {
+                    "event_type": "item_completed",
+                    "item_type": "tool_call",
+                    "output_index": 0,
+                    "identifier": "arguments",
+                    "value": 'location="Tokyo", verbose=True',
+                },
+            ],
+        },
+        {
+            "request_id": 1,
+            "is_final_delta": True,
+            "finish_reason": "stop",
+            "state_events": [
+                {
+                    "event_type": "item_completed",
+                    "item_type": "tool_call",
+                    "output_index": 0,
+                    "identifier": "tool_call:get_weather",
+                    "value": json.dumps(
+                        {
+                            "name": "get_weather",
+                            "arguments": {
+                                "location": "Tokyo",
+                                "verbose": True,
+                            },
+                        }
+                    ),
+                }
+            ],
+        },
+    ]
+
+    async def _delta_iter():
+        for delta in deltas:
+            yield delta
+
+    events = [
+        event
+        async for event in iter_response_events(
+            _delta_iter(), model_id="test-model", response_id="resp_test"
+        )
+    ]
+
+    delta_events = [
+        event
+        for event in events
+        if event.type == "response.function_call_arguments.delta"
+    ]
+    assert [event.delta for event in delta_events] == ['location="Tokyo", verbose=True']
+
+    done_events = [
+        event
+        for event in events
+        if event.type == "response.function_call_arguments.done"
+    ]
+    assert len(done_events) == 1
+    assert json.loads(done_events[0].arguments) == {
+        "location": "Tokyo",
+        "verbose": True,
+    }
+
+    output_item_done = next(
+        event
+        for event in events
+        if event.type == "response.output_item.done"
+        and event.item.type == "function_call"
+    )
+    assert output_item_done.item.name == "get_weather"
+    assert json.loads(output_item_done.item.arguments) == {
+        "location": "Tokyo",
+        "verbose": True,
+    }

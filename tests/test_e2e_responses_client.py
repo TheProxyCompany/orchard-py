@@ -158,7 +158,8 @@ async def test_client_responses_tool_calling(client: Client) -> None:
     assert call.status.value == "completed"
     parsed_args = json.loads(call.arguments)
     assert isinstance(parsed_args, dict)
-    assert "location" in parsed_args
+    assert isinstance(parsed_args.get("location"), str)
+    assert parsed_args["location"]
 
 
 async def test_client_responses_tool_result_continuation(client: Client) -> None:

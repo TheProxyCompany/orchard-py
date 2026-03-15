@@ -114,6 +114,7 @@ class _AggregatedOutputItem:
     content: str = ""
     arguments: str = ""
     identifier: str = ""
+    function_name: str = ""
 
 
 def _reasoning_effort_from_request(request: ResponsesRequest) -> str | None:
@@ -198,6 +199,29 @@ def _value_to_string(value: Any) -> str:
         return str(value)
 
 
+def _parse_tool_call_completion_value(value: Any) -> tuple[str, str] | None:
+    structured_value = value
+    if isinstance(value, str):
+        try:
+            structured_value = json.loads(value)
+        except json.JSONDecodeError:
+            return None
+
+    if not isinstance(structured_value, dict):
+        return None
+
+    function_name = structured_value.get("name")
+    if not isinstance(function_name, str) or not function_name:
+        return None
+
+    try:
+        arguments = json.dumps(structured_value.get("arguments", {}))
+    except (TypeError, ValueError):
+        return None
+
+    return function_name, arguments
+
+
 def _update_usage_from_delta(
     delta: ResponseDeltaDict,
     usage: ResponseUsage,
@@ -251,6 +275,9 @@ def _process_state_event_for_output(
         output_items[output_index] = _AggregatedOutputItem(
             item_type=item_type,
             identifier=identifier,
+            function_name=identifier.removeprefix("tool_call:")
+            if item_type == "tool_call"
+            else "",
         )
 
     item = output_items[output_index]
@@ -267,6 +294,11 @@ def _process_state_event_for_output(
     elif event_type == "item_completed":
         if item.item_type == "tool_call":
             item.identifier = identifier
+            parsed_tool_call = _parse_tool_call_completion_value(event.get("value"))
+            if parsed_tool_call is not None:
+                item.function_name, item.arguments = parsed_tool_call
+            elif not item.function_name:
+                item.function_name = identifier.removeprefix("tool_call:")
         elif "value" in event:
             item.content = _value_to_string(event["value"])
 
@@ -286,10 +318,9 @@ def _build_output_items(
                 )
             )
         elif item.item_type == "tool_call":
-            function_name = item.identifier.removeprefix("tool_call:")
             result.append(
                 OutputFunctionCall(
-                    name=function_name,
+                    name=item.function_name,
                     arguments=item.arguments,
                     status=OutputStatus.COMPLETED,
                 )
@@ -414,14 +445,6 @@ def _process_state_event_for_streaming(
         elif event_type == "item_completed":
             if "value" in event:
                 item.accumulated_arguments = _value_to_string(event["value"])
-            mapped_events.append(
-                FunctionCallArgumentsDoneEvent(
-                    sequence_number=stream_state.next_sequence_number(),
-                    item_id=item.item_id,
-                    output_index=output_index,
-                    arguments=item.accumulated_arguments,
-                )
-            )
         return mapped_events
 
     if event_type == "item_started":
@@ -482,7 +505,20 @@ def _process_state_event_for_streaming(
     if event_type == "item_completed":
         item.status = OutputStatus.COMPLETED
         if item_type == "tool_call":
-            item.function_name = identifier.removeprefix("tool_call:")
+            parsed_tool_call = _parse_tool_call_completion_value(event.get("value"))
+            if parsed_tool_call is not None:
+                item.function_name, item.accumulated_arguments = parsed_tool_call
+            elif not item.function_name:
+                item.function_name = identifier.removeprefix("tool_call:")
+
+            mapped_events.append(
+                FunctionCallArgumentsDoneEvent(
+                    sequence_number=stream_state.next_sequence_number(),
+                    item_id=item.item_id,
+                    output_index=output_index,
+                    arguments=item.accumulated_arguments,
+                )
+            )
         elif "value" in event:
             item.accumulated_content = _value_to_string(event["value"])
 
