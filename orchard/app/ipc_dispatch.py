@@ -75,6 +75,7 @@ class IPCState:
         self.response_topic_prefix: bytes = b""
         self.response_topic_prefix_len: int = 0
         self.engine_pid_file: Path | None = None
+        self.engine_dead: bool = False
 
         self.global_context = weakref.ref(global_context)
 
@@ -270,4 +271,5 @@ class IPCState:
                         request_id,
                     )
             ipc_state.active_request_queues.clear()
+            ipc_state.engine_dead = True
             logger.info("Response dispatcher task finished.")

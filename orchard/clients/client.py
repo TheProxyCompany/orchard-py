@@ -202,6 +202,9 @@ class Client:
             - Streaming (single or batched): AsyncIterator[ClientDelta]
               (use delta.prompt_index to demultiplex batched streams)
         """
+        if self._ipc_state.engine_dead:
+            raise RuntimeError("Engine process is dead; cannot submit new requests.")
+
         is_batched = self._is_batched_messages(messages)
         conversations = self._normalize_messages(messages)
         batch_size = len(conversations)
@@ -336,6 +339,9 @@ class Client:
             `resp = await client.aresponses("llama3", input="hi")`
             `events = await client.aresponses("llama3", input="hi", stream=True)`
         """
+        if self._ipc_state.engine_dead:
+            raise RuntimeError("Engine process is dead; cannot submit new requests.")
+
         request_kwargs: dict[str, Any] = {
             "instructions": instructions,
             "tools": tools,
@@ -535,17 +541,25 @@ class Client:
 
     def _sync_iterator_bridge(self, async_iterator: AsyncIterator[T]) -> Iterator[T]:
         """Bridges an async iterator to a sync iterator."""
+        DELTA_TIMEOUT_S = 300  # 5 minutes max wait per delta
 
         async def _next_delta() -> T:
             return await async_iterator.__anext__()
 
         while True:
+            if self._ipc_state.engine_dead:
+                raise RuntimeError("Engine process is dead; cannot receive further deltas.")
             future = asyncio.run_coroutine_threadsafe(
                 _next_delta(),
                 self._sync_loop or asyncio.new_event_loop(),
             )
             try:
-                yield future.result()
+                yield future.result(timeout=DELTA_TIMEOUT_S)
+            except TimeoutError:
+                raise RuntimeError(
+                    f"Timed out waiting for inference delta after {DELTA_TIMEOUT_S}s. "
+                    "Engine may have crashed."
+                )
             except StopAsyncIteration:
                 break
 

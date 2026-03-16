@@ -67,3 +67,30 @@ async def test_ensure_loaded_raises_on_model_load_failed_event(monkeypatch):
     state, error, _ = registry.get_status(canonical_id)
     assert state == ModelLoadState.FAILED
     assert error == "missing shard"
+
+
+def test_handle_model_loaded_updates_minimum_memory_bytes():
+    ctx = GlobalContext()
+    ipc_state = IPCState(ctx)
+    registry = ModelRegistry(ipc_state)
+    canonical_id = "gemma/local"
+    registry._alias_cache[canonical_id.lower()] = canonical_id
+    registry._entries[canonical_id] = ModelEntry(
+        state=ModelLoadState.ACTIVATING,
+        info=ModelInfo(
+            model_id=canonical_id,
+            model_path="/tmp/gemma",
+            formatter=object(),
+        ),
+    )
+
+    registry.handle_model_loaded(
+        {
+            "event": "model_loaded",
+            "model_id": canonical_id,
+            "minimum_memory_bytes": 123456789,
+        }
+    )
+
+    assert registry._entries[canonical_id].info is not None
+    assert registry._entries[canonical_id].info.minimum_memory_bytes == 123456789

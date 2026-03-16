@@ -38,6 +38,7 @@ class ModelInfo:
     model_path: str
     formatter: ChatFormatter
     capabilities: dict[str, list[int]] | None = None
+    minimum_memory_bytes: int | None = None
 
 
 @dataclass(slots=True)
@@ -409,8 +410,10 @@ class ModelRegistry:
         status = response.get("status")
         if status == "ok":
             capabilities = self._parse_capabilities(response)
+            minimum_memory_bytes = self._parse_minimum_memory_bytes(response)
             try:
                 self.update_capabilities(canonical_id, capabilities)
+                self.update_minimum_memory_bytes(canonical_id, minimum_memory_bytes)
             finally:
                 await self._complete_activation(canonical_id, capabilities is not None)
             return
@@ -455,6 +458,23 @@ class ModelRegistry:
 
         entry.info.capabilities = normalized
 
+    def update_minimum_memory_bytes(
+        self, model_id: str, minimum_memory_bytes: int | None
+    ) -> None:
+        """Update the reported minimum memory for a given model."""
+        if minimum_memory_bytes is None:
+            return
+
+        canonical_id = self._canonicalize(model_id) or model_id
+        entry = self._entries.get(canonical_id)
+        if not entry or entry.info is None:
+            logger.warning(
+                "Received minimum memory for unknown model_id '%s'.", model_id
+            )
+            return
+
+        entry.info.minimum_memory_bytes = int(minimum_memory_bytes)
+
     def handle_model_loaded(self, payload: dict) -> None:
         """Handle model_loaded events emitted by the engine."""
         model_id = payload.get("model_id")
@@ -467,6 +487,15 @@ class ModelRegistry:
             self.update_capabilities(model_id, capabilities)
         except Exception:
             logger.exception("Failed to update capabilities for model '%s'.", model_id)
+
+        try:
+            self.update_minimum_memory_bytes(
+                model_id, payload.get("minimum_memory_bytes")
+            )
+        except Exception:
+            logger.exception(
+                "Failed to update minimum memory for model '%s'.", model_id
+            )
 
         entry = self._entries.get(model_id)
         if not entry:
@@ -574,6 +603,21 @@ class ModelRegistry:
                     return load_model_data.get("capabilities")
         except Exception:
             logger.exception("Failed to parse capabilities from management response.")
+        return None
+
+    def _parse_minimum_memory_bytes(self, response: dict) -> int | None:
+        try:
+            data_field = response.get("data", {})
+            if isinstance(data_field, dict):
+                load_model_data = data_field.get("load_model") or {}
+                if isinstance(load_model_data, dict):
+                    value = load_model_data.get("minimum_memory_bytes")
+                    if value is not None:
+                        return int(value)
+        except Exception:
+            logger.exception(
+                "Failed to parse minimum memory from management response."
+            )
         return None
 
     async def _complete_activation(
