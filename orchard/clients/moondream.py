@@ -22,7 +22,7 @@ SpatialRefs = list[SpatialRef]
 
 
 class MoondreamClient(Client):
-    model_id = "moondream3"
+    model_id = "moondream/moondream3-preview"
 
     def __init__(self, ipc_state: IPCState, model_registry: ModelRegistry):
         super().__init__(ipc_state, model_registry)

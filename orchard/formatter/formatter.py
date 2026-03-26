@@ -20,6 +20,9 @@ def determine_model_type(config: dict) -> str:
     if model_type == "moondream3" or model_type == "moondream":
         return "moondream3"
 
+    if model_type in ("qwen3_5", "qwen3_5_text"):
+        return "qwen3_5"
+
     return model_type
 
 
@@ -147,6 +150,9 @@ class ChatFormatter:
         Returns:
             A single, fully formatted string ready for tokenization.
         """
+        reasoning = reasoning or bool(
+            self.capabilities.get("thinking", {}).get("native", False)
+        )
         context = {
             "interactions": conversation,
             "add_generation_prompt": add_generation_prompt,

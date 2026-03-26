@@ -12,8 +12,7 @@ def get_client(
     """Get a client for a given model ID."""
     if model_id == MoondreamClient.model_id:
         return MoondreamClient(ipc_state, model_registry)
-    else:
-        return Client(ipc_state, model_registry)
+    return Client(ipc_state, model_registry)
 
 
 __all__ = ["Client", "MoondreamClient", "get_client"]

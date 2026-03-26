@@ -3,22 +3,21 @@ import pytest
 
 pytestmark = pytest.mark.asyncio
 
-MODEL_ID = "moondream3"
-
-
-async def test_chat_completion_best_of_selects_top_n(live_server):
+async def test_chat_completion_best_of_selects_top_n(
+    live_server, text_model_id, visible_text_completion_floor
+):
     """Ensure best_of fan-out returns only the top-n candidates while reflecting total work in usage."""
     server_url = live_server
     best_of = 3
     request_payload = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "messages": [
             {
                 "role": "user",
                 "content": "List one fun fact about penguins.",
             }
         ],
-        "max_completion_tokens": 8,
+        "max_completion_tokens": max(8, visible_text_completion_floor),
         "temperature": 0.2,
         "stream": False,
         "n": 1,
@@ -46,11 +45,13 @@ async def test_chat_completion_best_of_selects_top_n(live_server):
     print(choices[0]["message"]["content"])
 
 
-async def test_chat_completion_best_of_validation_less_than_n(live_server):
+async def test_chat_completion_best_of_validation_less_than_n(
+    live_server, text_model_id
+):
     """best_of must be greater than or equal to n."""
     server_url = live_server
     request_payload = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "messages": [{"role": "user", "content": "Say hello."}],
         "stream": False,
         "n": 2,
@@ -65,11 +66,13 @@ async def test_chat_completion_best_of_validation_less_than_n(live_server):
     assert response.status_code == 422
 
 
-async def test_chat_completion_best_of_streaming_disallowed(live_server):
+async def test_chat_completion_best_of_streaming_disallowed(
+    live_server, text_model_id
+):
     """Streaming responses should reject best_of fan-out."""
     server_url = live_server
     request_payload = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "messages": [{"role": "user", "content": "Stream a fun fact."}],
         "stream": True,
         "n": 1,

@@ -8,10 +8,10 @@ import pytest
 from orchard.clients import Client
 from orchard.server.models.responses.output import ResponseObject
 from orchard.server.models.responses.tools import Function
+from tests.conftest import ALL_MODELS
 
 pytestmark = pytest.mark.asyncio
 
-MODEL_IDS = ["meta-llama/Llama-3.1-8B-Instruct", "moondream3"]
 TOOL_MODEL_ID = "meta-llama/Llama-3.1-8B-Instruct"
 
 WEATHER_TOOL = Function(
@@ -30,7 +30,7 @@ WEATHER_TOOL = Function(
 )
 
 
-@pytest.mark.parametrize("model_id", MODEL_IDS)
+@pytest.mark.parametrize("model_id", ALL_MODELS, ids=lambda m: m.split("/")[-1])
 async def test_client_responses_non_streaming_text(
     client: Client, model_id: str
 ) -> None:
@@ -50,7 +50,7 @@ async def test_client_responses_non_streaming_text(
     assert result.usage.output_tokens > 0
 
 
-@pytest.mark.parametrize("model_id", MODEL_IDS)
+@pytest.mark.parametrize("model_id", ALL_MODELS, ids=lambda m: m.split("/")[-1])
 async def test_client_responses_non_streaming_message_items(
     client: Client, model_id: str
 ) -> None:
@@ -71,7 +71,7 @@ async def test_client_responses_non_streaming_message_items(
     assert "4" in result.output_text
 
 
-@pytest.mark.parametrize("model_id", MODEL_IDS)
+@pytest.mark.parametrize("model_id", ALL_MODELS, ids=lambda m: m.split("/")[-1])
 async def test_client_responses_streaming_text(
     client: Client, model_id: str
 ) -> None:
@@ -105,7 +105,7 @@ async def test_client_responses_streaming_text(
     assert accumulated.strip()
 
 
-@pytest.mark.parametrize("model_id", MODEL_IDS)
+@pytest.mark.parametrize("model_id", ALL_MODELS, ids=lambda m: m.split("/")[-1])
 async def test_client_responses_streaming_incomplete(
     client: Client, model_id: str
 ) -> None:
@@ -226,7 +226,7 @@ async def test_client_responses_tool_result_continuation(client: Client) -> None
     assert any(token in text for token in ("65", "fog", "san francisco"))
 
 
-@pytest.mark.parametrize("model_id", MODEL_IDS)
+@pytest.mark.parametrize("model_id", ALL_MODELS, ids=lambda m: m.split("/")[-1])
 async def test_client_responses_instructions(client: Client, model_id: str) -> None:
     result = await client.aresponses(
         model_id,
@@ -242,7 +242,7 @@ async def test_client_responses_instructions(client: Client, model_id: str) -> N
         assert "orchard" in text
 
 
-@pytest.mark.parametrize("model_id", MODEL_IDS)
+@pytest.mark.parametrize("model_id", ALL_MODELS, ids=lambda m: m.split("/")[-1])
 async def test_client_responses_sync_wrapper(client: Client, model_id: str) -> None:
     non_streaming = client.responses(
         model_id,
@@ -269,7 +269,7 @@ async def test_client_responses_sync_wrapper(client: Client, model_id: str) -> N
     assert events[-1].type == "done"
 
 
-@pytest.mark.parametrize("model_id", MODEL_IDS)
+@pytest.mark.parametrize("model_id", ALL_MODELS, ids=lambda m: m.split("/")[-1])
 async def test_client_responses_text_helpers(client: Client, model_id: str) -> None:
     async_chunks = [
         chunk

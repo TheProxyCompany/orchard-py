@@ -5,15 +5,12 @@ import pytest
 
 pytestmark = pytest.mark.asyncio
 
-MODEL_ID = "meta-llama/Llama-3.1-8B-Instruct"
-
-
 # ---------------------------------------------------------------------------
 # 8. Structured output via response format
 # ---------------------------------------------------------------------------
 
 
-async def test_responses_structured_json_schema(live_server):
+async def test_responses_structured_json_schema(live_server, text_model_id):
     """The text field with json_schema format produces valid structured output."""
     schema = {
         "type": "object",
@@ -25,7 +22,7 @@ async def test_responses_structured_json_schema(live_server):
     }
 
     payload = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "input": "What is the capital of France and its approximate population? Respond as JSON.",
         "temperature": 0.0,
         "max_output_tokens": 64,

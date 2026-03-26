@@ -3,13 +3,10 @@ import pytest
 
 pytestmark = pytest.mark.asyncio
 
-MODEL_ID = "moondream3"
-
-
-async def test_chat_completion_respects_stop_sequence(live_server):
+async def test_chat_completion_respects_stop_sequence(live_server, text_model_id):
     server_url = live_server
     payload = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "messages": [
             {
                 "role": "user",

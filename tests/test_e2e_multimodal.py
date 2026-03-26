@@ -6,18 +6,17 @@ import pytest
 
 pytestmark = pytest.mark.asyncio
 
-MODEL_ID = "moondream3"
 APPLE_IMAGE_PATH = Path(__file__).parent / "assets" / "apple.jpg"
 MOONDREAM_IMAGE_PATH = Path(__file__).parent / "assets" / "moondream.jpg"
 
 
-async def test_multimodal_e2e_apple_image(live_server):
+async def test_multimodal_e2e_apple_image(live_server, vision_model_id):
     image_bytes = APPLE_IMAGE_PATH.read_bytes()
     encoded_image = base64.b64encode(image_bytes).decode("utf-8")
     image_data_url = f"data:image/jpeg;base64,{encoded_image}"
 
     request_payload = {
-        "model": MODEL_ID,
+        "model": vision_model_id,
         "temperature": 0.0,
         "input": [
             {
@@ -52,13 +51,13 @@ async def test_multimodal_e2e_apple_image(live_server):
     assert "apple" in output_text
 
 
-async def test_multimodal_e2e_moondream_image(live_server):
+async def test_multimodal_e2e_moondream_image(live_server, vision_model_id):
     image_bytes = MOONDREAM_IMAGE_PATH.read_bytes()
     encoded_image = base64.b64encode(image_bytes).decode("utf-8")
     image_data_url = f"data:image/jpeg;base64,{encoded_image}"
 
     request_payload = {
-        "model": MODEL_ID,
+        "model": vision_model_id,
         "temperature": 0.0,
         "input": [
             {

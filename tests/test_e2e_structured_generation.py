@@ -5,11 +5,10 @@ import pytest
 
 pytestmark = pytest.mark.asyncio
 
-MODEL_ID = "moondream3"
-
-
 @pytest.mark.parametrize("temperature", [0.0])
-async def test_chat_completion_structured_json_response(live_server, temperature):
+async def test_chat_completion_structured_json_response(
+    live_server, text_model_id, temperature
+):
     server_url = live_server
     schema = {
         "type": "object",
@@ -28,7 +27,7 @@ async def test_chat_completion_structured_json_response(live_server, temperature
         "required": ["color", "confidence"],
     }
     payload = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "messages": [
             {
                 "role": "user",
@@ -86,7 +85,7 @@ async def test_chat_completion_structured_json_response(live_server, temperature
     if "confidence" in parsed:
         confidence = parsed["confidence"]
         opacity = int(confidence * 255)
-        colored_text = f"\033[38;2;{r};{g};{b};{opacity}m{MODEL_ID}'s color is rgb({r}, {g}, {b}) with confidence {confidence} at temperature {temperature}.\033[0m"
+        colored_text = f"\033[38;2;{r};{g};{b};{opacity}m{text_model_id}'s color is rgb({r}, {g}, {b}) with confidence {confidence} at temperature {temperature}.\033[0m"
     else:
-        colored_text = f"\033[38;2;{r};{g};{b}m{MODEL_ID}'s color is rgb({r}, {g}, {b}) at temperature {temperature}. No confidence score provided.\033[0m"
+        colored_text = f"\033[38;2;{r};{g};{b}m{text_model_id}'s color is rgb({r}, {g}, {b}) at temperature {temperature}. No confidence score provided.\033[0m"
     print(colored_text)

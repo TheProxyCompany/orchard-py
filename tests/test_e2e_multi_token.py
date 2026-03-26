@@ -5,20 +5,19 @@ import pytest
 
 pytestmark = pytest.mark.asyncio
 
-MODEL_ID = "meta-llama/Llama-3.1-8B-Instruct"
-
-
-async def test_chat_completion_multi_token_non_streaming(live_server):
+async def test_chat_completion_multi_token_non_streaming(
+    live_server, text_model_id, visible_text_completion_floor
+):
     """
     Tests that the engine can correctly answer a simple question,
     verifying the RoPE offset logic is fixed.
     """
     server_url = live_server
     request_payload = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "messages": [{"role": "user", "content": "What is the capital of France?"}],
         "temperature": 0.0,  # Use greedy sampling for a deterministic answer
-        "max_completion_tokens": 10,
+        "max_completion_tokens": max(10, visible_text_completion_floor),
         "logprobs": True,
         "top_logprobs": 5,
         "stream": False,
@@ -78,18 +77,20 @@ async def test_chat_completion_multi_token_non_streaming(live_server):
     )
 
 
-async def test_chat_completion_multi_token_streaming(live_server):
+async def test_chat_completion_multi_token_streaming(
+    live_server, text_model_id, visible_text_completion_floor
+):
     """
     Tests a multi-token, streaming chat completion request.
     Verifies that the system streams multiple tokens correctly.
     """
     server_url = live_server
     request_payload = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "messages": [
             {"role": "user", "content": "Tell me a very short story in one sentence."}
         ],
-        "max_completion_tokens": 10,
+        "max_completion_tokens": max(10, visible_text_completion_floor),
         "temperature": 0.0,
         "stream": True,
     }

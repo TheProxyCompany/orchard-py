@@ -3,19 +3,19 @@ import pytest
 
 pytestmark = pytest.mark.asyncio
 
-MODEL_ID = "meta-llama/Llama-3.1-8B-Instruct"
 
-
-async def test_chat_completion_first_token(live_server):
+async def test_chat_completion_first_token(
+    live_server, text_model_id, first_visible_token_budget
+):
     """
     Tests a basic, non-streaming chat completion request to the live server.
     Verifies that the system can process a request and return a valid response.
     """
     server_url = live_server
     request_payload = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "messages": [{"role": "user", "content": "Hello!"}],
-        "max_completion_tokens": 1,  # We only care about the first token for now
+        "max_completion_tokens": first_visible_token_budget,
         "temperature": 1.0,  # Use greedy sampling which is implemented
         "stream": False,
     }
@@ -37,22 +37,20 @@ async def test_chat_completion_first_token(live_server):
     choice = response_data["choices"][0]
     assert "message" in choice
     assert "content" in choice["message"]
-    # We fixed the bug, so content should not be empty.
     assert choice["message"]["content"] is not None
     assert len(choice["message"]["content"]) > 0
 
     assert "finish_reason" in choice
-    # For a 1-token generation, the reason should be 'length'.
     assert choice["finish_reason"].lower() in ["length", "stop"]
 
 
-async def test_chat_completion_multi_token(live_server):
+async def test_chat_completion_multi_token(live_server, text_model_id):
     """
     Tests a non-streaming request that requires multiple tokens to be generated.
     """
     server_url = live_server
     request_payload = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "messages": [
             {
                 "role": "user",

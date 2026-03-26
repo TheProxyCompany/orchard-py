@@ -11,8 +11,10 @@ MOONDREAM_IMAGE_PATH = Path(__file__).parent / "assets" / "moondream.jpg"
 BOTTLES_IMAGE_PATH = Path(__file__).parent / "assets" / "bottles.jpg"
 
 
-def test_moondream_reasoning_grounding(engine: InferenceEngine):
-    client = engine.client(MoondreamClient.model_id)
+def test_moondream_reasoning_grounding(
+    engine: InferenceEngine, vision_model_id: str
+):
+    client = engine.client(vision_model_id)
     assert isinstance(client, MoondreamClient)
     try:
         with Image.open(BOTTLES_IMAGE_PATH) as img:
@@ -56,9 +58,11 @@ def test_moondream_reasoning_grounding(engine: InferenceEngine):
 
 
 @pytest.mark.parametrize("length", ["normal", "short", "long"])
-def test_moondream_caption(engine: InferenceEngine, length: str):
+def test_moondream_caption(
+    engine: InferenceEngine, vision_model_id: str, length: str
+):
     """Test caption generation for an image."""
-    client = engine.client(MoondreamClient.model_id)
+    client = engine.client(vision_model_id)
     assert isinstance(client, MoondreamClient)
     try:
         with Image.open(APPLE_IMAGE_PATH) as img:
@@ -80,9 +84,9 @@ def test_moondream_caption(engine: InferenceEngine, length: str):
     print(f"{length.capitalize()} caption: {caption}")
 
 
-def test_moondream_detect(engine: InferenceEngine):
+def test_moondream_detect(engine: InferenceEngine, vision_model_id: str):
     """Test object detection with bounding boxes."""
-    client = engine.client(MoondreamClient.model_id)
+    client = engine.client(vision_model_id)
     assert isinstance(client, MoondreamClient)
     try:
         with Image.open(APPLE_IMAGE_PATH) as img:
@@ -99,9 +103,11 @@ def test_moondream_detect(engine: InferenceEngine):
     print(objects)
 
 
-def test_moondream_query_with_spatial_refs(engine: InferenceEngine):
+def test_moondream_query_with_spatial_refs(
+    engine: InferenceEngine, vision_model_id: str
+):
     """Test query with spatial reference (point)."""
-    client = engine.client(MoondreamClient.model_id)
+    client = engine.client(vision_model_id)
     assert isinstance(client, MoondreamClient)
     try:
         with Image.open(APPLE_IMAGE_PATH) as img:
@@ -122,9 +128,9 @@ def test_moondream_query_with_spatial_refs(engine: InferenceEngine):
     assert "apple" in answer
 
 
-def test_moondream_point(engine: InferenceEngine):
+def test_moondream_point(engine: InferenceEngine, vision_model_id: str):
     """Test pointing to objects in an image."""
-    client = engine.client(MoondreamClient.model_id)
+    client = engine.client(vision_model_id)
     assert isinstance(client, MoondreamClient)
     try:
         with Image.open(MOONDREAM_IMAGE_PATH) as img:
@@ -141,9 +147,9 @@ def test_moondream_point(engine: InferenceEngine):
     print(points)
 
 
-def test_moondream_detect_gaze(engine: InferenceEngine):
+def test_moondream_detect_gaze(engine: InferenceEngine, vision_model_id: str):
     """Test gaze detection with deterministic output (temp=0)."""
-    client = engine.client(MoondreamClient.model_id)
+    client = engine.client(vision_model_id)
     assert isinstance(client, MoondreamClient)
     try:
         with Image.open(MOONDREAM_IMAGE_PATH) as img:

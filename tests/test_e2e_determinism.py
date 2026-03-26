@@ -4,15 +4,14 @@ import pytest
 pytestmark = pytest.mark.asyncio
 
 
-@pytest.mark.parametrize("model_id", ["meta-llama/Llama-3.1-8B-Instruct", "moondream3"])
 @pytest.mark.parametrize("batch_size", [2, 4, 8, 16])
-async def test_multi_candidate_determinism(live_server, model_id, batch_size):
+async def test_multi_candidate_determinism(live_server, any_model_id, batch_size):
     """
     Tests a non-streaming request that requires multiple candidates to be generated.
     """
     server_url = live_server
     request_payload = {
-        "model": model_id,
+        "model": any_model_id,
         "messages": [
             {
                 "role": "user",
@@ -57,14 +56,13 @@ async def test_multi_candidate_determinism(live_server, model_id, batch_size):
     assert drifts == 0, f"Expected 0 drifts, got {drifts}"
 
 
-@pytest.mark.parametrize("model_id", ["meta-llama/Llama-3.1-8B-Instruct", "moondream3"])
-async def test_sequential_request_determinism(live_server, model_id):
+async def test_sequential_request_determinism(live_server, any_model_id):
     """
     Tests a sequential request that generates the same content multiple times.
     """
     server_url = live_server
     request_payload = {
-        "model": model_id,
+        "model": any_model_id,
         "messages": [
             {
                 "role": "user",

@@ -33,13 +33,28 @@ SERVER_LOG_PATH = LOG_DIR / "python_server.test.log"
 ENGINE_LOG_PATH = LOG_DIR / "engine.test.log"
 CLIENT_LOG_PATH = LOG_DIR / "client.test.log"
 
-# Model identifiers - use HF repo IDs or aliases
-MODEL_IDS = [
-    "meta-llama/Llama-3.1-8B-Instruct",  # HF repo ID
-    "moondream3",  # alias
+TEXT_MODELS = [
+    "meta-llama/Llama-3.1-8B-Instruct",
+    "google/gemma-3-4b-it",
+    "Qwen/Qwen3.5-4B",
 ]
 
+VISION_MODELS = [
+    "moondream/moondream3-preview",
+]
+
+ALL_MODELS = TEXT_MODELS + VISION_MODELS
+
+FIRST_VISIBLE_TOKEN_BUDGETS = {
+    "Qwen/Qwen3.5-4B": 32,
+}
+
+VISIBLE_TEXT_COMPLETION_FLOORS = {
+    "Qwen/Qwen3.5-4B": 128,
+}
+
 SERVER_PORT = 8001
+SERVER_STARTUP_TIMEOUT_SECONDS = 120.0
 
 # Ensure we start with a clean slate in case a prior run crashed and left the engine up.
 try:
@@ -65,7 +80,7 @@ def engine() -> Generator[InferenceEngine, None, None]:
             client_log_file=CLIENT_LOG_PATH,
             engine_log_file=ENGINE_LOG_PATH,
             startup_timeout=120.0,
-            load_models=MODEL_IDS,
+            load_models=ALL_MODELS,
         )
         logger.info("Local Engine is ready. Yielding engine instance.")
         yield engine_instance
@@ -83,6 +98,31 @@ def client(engine: InferenceEngine) -> Generator[Client, None]:
     client = engine.client()
     yield client
     client.close()
+
+
+@pytest.fixture(params=TEXT_MODELS, ids=lambda m: m.split("/")[-1])
+def text_model_id(request: pytest.FixtureRequest) -> str:
+    return request.param
+
+
+@pytest.fixture(params=VISION_MODELS, ids=lambda m: m.split("/")[-1])
+def vision_model_id(request: pytest.FixtureRequest) -> str:
+    return request.param
+
+
+@pytest.fixture(params=ALL_MODELS, ids=lambda m: m.split("/")[-1])
+def any_model_id(request: pytest.FixtureRequest) -> str:
+    return request.param
+
+
+@pytest.fixture
+def first_visible_token_budget(text_model_id: str) -> int:
+    return FIRST_VISIBLE_TOKEN_BUDGETS.get(text_model_id, 1)
+
+
+@pytest.fixture
+def visible_text_completion_floor(text_model_id: str) -> int:
+    return VISIBLE_TEXT_COMPLETION_FLOORS.get(text_model_id, 0)
 
 
 @pytest_asyncio.fixture(scope="session")
@@ -112,7 +152,7 @@ async def live_server():
         "--engine-log-file",
         str(ENGINE_LOG_PATH),
         "--models",
-        *MODEL_IDS,
+        *ALL_MODELS,
     ]
 
     server_proc = None
@@ -128,7 +168,7 @@ async def live_server():
         # Wait for the server to be connectable
         server_url = f"http://localhost:{SERVER_PORT}"
         async with httpx.AsyncClient() as client:
-            for _ in range(30):
+            for _ in range(int(SERVER_STARTUP_TIMEOUT_SECONDS / 0.5)):
                 try:
                     await client.get(f"{server_url}/health")
                     logger.info("FastAPI live_server is up and healthy.")

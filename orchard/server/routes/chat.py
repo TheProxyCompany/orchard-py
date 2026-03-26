@@ -255,6 +255,17 @@ async def handle_completion_request(
     except HTTPException:
         await exit_stack.aclose()
         raise
+    except InferenceError as exc:
+        await exit_stack.aclose()
+        logger.error(
+            "Inference error during chat request %d: %s",
+            current_request_id,
+            exc,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
     except Exception as e:
         await exit_stack.aclose()
         logger.error("Error submitting request: %s", e, exc_info=True)
@@ -402,8 +413,13 @@ async def gather_non_streaming_batch_response(
                     state["logprobs_entries"].append(logprob_entry)
 
                 finish_reason = delta.get("finish_reason") or "unknown"
-                if finish_reason.lower() == "error" and delta_content:
-                    state["error_message"] = delta_content
+                if finish_reason.lower() == "error":
+                    state["error_message"] = (
+                        delta.get("error_message")
+                        or delta_content
+                        or delta.get("message")
+                        or "Inference request failed."
+                    )
 
                 if delta.get("is_final_delta", False) and not state["completed"]:
                     state["finish_reason"] = finish_reason
@@ -452,6 +468,18 @@ async def gather_non_streaming_batch_response(
         for prompt_state in prompt_states
         for candidate_state in prompt_state
     )
+
+    first_error = next(
+        (
+            candidate_state["error_message"]
+            for prompt_state in prompt_states
+            for candidate_state in prompt_state
+            if candidate_state["error_message"] is not None
+        ),
+        None,
+    )
+    if first_error is not None:
+        raise InferenceError(first_error)
 
     selections: list[list[tuple[float, int, dict[str, Any]]]] = []
     for prompt_idx, candidate_states in enumerate(prompt_states):

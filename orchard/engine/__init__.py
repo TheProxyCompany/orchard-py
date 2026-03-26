@@ -25,6 +25,7 @@ class ClientDelta(BaseModel):
     inline_content_bytes: int | None = None
     modal_decoder_id: str | None = None
     modal_bytes_b64: str | None = None
+    error_message: str | None = None
     is_final: bool = Field(default=False, alias="is_final_delta")
     finish_reason: str | None = None
 

@@ -9,8 +9,6 @@ from orchard.engine import ClientDelta, ClientResponse
 
 pytestmark = pytest.mark.asyncio
 
-
-@pytest.mark.parametrize("model_id", ["meta-llama/Llama-3.1-8B-Instruct", "moondream3"])
 @pytest.mark.parametrize(
     "prompt",
     [
@@ -20,11 +18,11 @@ pytestmark = pytest.mark.asyncio
 )
 async def test_client_chat_non_streaming(
     client: Client,
-    model_id: str,
+    any_model_id: str,
     prompt: str,
 ) -> None:
     response = await client.achat(
-        model_id,
+        any_model_id,
         [
             {
                 "role": "user",
@@ -38,18 +36,17 @@ async def test_client_chat_non_streaming(
     print(f"User: {prompt}")
     assert isinstance(response, ClientResponse)
     assert response.text.strip()
-    print(f"{model_id}: {response.text}")
+    print(f"{any_model_id}: {response.text}")
     assert response.usage.completion_tokens > 0
     assert response.usage.completion_tokens == 5
 
 
-@pytest.mark.parametrize("model_id", ["meta-llama/Llama-3.1-8B-Instruct", "moondream3"])
 async def test_client_chat_non_streaming_batched_waits_for_all_prompts(
     client: Client,
-    model_id: str,
+    any_model_id: str,
 ) -> None:
     responses = await client.achat(
-        model_id,
+        any_model_id,
         [
             [{"role": "user", "content": "Reply with exactly one word: yes"}],
             [
@@ -74,8 +71,6 @@ async def test_client_chat_non_streaming_batched_waits_for_all_prompts(
         assert response.deltas
         assert response.deltas[-1].is_final
 
-
-@pytest.mark.parametrize("model_id", ["meta-llama/Llama-3.1-8B-Instruct", "moondream3"])
 @pytest.mark.parametrize(
     "prompt",
     [
@@ -84,17 +79,17 @@ async def test_client_chat_non_streaming_batched_waits_for_all_prompts(
     ],
 )
 async def test_client_chat_streaming(
-    client: Client, model_id: str, prompt: str
+    client: Client, any_model_id: str, prompt: str
 ) -> None:
     stream = client.chat(
-        model_id,
+        any_model_id,
         [{"role": "user", "content": prompt}],
         stream=True,
         temperature=0.7,
         max_generated_tokens=96,
     )
     print(f"User: {prompt}")
-    print(f"{model_id}: ", end="", flush=True)
+    print(f"{any_model_id}: ", end="", flush=True)
     assert isinstance(stream, Iterator)
     deltas: list[ClientDelta] = []
     content = ""

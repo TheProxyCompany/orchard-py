@@ -3,17 +3,14 @@ import pytest
 
 pytestmark = pytest.mark.asyncio
 
-MODEL_ID = "moondream3"
-
-
-async def test_chat_completion_with_logprobs(live_server):
+async def test_chat_completion_with_logprobs(live_server, text_model_id):
     """
     Tests a chat completion request with logprobs enabled.
     Verifies that the system can return top log probabilities for each generated token.
     """
     server_url = live_server
     request_payload = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "messages": [{"role": "user", "content": "Say hello"}],
         "max_completion_tokens": 3,  # Generate a few tokens
         "temperature": 1.0,
@@ -73,13 +70,13 @@ async def test_chat_completion_with_logprobs(live_server):
                 assert logprob_values == sorted(logprob_values, reverse=True)
 
 
-async def test_chat_completion_without_logprobs(live_server):
+async def test_chat_completion_without_logprobs(live_server, text_model_id):
     """
     Tests that when logprobs is not requested, they are not included in the response.
     """
     server_url = live_server
     request_payload = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "messages": [{"role": "user", "content": "Say hello"}],
         "max_completion_tokens": 3,
         "temperature": 1.0,
@@ -100,13 +97,13 @@ async def test_chat_completion_without_logprobs(live_server):
     assert choice.get("logprobs") is None
 
 
-async def test_chat_completion_logprobs_streaming(live_server):
+async def test_chat_completion_logprobs_streaming(live_server, text_model_id):
     """
     Tests that logprobs work correctly with streaming responses.
     """
     server_url = live_server
     request_payload = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "messages": [{"role": "user", "content": "Count to three"}],
         "max_completion_tokens": 5,
         "temperature": 1.0,

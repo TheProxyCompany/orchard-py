@@ -6,8 +6,6 @@ from helpers import parse_sse_events
 
 pytestmark = pytest.mark.asyncio
 
-MODEL_ID = "meta-llama/Llama-3.1-8B-Instruct"
-
 WEATHER_TOOL = {
     "type": "function",
     "name": "get_weather",
@@ -30,10 +28,10 @@ WEATHER_TOOL = {
 # ---------------------------------------------------------------------------
 
 
-async def test_responses_tool_call_non_streaming(live_server):
+async def test_responses_tool_call_non_streaming(live_server, text_model_id):
     """Model emits a function call when given tools and a triggering prompt."""
     payload = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "input": [
             {
                 "type": "message",
@@ -79,10 +77,10 @@ async def test_responses_tool_call_non_streaming(live_server):
 # ---------------------------------------------------------------------------
 
 
-async def test_responses_tool_call_streaming(live_server):
+async def test_responses_tool_call_streaming(live_server, text_model_id):
     """Streaming tool call produces the correct SSE event sequence."""
     payload = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "input": [
             {
                 "type": "message",
@@ -149,11 +147,11 @@ async def test_responses_tool_call_streaming(live_server):
 # ---------------------------------------------------------------------------
 
 
-async def test_responses_tool_result_continuation(live_server):
+async def test_responses_tool_result_continuation(live_server, text_model_id):
     """Client sends tool result back and model continues with a message."""
     # Turn 1: trigger tool call
     payload_1 = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "input": [
             {
                 "type": "message",
@@ -184,7 +182,7 @@ async def test_responses_tool_result_continuation(live_server):
 
     # Turn 2: send back the tool result
     payload_2 = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "input": [
             {
                 "type": "message",

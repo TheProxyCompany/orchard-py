@@ -24,13 +24,6 @@ __all__ = [
     "ResolvedModel",
 ]
 
-# Minimal aliases for unambiguous models only.
-# For model families with variants (llama, gemma), users specify the full HF repo ID.
-ALIASES: dict[str, str] = {
-    "moondream3": "moondream/moondream3-preview",
-}
-
-
 @dataclass(slots=True)
 class ResolvedModel:
     """Result of resolving a model identifier to a local path."""
@@ -55,8 +48,7 @@ class ModelResolver:
 
     Resolution order:
     1. Local filesystem path (absolute or relative) -> use directly
-    2. Known alias -> map to HF repo ID, then resolve via HuggingFace
-    3. Treat as HF repo ID -> resolve via HuggingFace
+    2. Treat as HF repo ID -> resolve via HuggingFace
     """
 
     def __init__(self):
@@ -69,8 +61,7 @@ class ModelResolver:
         Args:
             requested_id: Model identifier - can be:
                 - Local path: /path/to/model or ./relative/path
-                - HF repo ID: meta-llama/Llama-3.1-8B-Instruct (primary interface)
-                - Alias: moondream3 (only for unambiguous models)
+                - HF repo ID: meta-llama/Llama-3.1-8B-Instruct
 
         Returns:
             ResolvedModel with the local path and metadata.
@@ -93,14 +84,7 @@ class ModelResolver:
             self._resolved_cache[cache_key] = resolved
             return resolved
 
-        # 2. Known alias -> map to HF repo ID
-        if identifier.lower() in ALIASES:
-            hf_repo = ALIASES[identifier.lower()]
-            resolved = self._resolve_huggingface(hf_repo, requested_alias=identifier)
-            self._resolved_cache[cache_key] = resolved
-            return resolved
-
-        # 3. Treat as HF repo ID
+        # 2. Treat as HF repo ID
         resolved = self._resolve_huggingface(identifier)
         self._resolved_cache[cache_key] = resolved
         return resolved
@@ -122,7 +106,7 @@ class ModelResolver:
         return None
 
     def _resolve_huggingface(
-        self, repo_id: str, requested_alias: str | None = None
+        self, repo_id: str
     ) -> ResolvedModel:
         """Resolve a HuggingFace repo ID to a local cache path.
 
@@ -162,10 +146,8 @@ class ModelResolver:
                     f"Failed to download model '{repo_id}' from HuggingFace: {e}"
                 ) from e
 
-        # Use the alias as canonical_id if provided, otherwise use repo_id
-        canonical_id = requested_alias or repo_id
         return self._build_resolved_model(
-            path, source=source, canonical_id=canonical_id, hf_repo=repo_id
+            path, source=source, canonical_id=repo_id, hf_repo=repo_id
         )
 
     def _build_resolved_model(

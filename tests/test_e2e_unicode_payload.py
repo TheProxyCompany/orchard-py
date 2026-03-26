@@ -5,20 +5,19 @@ import pytest
 
 pytestmark = pytest.mark.asyncio
 
-MODEL_ID = "moondream3"
-
-
-async def test_unicode_payload_round_trip(live_server):
+async def test_unicode_payload_round_trip(
+    live_server, text_model_id, visible_text_completion_floor
+):
     target = "😊" * 40  # 40 multi-byte characters (> MAX_INLINE_CONTENT_BYTES)
     replacement_char = "\ufffd"
 
     request_payload = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "messages": [
             {"role": "user", "content": "Respond with this emoji: " + target},
         ],
         "temperature": 0.0,
-        "max_completion_tokens": 10,
+        "max_completion_tokens": max(10, visible_text_completion_floor),
         "stream": True,
     }
 

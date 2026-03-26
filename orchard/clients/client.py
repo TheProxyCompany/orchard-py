@@ -27,6 +27,7 @@ from orchard.ipc.utils import (
     normalise_delta_payload,
     release_delta_resources,
 )
+from orchard.server.exceptions import InferenceError
 from orchard.server.models.responses import OutputTextDeltaEvent, ResponseObject
 
 logger = logging.getLogger(__name__)
@@ -627,6 +628,18 @@ class Client:
         return usage
 
     def _aggregate_response(self, deltas: list[ClientDelta]) -> ClientResponse:
+        error_message = next(
+            (
+                delta.error_message or delta.content or "Inference request failed."
+                for delta in deltas
+                if delta.error_message
+                or (delta.finish_reason or "").lower() == "error"
+            ),
+            None,
+        )
+        if error_message is not None:
+            raise InferenceError(error_message)
+
         aggregated_text = "".join(
             filter(None, (delta.content or "" for delta in deltas))
         )

@@ -6,19 +6,18 @@ import pytest
 
 pytestmark = pytest.mark.asyncio
 
-MODEL_ID = "meta-llama/Llama-3.1-8B-Instruct"
-
-
-async def test_chat_completion_multi_candidate_non_streaming(live_server):
+async def test_chat_completion_multi_candidate_non_streaming(
+    live_server, text_model_id, visible_text_completion_floor
+):
     """Verify non-streaming multi-candidate responses return the expected number of choices."""
     server_url = live_server
     candidate_count = 3
     request_payload = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "messages": [
             {"role": "user", "content": "Provide three brief facts about the moon."}
         ],
-        "max_completion_tokens": 10,
+        "max_completion_tokens": max(10, visible_text_completion_floor),
         "temperature": 0.0,
         "stream": False,
         "n": candidate_count,
@@ -42,19 +41,21 @@ async def test_chat_completion_multi_candidate_non_streaming(live_server):
         assert choice["finish_reason"]
 
 
-async def test_chat_completion_multi_candidate_streaming(live_server):
+async def test_chat_completion_multi_candidate_streaming(
+    live_server, text_model_id, visible_text_completion_floor
+):
     """Verify streaming multi-candidate responses can be reconstructed per candidate index."""
     server_url = live_server
     candidate_count = 3
     request_payload = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "messages": [
             {
                 "role": "user",
                 "content": "Stream three short tips for studying effectively.",
             }
         ],
-        "max_completion_tokens": 10,
+        "max_completion_tokens": max(10, visible_text_completion_floor),
         "temperature": 0.0,
         "stream": True,
         "n": candidate_count,

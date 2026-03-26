@@ -4,18 +4,15 @@ from helpers import parse_sse_events
 
 pytestmark = pytest.mark.asyncio
 
-MODEL_ID = "meta-llama/Llama-3.1-8B-Instruct"
-
-
 # ---------------------------------------------------------------------------
 # Non-streaming text generation
 # ---------------------------------------------------------------------------
 
 
-async def test_responses_non_streaming_string_input(live_server):
+async def test_responses_non_streaming_string_input(live_server, text_model_id):
     """String shorthand input produces a valid response."""
     payload = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "input": "Say hello in one sentence.",
         "temperature": 0.0,
         "max_output_tokens": 32,
@@ -30,7 +27,7 @@ async def test_responses_non_streaming_string_input(live_server):
     assert data["object"] == "response"
     assert data["id"].startswith("resp_")
     assert data["status"] == "completed"
-    assert data["model"] == MODEL_ID
+    assert data["model"] == text_model_id
     assert isinstance(data["created_at"], int)
 
     assert isinstance(data["output"], list)
@@ -50,10 +47,10 @@ async def test_responses_non_streaming_string_input(live_server):
     assert usage["total_tokens"] == usage["input_tokens"] + usage["output_tokens"]
 
 
-async def test_responses_non_streaming_message_items(live_server):
+async def test_responses_non_streaming_message_items(live_server, text_model_id):
     """Array-of-items input produces a valid response."""
     payload = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "input": [
             {
                 "type": "message",
@@ -77,10 +74,10 @@ async def test_responses_non_streaming_message_items(live_server):
     print(f"Response: {text}")
 
 
-async def test_responses_echo_fields(live_server):
+async def test_responses_echo_fields(live_server, text_model_id):
     """Configuration fields are echoed back in the response."""
     payload = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "input": "Hi",
         "temperature": 0.5,
         "top_p": 0.9,
@@ -104,10 +101,10 @@ async def test_responses_echo_fields(live_server):
 # ---------------------------------------------------------------------------
 
 
-async def test_responses_streaming_event_sequence(live_server):
+async def test_responses_streaming_event_sequence(live_server, text_model_id):
     """Streaming produces the correct SSE event sequence."""
     payload = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "input": "Say hello in one sentence.",
         "temperature": 0.0,
         "max_output_tokens": 32,
@@ -145,10 +142,10 @@ async def test_responses_streaming_event_sequence(live_server):
     assert len(seq_numbers) == len(set(seq_numbers))
 
 
-async def test_responses_streaming_delta_accumulation(live_server):
+async def test_responses_streaming_delta_accumulation(live_server, text_model_id):
     """Accumulated deltas match the done event's full text."""
     payload = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "input": "Count from 1 to 5.",
         "temperature": 0.0,
         "max_output_tokens": 64,
@@ -176,10 +173,10 @@ async def test_responses_streaming_delta_accumulation(live_server):
     print(f"Streamed: {accumulated}")
 
 
-async def test_responses_streaming_completed_snapshot(live_server):
+async def test_responses_streaming_completed_snapshot(live_server, text_model_id):
     """The response.completed snapshot has correct status and usage."""
     payload = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "input": "Hi",
         "temperature": 0.0,
         "max_output_tokens": 64,
@@ -206,10 +203,10 @@ async def test_responses_streaming_completed_snapshot(live_server):
 # ---------------------------------------------------------------------------
 
 
-async def test_responses_incomplete_non_streaming(live_server):
+async def test_responses_incomplete_non_streaming(live_server, text_model_id):
     """max_output_tokens=1 results in an incomplete response."""
     payload = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "input": "Write a very long essay about the history of mathematics.",
         "temperature": 0.0,
         "max_output_tokens": 1,
@@ -225,10 +222,10 @@ async def test_responses_incomplete_non_streaming(live_server):
     assert data["incomplete_details"]["reason"] == "max_output_tokens"
 
 
-async def test_responses_incomplete_streaming(live_server):
+async def test_responses_incomplete_streaming(live_server, text_model_id):
     """Streaming with max_output_tokens=1 emits response.incomplete."""
     payload = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "input": "Write a very long essay about the history of mathematics.",
         "temperature": 0.0,
         "max_output_tokens": 1,
@@ -258,10 +255,10 @@ async def test_responses_incomplete_streaming(live_server):
 # ---------------------------------------------------------------------------
 
 
-async def test_responses_instructions(live_server):
+async def test_responses_instructions(live_server, text_model_id):
     """The instructions field works as a system prompt."""
     payload = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "input": "What is your name?",
         "instructions": "You are a helpful assistant named Orchard. Always introduce yourself by name.",
         "temperature": 0.0,

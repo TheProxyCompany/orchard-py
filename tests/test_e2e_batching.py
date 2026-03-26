@@ -3,18 +3,17 @@ import pytest
 
 pytestmark = pytest.mark.asyncio
 
-MODEL_ID = "moondream3"
-
-
-async def test_chat_completion_batched_homogeneous(live_server):
+async def test_chat_completion_batched_homogeneous(
+    live_server, text_model_id, visible_text_completion_floor
+):
     server_url = live_server
     request_payload = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "messages": [
             [{"role": "user", "content": "Say hello politely."}],
             [{"role": "user", "content": "Give me a fun fact about space."}],
         ],
-        "max_completion_tokens": 10,
+        "max_completion_tokens": max(10, visible_text_completion_floor),
         "temperature": 0.0,
         "stream": False,
     }
@@ -44,10 +43,10 @@ async def test_chat_completion_batched_homogeneous(live_server):
     assert usage.get("total_tokens") is not None
 
 
-async def test_chat_completion_batched_heterogeneous(live_server):
+async def test_chat_completion_batched_heterogeneous(live_server, text_model_id):
     server_url = live_server
     request_payload = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "messages": [
             [{"role": "user", "content": "Respond with a single word greeting."}],
             [{"role": "user", "content": "List three colors separated by commas."}],
@@ -74,10 +73,12 @@ async def test_chat_completion_batched_heterogeneous(live_server):
     assert second_choice["finish_reason"] is not None
 
 
-async def test_chat_completion_batch_length_mismatch_returns_422(live_server):
+async def test_chat_completion_batch_length_mismatch_returns_422(
+    live_server, text_model_id
+):
     server_url = live_server
     request_payload = {
-        "model": MODEL_ID,
+        "model": text_model_id,
         "messages": [
             [{"role": "user", "content": "Prompt one"}],
             [{"role": "user", "content": "Prompt two"}],
