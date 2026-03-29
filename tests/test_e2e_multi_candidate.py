@@ -7,7 +7,7 @@ import pytest
 pytestmark = pytest.mark.asyncio
 
 async def test_chat_completion_multi_candidate_non_streaming(
-    live_server, text_model_id, visible_text_completion_floor
+    live_server, text_model_id
 ):
     """Verify non-streaming multi-candidate responses return the expected number of choices."""
     server_url = live_server
@@ -17,7 +17,7 @@ async def test_chat_completion_multi_candidate_non_streaming(
         "messages": [
             {"role": "user", "content": "Provide three brief facts about the moon."}
         ],
-        "max_completion_tokens": max(10, visible_text_completion_floor),
+        "max_completion_tokens": 10,
         "temperature": 0.0,
         "stream": False,
         "n": candidate_count,
@@ -42,7 +42,7 @@ async def test_chat_completion_multi_candidate_non_streaming(
 
 
 async def test_chat_completion_multi_candidate_streaming(
-    live_server, text_model_id, visible_text_completion_floor
+    live_server, text_model_id
 ):
     """Verify streaming multi-candidate responses can be reconstructed per candidate index."""
     server_url = live_server
@@ -55,7 +55,7 @@ async def test_chat_completion_multi_candidate_streaming(
                 "content": "Stream three short tips for studying effectively.",
             }
         ],
-        "max_completion_tokens": max(10, visible_text_completion_floor),
+        "max_completion_tokens": 10,
         "temperature": 0.0,
         "stream": True,
         "n": candidate_count,

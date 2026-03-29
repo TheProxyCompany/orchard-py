@@ -209,6 +209,7 @@ async def test_responses_tool_result_continuation(live_server, text_model_id):
             },
         ],
         "tools": [WEATHER_TOOL],
+        "tool_choice": "none",
         "temperature": 0.0,
         "max_output_tokens": 128,
     }

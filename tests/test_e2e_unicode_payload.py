@@ -6,7 +6,7 @@ import pytest
 pytestmark = pytest.mark.asyncio
 
 async def test_unicode_payload_round_trip(
-    live_server, text_model_id, visible_text_completion_floor
+    live_server, text_model_id
 ):
     target = "😊" * 40  # 40 multi-byte characters (> MAX_INLINE_CONTENT_BYTES)
     replacement_char = "\ufffd"
@@ -17,7 +17,7 @@ async def test_unicode_payload_round_trip(
             {"role": "user", "content": "Respond with this emoji: " + target},
         ],
         "temperature": 0.0,
-        "max_completion_tokens": max(10, visible_text_completion_floor),
+        "max_completion_tokens": 10,
         "stream": True,
     }
 

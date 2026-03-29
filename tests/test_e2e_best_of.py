@@ -4,7 +4,7 @@ import pytest
 pytestmark = pytest.mark.asyncio
 
 async def test_chat_completion_best_of_selects_top_n(
-    live_server, text_model_id, visible_text_completion_floor
+    live_server, text_model_id
 ):
     """Ensure best_of fan-out returns only the top-n candidates while reflecting total work in usage."""
     server_url = live_server
@@ -17,7 +17,7 @@ async def test_chat_completion_best_of_selects_top_n(
                 "content": "List one fun fact about penguins.",
             }
         ],
-        "max_completion_tokens": max(8, visible_text_completion_floor),
+        "max_completion_tokens": 8,
         "temperature": 0.2,
         "stream": False,
         "n": 1,

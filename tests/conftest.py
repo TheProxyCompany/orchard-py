@@ -37,21 +37,15 @@ TEXT_MODELS = [
     "meta-llama/Llama-3.1-8B-Instruct",
     "google/gemma-3-4b-it",
     "Qwen/Qwen3.5-4B",
-]
-
-VISION_MODELS = [
     "moondream/moondream3-preview",
 ]
 
-ALL_MODELS = TEXT_MODELS + VISION_MODELS
+VISION_MODELS = [
+    "google/gemma-3-4b-it",
+    "moondream/moondream3-preview",
+]
 
-FIRST_VISIBLE_TOKEN_BUDGETS = {
-    "Qwen/Qwen3.5-4B": 32,
-}
-
-VISIBLE_TEXT_COMPLETION_FLOORS = {
-    "Qwen/Qwen3.5-4B": 128,
-}
+ALL_MODELS = list(dict.fromkeys(TEXT_MODELS + VISION_MODELS))
 
 SERVER_PORT = 8001
 SERVER_STARTUP_TIMEOUT_SECONDS = 120.0
@@ -110,19 +104,14 @@ def vision_model_id(request: pytest.FixtureRequest) -> str:
     return request.param
 
 
+@pytest.fixture
+def moondream_model_id() -> str:
+    return "moondream/moondream3-preview"
+
+
 @pytest.fixture(params=ALL_MODELS, ids=lambda m: m.split("/")[-1])
 def any_model_id(request: pytest.FixtureRequest) -> str:
     return request.param
-
-
-@pytest.fixture
-def first_visible_token_budget(text_model_id: str) -> int:
-    return FIRST_VISIBLE_TOKEN_BUDGETS.get(text_model_id, 1)
-
-
-@pytest.fixture
-def visible_text_completion_floor(text_model_id: str) -> int:
-    return VISIBLE_TEXT_COMPLETION_FLOORS.get(text_model_id, 0)
 
 
 @pytest_asyncio.fixture(scope="session")

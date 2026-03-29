@@ -5,7 +5,7 @@ pytestmark = pytest.mark.asyncio
 
 
 async def test_chat_completion_first_token(
-    live_server, text_model_id, first_visible_token_budget
+    live_server, text_model_id
 ):
     """
     Tests a basic, non-streaming chat completion request to the live server.
@@ -15,7 +15,7 @@ async def test_chat_completion_first_token(
     request_payload = {
         "model": text_model_id,
         "messages": [{"role": "user", "content": "Hello!"}],
-        "max_completion_tokens": first_visible_token_budget,
+        "max_completion_tokens": 1,
         "temperature": 1.0,  # Use greedy sampling which is implemented
         "stream": False,
     }

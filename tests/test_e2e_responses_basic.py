@@ -177,7 +177,7 @@ async def test_responses_streaming_completed_snapshot(live_server, text_model_id
     """The response.completed snapshot has correct status and usage."""
     payload = {
         "model": text_model_id,
-        "input": "Hi",
+        "input": "Test. Respond with 'test received'",
         "temperature": 0.0,
         "max_output_tokens": 64,
         "stream": True,
@@ -193,9 +193,21 @@ async def test_responses_streaming_completed_snapshot(live_server, text_model_id
     events = parse_sse_events(response.text)
 
     completed = [e for e in events if e["event"] == "response.completed"]
-    assert len(completed) == 1
+    assert len(completed) == 1, (
+        f"Expected response.completed but got events: {[e['event'] for e in events]}"
+    )
     snapshot = completed[0]["data"]["response"]
     assert snapshot["status"] == "completed"
+
+    output_text = "".join(
+        content.get("text", "")
+        for item in snapshot.get("output", [])
+        for content in item.get("content", [])
+        if content.get("type") == "output_text"
+    ).lower()
+    assert "test received" in output_text, (
+        f"Expected 'test received' in output but got: '{output_text}'"
+    )
 
 
 # ---------------------------------------------------------------------------

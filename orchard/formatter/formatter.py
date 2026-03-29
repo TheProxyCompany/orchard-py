@@ -100,6 +100,7 @@ class ChatFormatter:
             self.tokenizer_config = json.load(f)
 
         model_type = determine_model_type(self.tokenizer_config)
+        self.model_type = model_type
         profile_dir = Path(__file__).parent / "profiles" / model_type
         if not profile_dir.is_dir():
             raise ValueError(
@@ -150,9 +151,6 @@ class ChatFormatter:
         Returns:
             A single, fully formatted string ready for tokenization.
         """
-        reasoning = reasoning or bool(
-            self.capabilities.get("thinking", {}).get("native", False)
-        )
         context = {
             "interactions": conversation,
             "add_generation_prompt": add_generation_prompt,

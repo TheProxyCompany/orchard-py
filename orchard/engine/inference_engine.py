@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import atexit
+import json
 import logging
 import os
 import random
@@ -10,6 +11,7 @@ import threading
 from pathlib import Path
 
 import dotenv
+import pynng
 from filelock import FileLock
 
 from orchard.app.ipc_dispatch import IPCState
@@ -28,21 +30,18 @@ from orchard.engine.io import (
     initialize_sockets,
 )
 from orchard.engine.multiprocess import (
-    filter_alive_pids,
     pid_is_alive,
     read_pid_file,
-    read_ref_pids,
     reap_engine_process,
     stop_engine_process,
     wait_for_engine_ready,
-    write_ref_pids,
 )
+from orchard.ipc import endpoints as ipc_endpoints
 
 logger = logging.getLogger(__name__)
 dotenv.load_dotenv()
 
 _log_handler: logging.Handler | None = None
-_atexit_registered = False
 _dispatcher_cleanup_registered = False
 
 
@@ -70,11 +69,6 @@ class InferenceEngine:
         self._lease_active = False
         self._closed = False
         self._launch_process: subprocess.Popen | None = None
-
-        global _atexit_registered
-        if not _atexit_registered:
-            atexit.register(InferenceEngine.shutdown)
-            _atexit_registered = True
 
         self._acquire_lease_and_init_global_context()
         if load_models:
@@ -165,28 +159,23 @@ class InferenceEngine:
                 return
 
             with self._lock:
-                refs = read_ref_pids(self._paths.refs_file)
-                alive_refs = filter_alive_pids(refs)
-                current_pid = os.getpid()
-                alive_refs = [pid for pid in alive_refs if pid != current_pid]
-
                 engine_pid = read_pid_file(self._paths.pid_file)
                 engine_running = engine_pid is not None and pid_is_alive(engine_pid)
+
+                if engine_running:
+                    try:
+                        self._send_client_lifecycle_command("client_deregister")
+                    except Exception:
+                        logger.warning(
+                            "Failed to deregister client PID %s from PIE during close.",
+                            os.getpid(),
+                            exc_info=True,
+                        )
 
                 self.shutdown_global_context(
                     global_context,
                     decrement_ref=False,
                 )
-
-                if not alive_refs:
-                    if engine_running and engine_pid is not None:
-                        self._stop_engine_locked(engine_pid)
-                    else:
-                        self._paths.pid_file.unlink(missing_ok=True)
-                        self._paths.ready_file.unlink(missing_ok=True)
-                    write_ref_pids(self._paths.refs_file, [])
-                else:
-                    write_ref_pids(self._paths.refs_file, alive_refs)
         finally:
             self._lease_active = False
             self._closed = True
@@ -227,9 +216,6 @@ class InferenceEngine:
             return
 
         with self._lock:
-            refs = read_ref_pids(self._paths.refs_file)
-            alive_refs = filter_alive_pids(refs)
-
             engine_pid = read_pid_file(self._paths.pid_file)
             engine_running = engine_pid is not None and pid_is_alive(engine_pid)
             if not engine_running:
@@ -246,22 +232,15 @@ class InferenceEngine:
                     self._cleanup_failed_launch()
                     raise
 
-            current_pid = os.getpid()
-            if current_pid not in alive_refs:
-                alive_refs.append(current_pid)
-
-            write_ref_pids(self._paths.refs_file, alive_refs)
-
         try:
-            self.initialize_global_context(global_context, self._paths)
+            created_context = self.initialize_global_context(global_context, self._paths)
+            if created_context:
+                try:
+                    self._send_client_lifecycle_command("client_register")
+                except Exception:
+                    self.shutdown_global_context(global_context, decrement_ref=True)
+                    raise
         except Exception:
-            # Roll back PID registration if initialization fails
-            with self._lock:
-                refs = read_ref_pids(self._paths.refs_file)
-                alive_refs = [
-                    pid for pid in filter_alive_pids(refs) if pid != os.getpid()
-                ]
-                write_ref_pids(self._paths.refs_file, alive_refs)
             raise
 
         self._lease_active = True
@@ -302,6 +281,38 @@ class InferenceEngine:
         self._paths.pid_file.unlink(missing_ok=True)
         self._paths.ready_file.unlink(missing_ok=True)
         logger.info("orchard engine PID %s stopped and readiness cleared.", pid)
+
+    def _send_client_lifecycle_command(
+        self, command_type: str, timeout_s: float = 5.0
+    ) -> dict:
+        socket = pynng.Req0()
+        try:
+            socket.recv_timeout = max(1, int(timeout_s * 1000))
+            socket.send_timeout = max(1, int(timeout_s * 1000))
+            socket.dial(ipc_endpoints.MANAGEMENT_URL, block=True)
+            payload = json.dumps(
+                {"type": command_type, "client_pid": os.getpid()}
+            ).encode("utf-8")
+            socket.send(payload)
+            reply_bytes = socket.recv()
+        finally:
+            socket.close()
+
+        try:
+            response = json.loads(reply_bytes.decode("utf-8"))
+        except Exception as exc:
+            raise RuntimeError(
+                f"Engine returned malformed {command_type} response."
+            ) from exc
+
+        status = response.get("status")
+        if status not in {"ok", "accepted"}:
+            message = response.get("message", "unknown error")
+            raise RuntimeError(
+                f"Engine rejected {command_type} for PID {os.getpid()}: {message}"
+            )
+
+        return response
 
     def _setup_logging(
         self, client_log_file: Path | None = None, engine_log_file: Path | None = None
@@ -359,7 +370,6 @@ class InferenceEngine:
                 logger.info("Engine is not running. Cleaning up any stale files.")
                 paths.pid_file.unlink(missing_ok=True)
                 paths.ready_file.unlink(missing_ok=True)
-                paths.refs_file.unlink(missing_ok=True)
                 return True
 
             logger.info("Sending shutdown signal (SIGINT) to engine process %d.", pid)
@@ -370,7 +380,6 @@ class InferenceEngine:
             if shutdown_successful:
                 paths.pid_file.unlink(missing_ok=True)
                 paths.ready_file.unlink(missing_ok=True)
-                paths.refs_file.unlink(missing_ok=True)
                 reap_engine_process(pid)
                 logger.info("Engine process %d terminated gracefully.", pid)
                 return True
@@ -393,12 +402,12 @@ class InferenceEngine:
         return channel_id
 
     @staticmethod
-    def initialize_global_context(ctx: GlobalContext, paths: EnginePaths) -> None:
+    def initialize_global_context(ctx: GlobalContext, paths: EnginePaths) -> bool:
         """Initializes the singleton app state components in a thread-safe way."""
         with ctx.lock:
             ctx.ref_count += 1
             if ctx.initialized:
-                return
+                return False
 
             logger.info("Initializing global Python application state for PIE.")
             response_channel_id = InferenceEngine.generate_response_channel_id()
@@ -445,6 +454,7 @@ class InferenceEngine:
 
                 ctx.initialized = True
                 logger.info("Global Python application state initialized.")
+                return True
 
             except Exception:
                 ctx.ref_count -= 1

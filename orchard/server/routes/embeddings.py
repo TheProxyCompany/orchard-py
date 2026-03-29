@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import logging
 import random
 import struct
@@ -26,6 +27,20 @@ from orchard.server.routes._common import _ModelNotReadyError, resolve_model
 logger = logging.getLogger(__name__)
 
 embeddings_router = APIRouter()
+
+
+def _coerce_embedding_bytes(value: Any) -> bytes:
+    if isinstance(value, bytes):
+        return value
+    if isinstance(value, bytearray):
+        return bytes(value)
+    if isinstance(value, memoryview):
+        return value.tobytes()
+    if isinstance(value, str):
+        return base64.b64decode(value)
+    if isinstance(value, list):
+        return bytes(value)
+    raise InferenceError("Embedding response contained an unsupported byte payload.")
 
 
 @embeddings_router.post("/embeddings", response_model=EmbeddingResponse)
@@ -157,7 +172,13 @@ async def create_embeddings(
 
         logger.info("Embedding request %d completed successfully.", current_request_id)
         return final_response
-
+    except InferenceError as exc:
+        logger.error(
+            "Inference error processing embedding request %d: %s",
+            current_request_id,
+            exc,
+        )
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
     except Exception as e:
         logger.error("Error processing embedding request: %s", e, exc_info=True)
         raise HTTPException(
@@ -195,11 +216,26 @@ async def gather_embedding_response(
             try:
                 logger.debug("Embedding response received for request %d", request_id)
 
+                if delta.get("error"):
+                    raise InferenceError(str(delta["error"]))
+
+                status_value = str(delta.get("status", "")).lower()
+                finish_value = str(delta.get("finish_reason", "")).lower()
+                if status_value == "error" or finish_value == "error":
+                    raise InferenceError(
+                        str(
+                            delta.get("content")
+                            or delta.get("message")
+                            or delta.get("error")
+                            or "Embedding generation failed."
+                        )
+                    )
+
                 if delta.get("prompt_token_count", 0) > 0:
                     prompt_tokens = delta["prompt_token_count"]
 
                 if delta.get("embedding_bytes"):
-                    embedding_bytes = delta["embedding_bytes"]
+                    embedding_bytes = _coerce_embedding_bytes(delta["embedding_bytes"])
                     num_floats = len(embedding_bytes) // 4
                     embedding_vector = list(
                         struct.unpack(f"{num_floats}f", embedding_bytes)

@@ -4,7 +4,7 @@ import pytest
 pytestmark = pytest.mark.asyncio
 
 async def test_chat_completion_batched_homogeneous(
-    live_server, text_model_id, visible_text_completion_floor
+    live_server, text_model_id
 ):
     server_url = live_server
     request_payload = {
@@ -13,7 +13,7 @@ async def test_chat_completion_batched_homogeneous(
             [{"role": "user", "content": "Say hello politely."}],
             [{"role": "user", "content": "Give me a fun fact about space."}],
         ],
-        "max_completion_tokens": max(10, visible_text_completion_floor),
+        "max_completion_tokens": 10,
         "temperature": 0.0,
         "stream": False,
     }

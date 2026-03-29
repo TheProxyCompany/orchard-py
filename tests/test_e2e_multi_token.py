@@ -6,7 +6,7 @@ import pytest
 pytestmark = pytest.mark.asyncio
 
 async def test_chat_completion_multi_token_non_streaming(
-    live_server, text_model_id, visible_text_completion_floor
+    live_server, text_model_id
 ):
     """
     Tests that the engine can correctly answer a simple question,
@@ -17,7 +17,7 @@ async def test_chat_completion_multi_token_non_streaming(
         "model": text_model_id,
         "messages": [{"role": "user", "content": "What is the capital of France?"}],
         "temperature": 0.0,  # Use greedy sampling for a deterministic answer
-        "max_completion_tokens": max(10, visible_text_completion_floor),
+        "max_completion_tokens": 10,
         "logprobs": True,
         "top_logprobs": 5,
         "stream": False,
@@ -78,7 +78,7 @@ async def test_chat_completion_multi_token_non_streaming(
 
 
 async def test_chat_completion_multi_token_streaming(
-    live_server, text_model_id, visible_text_completion_floor
+    live_server, text_model_id
 ):
     """
     Tests a multi-token, streaming chat completion request.
@@ -90,7 +90,7 @@ async def test_chat_completion_multi_token_streaming(
         "messages": [
             {"role": "user", "content": "Tell me a very short story in one sentence."}
         ],
-        "max_completion_tokens": max(10, visible_text_completion_floor),
+        "max_completion_tokens": 10,
         "temperature": 0.0,
         "stream": True,
     }

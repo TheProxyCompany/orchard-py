@@ -16,7 +16,6 @@ class EnginePaths:
     cache_dir: Path
     ready_file: Path
     pid_file: Path
-    refs_file: Path
     lock_file: Path
     client_log_file: Path
     engine_log_file: Path
@@ -34,7 +33,6 @@ def get_engine_file_paths(
         cache_dir=cache_dir,
         ready_file=cache_dir / "engine.ready",
         pid_file=cache_dir / "engine.pid",
-        refs_file=cache_dir / "engine.refs",
         lock_file=cache_dir / "engine.lock",
         client_log_file=client_log_file
         if client_log_file
