@@ -76,6 +76,7 @@ class IPCState:
         self.response_topic_prefix_len: int = 0
         self.engine_pid_file: Path | None = None
         self.engine_dead: bool = False
+        self.shutdown_requested: bool = False
 
         self.global_context = weakref.ref(global_context)
 
@@ -220,6 +221,12 @@ class IPCState:
         try:
             last_engine_check = 0.0
             while True:
+                if ipc_state.shutdown_requested:
+                    logger.info(
+                        "Dispatcher shutdown requested; exiting IPC listener."
+                    )
+                    break
+
                 now = time.monotonic()
                 if now - last_engine_check >= ENGINE_LIVENESS_POLL_INTERVAL_S:
                     last_engine_check = now

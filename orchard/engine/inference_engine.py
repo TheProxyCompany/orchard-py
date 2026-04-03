@@ -7,6 +7,7 @@ import logging
 import os
 import random
 import subprocess
+import sys
 import threading
 from pathlib import Path
 
@@ -43,10 +44,19 @@ dotenv.load_dotenv()
 
 _log_handler: logging.Handler | None = None
 _dispatcher_cleanup_registered = False
+_in_atexit = False
 
 
 _LOCK_TIMEOUT_S = 30.0
 _DEFAULT_ENGINE_PORT = 8000
+
+
+def _mark_process_atexit() -> None:
+    global _in_atexit
+    _in_atexit = True
+
+
+atexit.register(_mark_process_atexit)
 
 
 class InferenceEngine:
@@ -402,6 +412,28 @@ class InferenceEngine:
         return channel_id
 
     @staticmethod
+    def _request_dispatcher_shutdown(ctx: GlobalContext) -> None:
+        if ctx.ipc_state:
+            ctx.ipc_state.shutdown_requested = True
+
+    @staticmethod
+    def _join_dispatcher_thread(
+        ctx: GlobalContext, timeout_s: float = 3.0
+    ) -> bool:
+        if ctx.dispatcher_thread and ctx.dispatcher_thread.is_alive():
+            ctx.dispatcher_thread.join(timeout=timeout_s)
+        return not (ctx.dispatcher_thread and ctx.dispatcher_thread.is_alive())
+
+    @staticmethod
+    def _close_sockets_if_dispatcher_stopped(ctx: GlobalContext) -> None:
+        if ctx.dispatcher_thread and ctx.dispatcher_thread.is_alive():
+            logger.warning(
+                "Skipping socket close because dispatcher thread did not stop in time."
+            )
+            return
+        close_sockets(ctx.ipc_state)
+
+    @staticmethod
     def initialize_global_context(ctx: GlobalContext, paths: EnginePaths) -> bool:
         """Initializes the singleton app state components in a thread-safe way."""
         with ctx.lock:
@@ -443,9 +475,13 @@ class InferenceEngine:
 
                 # Ensure sockets close and dispatcher joins on abrupt process exit (e.g., Ctrl-C)
                 def _cleanup_dispatcher():
-                    close_sockets(ctx.ipc_state)
-                    if ctx.dispatcher_thread and ctx.dispatcher_thread.is_alive():
-                        ctx.dispatcher_thread.join(timeout=5.0)
+                    global _in_atexit
+                    _in_atexit = True
+                    InferenceEngine._request_dispatcher_shutdown(ctx)
+                    InferenceEngine._join_dispatcher_thread(ctx, timeout_s=3.0)
+                    # Avoid nng_close during interpreter finalization: this can
+                    # deadlock in CFFI/NNG on process shutdown.
+                    # Normal close() calls still perform explicit socket cleanup.
 
                 global _dispatcher_cleanup_registered
                 if not _dispatcher_cleanup_registered:
@@ -460,11 +496,9 @@ class InferenceEngine:
                 ctx.ref_count -= 1
                 logger.exception("Failed to initialize Python application state.")
 
-                if ctx.dispatcher_thread and ctx.dispatcher_thread.is_alive():
-                    ctx.dispatcher_thread.join(timeout=5.0)
-
-                # Clean up partial state
-                close_sockets(ctx.ipc_state)
+                InferenceEngine._request_dispatcher_shutdown(ctx)
+                InferenceEngine._join_dispatcher_thread(ctx, timeout_s=3.0)
+                InferenceEngine._close_sockets_if_dispatcher_stopped(ctx)
                 ctx.dispatcher_thread = None
                 ctx.ipc_state = None
                 ctx.model_registry = None
@@ -482,15 +516,21 @@ class InferenceEngine:
 
             logger.info("Shutting down global Python application state.")
 
-            # Close sockets to break the dispatcher loop
-            close_sockets(ctx.ipc_state)
+            InferenceEngine._request_dispatcher_shutdown(ctx)
+            InferenceEngine._join_dispatcher_thread(ctx, timeout_s=3.0)
 
-            if ctx.dispatcher_thread and ctx.dispatcher_thread.is_alive():
-                ctx.dispatcher_thread.join(timeout=5.0)
+            is_finalizing = _in_atexit or sys.is_finalizing()
+            if is_finalizing:
+                logger.warning(
+                    "Interpreter finalizing; skipping explicit socket close to avoid NNG deadlock."
+                )
+            else:
+                InferenceEngine._close_sockets_if_dispatcher_stopped(ctx)
 
             ctx.dispatcher_thread = None
-            ctx.ipc_state = None
-            ctx.model_registry = None
+            if not is_finalizing:
+                ctx.ipc_state = None
+                ctx.model_registry = None
             ctx.initialized = False
 
             logger.info("Global Python application state shut down.")
