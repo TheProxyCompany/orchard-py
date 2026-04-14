@@ -33,10 +33,12 @@ SERVER_LOG_PATH = LOG_DIR / "python_server.test.log"
 ENGINE_LOG_PATH = LOG_DIR / "engine.test.log"
 CLIENT_LOG_PATH = LOG_DIR / "client.test.log"
 
+# google/gemma-4-E2B-it is temporarily excluded: its full-attention
+# layers use head_dim=512, which requires a PAL prefill kernel that
+# isn't yet supported on M3 Max (threadgroup-memory limit).
 TEXT_MODELS = [
     "meta-llama/Llama-3.1-8B-Instruct",
     "google/gemma-3-4b-it",
-    "google/gemma-4-E2B-it",
     "Qwen/Qwen3.5-4B",
     "moondream/moondream3-preview",
 ]
