@@ -180,6 +180,115 @@ class Client:
             return messages
         return [messages]
 
+    async def arender_prompt(
+        self,
+        model_id: str,
+        messages: list[dict[str, Any]],
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        """Render a single chat prompt exactly as Orchard will submit it."""
+        info = await self._model_registry.get_info(model_id)
+        _, capture_payload = self._prepare_prompt_payload(
+            model_id=model_id,
+            model_path=info.model_path,
+            formatter=info.formatter,
+            messages=messages,
+            **kwargs,
+        )
+        return capture_payload
+
+    def render_prompt(
+        self,
+        model_id: str,
+        messages: list[dict[str, Any]],
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        """Synchronous wrapper for `arender_prompt()`."""
+        if (
+            not self._sync_loop
+            or not self._sync_thread
+            or not self._sync_thread.is_alive()
+        ):
+            self._start_sync_event_loop()
+
+        assert self._sync_loop, "Sync loop not initialized"
+        future = asyncio.run_coroutine_threadsafe(
+            self.arender_prompt(model_id, messages, **kwargs),
+            self._sync_loop,
+        )
+        return future.result()
+
+    async def arender_responses_prompt(
+        self,
+        model_id: str,
+        *,
+        input: str | list[dict[str, Any]] | None = None,
+        request: ResponsesRequest | None = None,
+        stream: bool = False,
+        instructions: str | None = None,
+        tools: list[Any] | None = None,
+        tool_choice: str | dict[str, Any] | None = None,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        top_k: int | None = None,
+        min_p: float | None = None,
+        max_output_tokens: int | None = None,
+        frequency_penalty: float | None = None,
+        presence_penalty: float | None = None,
+        top_logprobs: int | None = None,
+        reasoning: Any | None = None,
+        metadata: dict[str, str] | None = None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        """Render a Responses API prompt exactly as Orchard will submit it."""
+        request_kwargs: dict[str, Any] = {
+            "instructions": instructions,
+            "tools": tools,
+            "tool_choice": tool_choice,
+            "temperature": temperature,
+            "top_p": top_p,
+            "top_k": top_k,
+            "min_p": min_p,
+            "max_output_tokens": max_output_tokens,
+            "frequency_penalty": frequency_penalty,
+            "presence_penalty": presence_penalty,
+            "top_logprobs": top_logprobs,
+            "reasoning": reasoning,
+            "metadata": metadata,
+        }
+        request_kwargs.update(kwargs)
+        response_request = self._build_responses_request(
+            request=request,
+            input=input,
+            stream=stream,
+            **request_kwargs,
+        )
+        return await self.arender_prompt(
+            model_id,
+            response_request.to_messages(),
+            **response_request.to_submit_kwargs(),
+        )
+
+    def render_responses_prompt(
+        self,
+        model_id: str,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        """Synchronous wrapper for `arender_responses_prompt()`."""
+        if (
+            not self._sync_loop
+            or not self._sync_thread
+            or not self._sync_thread.is_alive()
+        ):
+            self._start_sync_event_loop()
+
+        assert self._sync_loop, "Sync loop not initialized"
+        future = asyncio.run_coroutine_threadsafe(
+            self.arender_responses_prompt(model_id, **kwargs),
+            self._sync_loop,
+        )
+        return future.result()
+
     async def achat(
         self,
         model_id: str,
@@ -615,6 +724,18 @@ class Client:
         return json.dumps(serializable)
 
     @staticmethod
+    def _normalize_tool_choice_payload(value: Any) -> str | dict[str, Any]:
+        if value is None:
+            return "auto"
+        if hasattr(value, "model_dump"):
+            return value.model_dump(exclude_none=True)
+        if hasattr(value, "to_dict"):
+            return value.to_dict()
+        if isinstance(value, dict | str):
+            return value
+        return str(value)
+
+    @staticmethod
     def _extract_usage(deltas: list[ClientDelta]) -> UsageStats:
         usage = UsageStats()
         for delta in deltas:
@@ -673,18 +794,21 @@ class Client:
             self._aggregate_response(deltas_by_prompt[i]) for i in range(batch_size)
         ]
 
-    async def _asubmit_request(
-        self, request_id: int, model_id: str, messages: list[dict], **kwargs: Any
-    ):
-        """Prepares and submits the request over the pynng IPC channel."""
-        info = await self._model_registry.get_info(model_id)
-
+    def _prepare_prompt_payload(
+        self,
+        *,
+        model_id: str,
+        model_path: str,
+        formatter: Any,
+        messages: list[dict[str, Any]],
+        **kwargs: Any,
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
         reasoning_effort = kwargs.get("reasoning_effort")
         reasoning_flag = bool(kwargs.get("reasoning") or reasoning_effort)
         try:
             messages_for_template, image_buffers, capabilities, content_order = (
                 build_multimodal_messages(
-                    formatter=info.formatter,
+                    formatter=formatter,
                     items=messages,
                     instructions=kwargs.get("instructions"),
                 )
@@ -696,7 +820,7 @@ class Client:
             raise ValueError("Chat request must include at least one content segment.")
 
         tools_payload = kwargs.get("tools")
-        prompt_text = info.formatter.apply_template(
+        prompt_text = formatter.apply_template(
             messages_for_template,
             reasoning=reasoning_flag,
             task=kwargs.get("task_name"),
@@ -708,25 +832,21 @@ class Client:
                 image_buffers,
                 capabilities,
                 content_order,
-                info.formatter.image_placeholder,
-                info.formatter.should_clip_image_placeholder,
-                coord_placeholder=info.formatter.get_coord_placeholder(),
+                formatter.image_placeholder,
+                formatter.should_clip_image_placeholder,
+                coord_placeholder=formatter.get_coord_placeholder(),
             )
         except ValueError as exc:
             raise ValueError(f"Invalid multimodal layout: {exc}") from exc
 
-        if info.formatter.should_clip_image_placeholder:
-            prompt_text = prompt_text.replace(
-                info.formatter.image_placeholder, ""
-            )
+        if formatter.should_clip_image_placeholder:
+            prompt_text = prompt_text.replace(formatter.image_placeholder, "")
 
-        # Strip coord placeholders from prompt text (they're handled by layout segments)
-        coord_placeholder = info.formatter.get_coord_placeholder()
+        coord_placeholder = formatter.get_coord_placeholder()
         if coord_placeholder:
             prompt_text = prompt_text.replace(coord_placeholder, "")
 
         prompt_bytes = prompt_text.encode("utf-8")
-
         temperature = float(kwargs.get("temperature", 1.0))
         top_p = float(kwargs.get("top_p", 1.0))
         top_k = int(kwargs.get("top_k", -1))
@@ -738,17 +858,14 @@ class Client:
         presence_penalty = float(kwargs.get("presence_penalty", 0.0))
         repetition_context_size = int(kwargs.get("repetition_context_size", 60))
         repetition_penalty = float(kwargs.get("repetition_penalty", 1.0))
-
         logit_bias = {
             int(k): float(v) for k, v in (kwargs.get("logit_bias") or {}).items()
         }
-
         stop_sequences = self._normalize_stop_sequences(kwargs.get("stop"))
         tool_schemas_json = self._serialize_tools(tools_payload)
         response_format_json = self._serialize_optional_payload(
             kwargs.get("response_format")
         )
-
         num_candidates = max(1, int(kwargs.get("n", 1)))
         best_of = int(kwargs.get("best_of", num_candidates))
         if best_of <= 0:
@@ -756,14 +873,14 @@ class Client:
         final_candidates = int(kwargs.get("final_candidates", best_of))
         if final_candidates <= 0:
             final_candidates = best_of
-
-        response_channel_id = self._ipc_state.response_channel_id or request_id
-        # Convert capability inputs to serialization format
+        max_tool_calls = int(kwargs.get("max_tool_calls") or 0)
+        normalized_tool_choice = self._normalize_tool_choice_payload(
+            kwargs.get("tool_choice")
+        )
         capabilities_payload = [
             {"name": cap.name, "payload": cap.payload, "position": 0}
             for cap in capabilities
         ]
-
         prompt_payload = {
             "prompt_bytes": prompt_bytes,
             "image_buffers": image_buffers,
@@ -793,9 +910,55 @@ class Client:
             "final_candidates": final_candidates,
             "task_name": kwargs.get("task_name"),
             "reasoning_effort": reasoning_effort,
-            "tool_calling_tokens": info.formatter.get_tool_calling_tokens(),
-            "tool_choice": kwargs.get("tool_choice", "auto"),
+            "max_tool_calls": max_tool_calls,
+            "tool_calling_tokens": formatter.get_tool_calling_tokens(),
+            "tool_choice": normalized_tool_choice,
         }
+        capture_payload = {
+            "model_id": model_id,
+            "model_path": model_path,
+            "rendered_prompt_text": prompt_text,
+            "sampling_params": {
+                "temperature": temperature,
+                "top_p": top_p,
+                "top_k": top_k,
+                "min_p": min_p,
+                "rng_seed": rng_seed,
+                "top_logprobs": top_logprobs,
+                "frequency_penalty": frequency_penalty,
+                "presence_penalty": presence_penalty,
+                "repetition_context_size": repetition_context_size,
+                "repetition_penalty": repetition_penalty,
+                "logit_bias": logit_bias,
+                "n": num_candidates,
+                "best_of": best_of,
+                "final_candidates": final_candidates,
+            },
+            "max_generated_tokens": max_generated_tokens,
+            "stop_sequences": stop_sequences,
+            "tool_schemas_json": tool_schemas_json,
+            "response_format_json": response_format_json,
+            "task_name": kwargs.get("task_name"),
+            "reasoning_effort": reasoning_effort,
+            "max_tool_calls": max_tool_calls,
+            "tool_calling_tokens": formatter.get_tool_calling_tokens(),
+            "tool_choice": normalized_tool_choice,
+        }
+        return prompt_payload, capture_payload
+
+    async def _asubmit_request(
+        self, request_id: int, model_id: str, messages: list[dict], **kwargs: Any
+    ):
+        """Prepares and submits the request over the pynng IPC channel."""
+        info = await self._model_registry.get_info(model_id)
+        prompt_payload, _ = self._prepare_prompt_payload(
+            model_id=model_id,
+            model_path=info.model_path,
+            formatter=info.formatter,
+            messages=messages,
+            **kwargs,
+        )
+        response_channel_id = self._ipc_state.response_channel_id or request_id
         logger.debug(
             f"Submitting request {request_id} for model {model_id} with response channel id: {response_channel_id}"
         )
@@ -823,127 +986,17 @@ class Client:
         """Prepares and submits a batched request over the pynng IPC channel."""
         info = await self._model_registry.get_info(model_id)
 
-        reasoning_effort = kwargs.get("reasoning_effort")
-        reasoning_flag = bool(kwargs.get("reasoning") or reasoning_effort)
-
-        # Shared generation parameters
-        temperature = float(kwargs.get("temperature", 1.0))
-        top_p = float(kwargs.get("top_p", 1.0))
-        top_k = int(kwargs.get("top_k", -1))
-        min_p = float(kwargs.get("min_p", 0.0))
-        max_generated_tokens = int(kwargs.get("max_generated_tokens", 1024))
-        top_logprobs = int(kwargs.get("top_logprobs", 0))
-        frequency_penalty = float(kwargs.get("frequency_penalty", 0.0))
-        presence_penalty = float(kwargs.get("presence_penalty", 0.0))
-        repetition_context_size = int(kwargs.get("repetition_context_size", 60))
-        repetition_penalty = float(kwargs.get("repetition_penalty", 1.0))
-        logit_bias = {
-            int(k): float(v) for k, v in (kwargs.get("logit_bias") or {}).items()
-        }
-        stop_sequences = self._normalize_stop_sequences(kwargs.get("stop"))
-        tools_payload = kwargs.get("tools")
-        tool_schemas_json = self._serialize_tools(tools_payload)
-        response_format_json = self._serialize_optional_payload(
-            kwargs.get("response_format")
-        )
-        num_candidates = max(1, int(kwargs.get("n", 1)))
-        best_of = int(kwargs.get("best_of", num_candidates))
-        if best_of <= 0:
-            best_of = num_candidates
-        final_candidates = int(kwargs.get("final_candidates", best_of))
-        if final_candidates <= 0:
-            final_candidates = best_of
-
         # Build a prompt payload for each conversation
         prompt_payloads = []
         for messages in conversations:
-            try:
-                messages_for_template, image_buffers, capabilities, content_order = (
-                    build_multimodal_messages(
-                        formatter=info.formatter,
-                        items=messages,
-                        instructions=kwargs.get("instructions"),
-                    )
-                )
-            except (ValueError, TypeError) as exc:
-                raise ValueError(f"Invalid chat message payload: {exc}") from exc
-
-            if not messages_for_template:
-                raise ValueError(
-                    "Chat request must include at least one content segment."
-                )
-
-            prompt_text = info.formatter.apply_template(
-                messages_for_template,
-                reasoning=reasoning_flag,
-                task=kwargs.get("task_name"),
-                tools=tools_payload,
+            prompt_payload, _ = self._prepare_prompt_payload(
+                model_id=model_id,
+                model_path=info.model_path,
+                formatter=info.formatter,
+                messages=messages,
+                **kwargs,
             )
-            try:
-                layout_segments = build_multimodal_layout(
-                    prompt_text,
-                    image_buffers,
-                    capabilities,
-                    content_order,
-                    info.formatter.image_placeholder,
-                    info.formatter.should_clip_image_placeholder,
-                    coord_placeholder=info.formatter.get_coord_placeholder(),
-                )
-            except ValueError as exc:
-                raise ValueError(f"Invalid multimodal layout: {exc}") from exc
-
-            if info.formatter.should_clip_image_placeholder:
-                prompt_text = prompt_text.replace(
-                    info.formatter.image_placeholder, ""
-                )
-
-            coord_placeholder = info.formatter.get_coord_placeholder()
-            if coord_placeholder:
-                prompt_text = prompt_text.replace(coord_placeholder, "")
-
-            prompt_bytes = prompt_text.encode("utf-8")
-            capabilities_payload = [
-                {"name": cap.name, "payload": cap.payload, "position": 0}
-                for cap in capabilities
-            ]
-
-            # Each prompt gets its own rng seed
-            rng_seed = int(kwargs.get("rng_seed", random.randint(0, 2**32 - 1)))
-
-            prompt_payloads.append(
-                {
-                    "prompt_bytes": prompt_bytes,
-                    "image_buffers": image_buffers,
-                    "capabilities": capabilities_payload,
-                    "layout": layout_segments,
-                    "sampling_params": {
-                        "temperature": temperature,
-                        "top_p": top_p,
-                        "top_k": top_k,
-                        "min_p": min_p,
-                        "rng_seed": rng_seed,
-                    },
-                    "logits_params": {
-                        "top_logprobs": top_logprobs,
-                        "frequency_penalty": frequency_penalty,
-                        "presence_penalty": presence_penalty,
-                        "repetition_context_size": repetition_context_size,
-                        "repetition_penalty": repetition_penalty,
-                        "logit_bias": logit_bias,
-                    },
-                    "max_generated_tokens": max_generated_tokens,
-                    "stop_sequences": stop_sequences,
-                    "tool_schemas_json": tool_schemas_json,
-                    "response_format_json": response_format_json,
-                    "num_candidates": num_candidates,
-                    "best_of": best_of,
-                    "final_candidates": final_candidates,
-                    "task_name": kwargs.get("task_name"),
-                    "reasoning_effort": reasoning_effort,
-                    "tool_calling_tokens": info.formatter.get_tool_calling_tokens(),
-                    "tool_choice": kwargs.get("tool_choice", "auto"),
-                }
-            )
+            prompt_payloads.append(prompt_payload)
 
         response_channel_id = self._ipc_state.response_channel_id or request_id
         logger.debug(
