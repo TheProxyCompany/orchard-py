@@ -23,6 +23,9 @@ def determine_model_type(config: dict) -> str:
     if model_type in ("qwen3_5", "qwen3_5_text"):
         return "qwen3_5"
 
+    if model_type in ("gemma4", "gemma4_text"):
+        return "gemma4"
+
     return model_type
 
 

@@ -36,6 +36,7 @@ CLIENT_LOG_PATH = LOG_DIR / "client.test.log"
 TEXT_MODELS = [
     "meta-llama/Llama-3.1-8B-Instruct",
     "google/gemma-3-4b-it",
+    "google/gemma-4-E2B-it",
     "Qwen/Qwen3.5-4B",
     "moondream/moondream3-preview",
 ]
