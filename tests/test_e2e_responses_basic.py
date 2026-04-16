@@ -4,6 +4,12 @@ from helpers import parse_sse_events
 
 pytestmark = pytest.mark.asyncio
 
+SYSTEM_PROMPT_COMPLIANCE_SENTINEL = "7-4-7"
+SYSTEM_PROMPT_COMPLIANCE_INSTRUCTIONS = (
+    "You are a helpful assistant. End every response with the exact string "
+    "7-4-7."
+)
+
 # ---------------------------------------------------------------------------
 # Non-streaming text generation
 # ---------------------------------------------------------------------------
@@ -272,7 +278,7 @@ async def test_responses_instructions(live_server, text_model_id):
     payload = {
         "model": text_model_id,
         "input": "What is your name?",
-        "instructions": "You are a helpful assistant named Orchard. Always introduce yourself by name.",
+        "instructions": SYSTEM_PROMPT_COMPLIANCE_INSTRUCTIONS,
         "temperature": 0.0,
         "max_output_tokens": 64,
     }
@@ -283,6 +289,6 @@ async def test_responses_instructions(live_server, text_model_id):
     assert response.status_code == 200
     data = response.json()
 
-    text = data["output"][0]["content"][0]["text"].lower()
-    assert "orchard" in text
+    text = data["output"][0]["content"][0]["text"]
+    assert SYSTEM_PROMPT_COMPLIANCE_SENTINEL in text
     print(f"Response: {text}")

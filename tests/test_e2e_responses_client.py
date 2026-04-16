@@ -13,6 +13,11 @@ from tests.conftest import ALL_MODELS
 pytestmark = pytest.mark.asyncio
 
 TOOL_MODEL_ID = "meta-llama/Llama-3.1-8B-Instruct"
+SYSTEM_PROMPT_COMPLIANCE_SENTINEL = "7-4-7"
+SYSTEM_PROMPT_COMPLIANCE_INSTRUCTIONS = (
+    "You are a helpful assistant. End every response with the exact string "
+    "7-4-7."
+)
 
 WEATHER_TOOL = Function(
     name="get_weather",
@@ -231,15 +236,14 @@ async def test_client_responses_instructions(client: Client, model_id: str) -> N
     result = await client.aresponses(
         model_id,
         input="What is your name?",
-        instructions="You are a helpful assistant named Orchard. Always introduce yourself by name.",
+        instructions=SYSTEM_PROMPT_COMPLIANCE_INSTRUCTIONS,
         temperature=0.0,
         max_output_tokens=64,
     )
     assert isinstance(result, ResponseObject)
     assert result.status.value == "completed"
-    text = result.output_text.lower()
-    if model_id == TOOL_MODEL_ID:
-        assert "orchard" in text
+    text = result.output_text
+    assert SYSTEM_PROMPT_COMPLIANCE_SENTINEL in text
 
 
 @pytest.mark.parametrize("model_id", ALL_MODELS, ids=lambda m: m.split("/")[-1])
