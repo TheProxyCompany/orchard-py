@@ -43,6 +43,10 @@ class ModelResolutionError(RuntimeError):
         self.candidates = list(candidates or [])
 
 
+class IncompleteSnapshotError(RuntimeError):
+    """Raised when a cached HuggingFace snapshot is missing required weights."""
+
+
 class ModelResolver:
     """Resolves model identifiers to local filesystem paths.
 
@@ -131,8 +135,9 @@ class ModelResolver:
                     repo_id, local_files_only=True, allow_patterns=allow_patterns
                 )
             )
+            self._ensure_hf_weights_complete(path)
             source = "hf_cache"
-        except LocalEntryNotFoundError:
+        except (LocalEntryNotFoundError, IncompleteSnapshotError):
             # Download from HuggingFace Hub
             try:
                 path = Path(
@@ -140,6 +145,7 @@ class ModelResolver:
                         repo_id, local_files_only=False, allow_patterns=allow_patterns
                     )
                 )
+                self._ensure_hf_weights_complete(path)
                 source = "hf_hub"
             except Exception as e:
                 raise ModelResolutionError(
@@ -183,6 +189,55 @@ class ModelResolver:
     # -------------------------------------------------------------------------
     # Model Completeness
     # -------------------------------------------------------------------------
+
+    @staticmethod
+    def _ensure_hf_weights_complete(model_dir: Path) -> None:
+        index_file = model_dir / "model.safetensors.index.json"
+        if index_file.exists():
+            with index_file.open("r", encoding="utf-8") as f:
+                index_payload = json.load(f)
+            weight_map = index_payload.get("weight_map", {})
+            shard_names = sorted({name for name in weight_map.values() if isinstance(name, str)})
+            if not shard_names:
+                raise IncompleteSnapshotError(
+                    f"Cached HuggingFace snapshot '{model_dir}' has no declared weight shards."
+                )
+            missing_shards = [
+                shard_name
+                for shard_name in shard_names
+                if not ModelResolver._is_materialized_weight_file(model_dir / shard_name)
+            ]
+            if missing_shards:
+                raise IncompleteSnapshotError(
+                    f"Cached HuggingFace snapshot '{model_dir}' is missing weight shard(s): "
+                    + ", ".join(missing_shards)
+                )
+            return
+
+        single_file = model_dir / "model.safetensors"
+        if single_file.exists() or single_file.is_symlink():
+            if not ModelResolver._is_materialized_weight_file(single_file):
+                raise IncompleteSnapshotError(
+                    f"Cached HuggingFace snapshot '{model_dir}' has an incomplete model.safetensors."
+                )
+            return
+
+        raise IncompleteSnapshotError(
+            f"Cached HuggingFace snapshot '{model_dir}' has no materialized safetensors weights."
+        )
+
+    @staticmethod
+    def _is_materialized_weight_file(path: Path) -> bool:
+        candidate = path
+        if candidate.is_symlink():
+            try:
+                candidate = candidate.resolve(strict=True)
+            except OSError:
+                return False
+
+        if not candidate.is_file() or candidate.name.endswith(".incomplete"):
+            return False
+        return candidate.stat().st_size > 0
 
     def _ensure_model_complete(self, model_dir: Path) -> dict:
         """Ensure model directory has all required files for inference.
