@@ -197,7 +197,7 @@ class ModelResolver:
             with index_file.open("r", encoding="utf-8") as f:
                 index_payload = json.load(f)
             weight_map = index_payload.get("weight_map", {})
-            shard_names = sorted({name for name in weight_map.values() if isinstance(name, str)})
+            shard_names = sorted(set(weight_map.values()))
             if not shard_names:
                 raise IncompleteSnapshotError(
                     f"Cached HuggingFace snapshot '{model_dir}' has no declared weight shards."

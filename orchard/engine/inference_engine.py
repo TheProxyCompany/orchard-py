@@ -74,17 +74,17 @@ def _process_executable_path(pid: int) -> Path | None:
     if not command:
         return None
 
-    try:
-        argv = shlex.split(command)
-    except ValueError:
-        argv = command.split()
+    argv = shlex.split(command)
     if not argv:
         return None
 
     executable = Path(argv[0])
     if not executable.is_absolute():
         return None
-    return executable.resolve(strict=False)
+    try:
+        return executable.resolve(strict=True)
+    except OSError:
+        return None
 
 
 def _mark_process_atexit() -> None:
