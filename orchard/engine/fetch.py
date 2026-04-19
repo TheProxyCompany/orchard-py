@@ -56,10 +56,12 @@ def get_engine_path() -> Path:
     # Local dev override takes priority if it exists
     local_build = os.environ.get("PIE_LOCAL_BUILD")
     if local_build:
-        local_path = Path(local_build) / "bin" / "proxy_inference_engine"
+        local_path = Path(local_build).expanduser() / "bin" / "proxy_inference_engine"
         if local_path.exists():
             return local_path
-        # Fall through to download if local build not found
+        raise FetchError(
+            f"PIE_LOCAL_BUILD is set, but no engine binary exists at {local_path}"
+        )
 
     binary_path = ORCHARD_HOME / "bin" / "proxy_inference_engine"
 

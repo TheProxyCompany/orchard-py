@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import random
+import shlex
 import subprocess
 import sys
 import threading
@@ -49,6 +50,41 @@ _in_atexit = False
 
 _LOCK_TIMEOUT_S = 30.0
 _DEFAULT_ENGINE_PORT = 8000
+
+
+def _process_executable_path(pid: int) -> Path | None:
+    proc_exe = Path("/proc") / str(pid) / "exe"
+    if proc_exe.exists():
+        try:
+            return proc_exe.resolve(strict=True)
+        except OSError:
+            return None
+
+    try:
+        result = subprocess.run(
+            ["ps", "-p", str(pid), "-o", "command="],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+    command = result.stdout.strip()
+    if not command:
+        return None
+
+    try:
+        argv = shlex.split(command)
+    except ValueError:
+        argv = command.split()
+    if not argv:
+        return None
+
+    executable = Path(argv[0])
+    if not executable.is_absolute():
+        return None
+    return executable.resolve(strict=False)
 
 
 def _mark_process_atexit() -> None:
@@ -232,6 +268,10 @@ class InferenceEngine:
                 engine_pid = None
                 self._paths.pid_file.unlink(missing_ok=True)
                 self._paths.ready_file.unlink(missing_ok=True)
+            elif self._must_restart_running_engine(engine_pid):
+                self._stop_engine_locked(engine_pid)
+                engine_pid = None
+                engine_running = False
 
             if not engine_running:
                 logger.debug("Inference engine not running. Launching new instance.")
@@ -254,6 +294,23 @@ class InferenceEngine:
             raise
 
         self._lease_active = True
+
+    def _must_restart_running_engine(self, pid: int) -> bool:
+        if "PIE_LOCAL_BUILD" not in os.environ:
+            return False
+
+        running_engine = _process_executable_path(pid)
+        expected_engine = self._engine_bin.resolve(strict=False)
+        if running_engine == expected_engine:
+            return False
+
+        logger.info(
+            "Running orchard engine PID %s uses %s, expected %s from PIE_LOCAL_BUILD; restarting.",
+            pid,
+            running_engine if running_engine is not None else "<unknown>",
+            expected_engine,
+        )
+        return True
 
     def _wait_for_engine_ready(self) -> int:
         logger.info("Waiting for ENGINE_READY event from the C++ engine...")
