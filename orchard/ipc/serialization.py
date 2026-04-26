@@ -263,6 +263,11 @@ def _build_request_payload(
             "section_start": str(tool_calling_tokens_raw.get("section_start", "")),
             "section_end": str(tool_calling_tokens_raw.get("section_end", "")),
         }
+        thinking_tokens_raw = prompt.get("thinking_tokens") or {}
+        thinking_tokens = {
+            "start": str(thinking_tokens_raw.get("start", "")),
+            "end": str(thinking_tokens_raw.get("end", "")),
+        }
         max_tool_calls = int(prompt.get("max_tool_calls") or 0)
 
         tool_choice_value = prompt.get("tool_choice", "auto")
@@ -347,6 +352,7 @@ def _build_request_payload(
                 "stop_sequences": stop_sequences,
                 "tool_schemas_json": tool_schemas_str,
                 "tool_calling_tokens": tool_calling_tokens,
+                "thinking_tokens": thinking_tokens,
                 "tool_choice": tool_choice_str,
                 "max_tool_calls": max_tool_calls,
                 "response_format_json": response_format_str,

@@ -208,6 +208,7 @@ async def handle_response_request(
             "reasoning_effort": reasoning_effort,
             "max_tool_calls": request.max_tool_calls,
             "tool_calling_tokens": formatter.get_tool_calling_tokens(),
+            "thinking_tokens": formatter.get_thinking_tokens(),
             "tool_choice": request.tool_choice.to_dict()
             if request.tool_choice
             else "auto",

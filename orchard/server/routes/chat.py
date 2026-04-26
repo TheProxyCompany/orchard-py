@@ -11,6 +11,7 @@ from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
 
+from orchard.defaults import MAX_GENERATED_TOKENS
 from orchard.ipc.serialization import _build_request_payload
 from orchard.ipc.utils import (
     ResponseDeltaDict,
@@ -161,7 +162,8 @@ async def handle_completion_request(
                 "repetition_context_size": 60,
                 "repetition_penalty": 1.0,
             },
-            "max_generated_tokens": instance.max_completion_tokens or 1024,
+            "max_generated_tokens": instance.max_completion_tokens
+            or MAX_GENERATED_TOKENS,
             "stop_sequences": stop_sequences,
             "tool_schemas_json": tool_schemas_str,
             "response_format_json": response_format_str,
@@ -177,6 +179,7 @@ async def handle_completion_request(
             payload["reasoning_effort"] = instance.reasoning_effort
 
         payload["tool_calling_tokens"] = formatter.get_tool_calling_tokens()
+        payload["thinking_tokens"] = formatter.get_thinking_tokens()
         payload["tool_choice"] = (
             request.tool_choice.to_dict() if request.tool_choice else "auto"
         )

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -9,7 +8,6 @@ import orchard.clients.client as client_module
 from orchard.app.model_registry import ModelInfo
 from orchard.clients.client import Client
 from orchard.clients.responses import ResponsesRequest
-
 
 DATA_URL = "data:image/png;base64,AA=="
 
@@ -71,6 +69,9 @@ class _FakeFormatter:
             "section_end": "</tool>",
         }
 
+    def get_thinking_tokens(self) -> dict[str, str]:
+        return {"start": "<think>\n", "end": "\n</think>"}
+
     def _render_part(self, part: Any) -> str:
         part_type = part["type"]
         if part_type == "image":
@@ -121,7 +122,9 @@ def _make_client() -> Client:
 
 
 @pytest.mark.asyncio
-async def test_arender_prompt_matches_submit_path(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_arender_prompt_matches_submit_path(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     client = _make_client()
     messages = [
         {
@@ -164,13 +167,17 @@ async def test_arender_prompt_matches_submit_path(monkeypatch: pytest.MonkeyPatc
         captured["prompt_payload"] = payload_kwargs["prompts"][0]
         return b"captured"
 
-    monkeypatch.setattr(client_module, "_build_request_payload", _capture_request_payload)
+    monkeypatch.setattr(
+        client_module, "_build_request_payload", _capture_request_payload
+    )
 
     rendered = await client.arender_prompt("test-model", messages, **kwargs)
-    await client._asubmit_request(1, "test-model", messages, **kwargs)
+    await client._asubmit_request(1, "test-model", messages, **kwargs)  # noqa: SLF001
 
     private_payload = captured["prompt_payload"]
-    assert rendered["rendered_prompt_text"] == private_payload["prompt_bytes"].decode("utf-8")
+    assert rendered["rendered_prompt_text"] == private_payload["prompt_bytes"].decode(
+        "utf-8"
+    )
     assert rendered["model_path"] == "/models/test-model"
     assert "<|image|>" not in rendered["rendered_prompt_text"]
     assert rendered["sampling_params"] == {
@@ -208,6 +215,10 @@ async def test_arender_prompt_matches_submit_path(monkeypatch: pytest.MonkeyPatc
     assert rendered["tool_schemas_json"] == (
         '[{"name": "lookup", "type": "object", "properties": {}}]'
     )
+    assert private_payload["thinking_tokens"] == {
+        "start": "<think>\n",
+        "end": "\n</think>",
+    }
 
 
 @pytest.mark.asyncio
@@ -243,10 +254,12 @@ async def test_arender_responses_prompt_matches_submit_path(
         captured["prompt_payload"] = payload_kwargs["prompts"][0]
         return b"captured"
 
-    monkeypatch.setattr(client_module, "_build_request_payload", _capture_request_payload)
+    monkeypatch.setattr(
+        client_module, "_build_request_payload", _capture_request_payload
+    )
 
     rendered = await client.arender_responses_prompt("test-model", request=request)
-    await client._asubmit_request(
+    await client._asubmit_request(  # noqa: SLF001
         1,
         "test-model",
         request.to_messages(),
@@ -254,7 +267,9 @@ async def test_arender_responses_prompt_matches_submit_path(
     )
 
     private_payload = captured["prompt_payload"]
-    assert rendered["rendered_prompt_text"] == private_payload["prompt_bytes"].decode("utf-8")
+    assert rendered["rendered_prompt_text"] == private_payload["prompt_bytes"].decode(
+        "utf-8"
+    )
     assert rendered["sampling_params"]["temperature"] == 0.0
     assert rendered["sampling_params"]["top_p"] == 0.9
     assert rendered["sampling_params"]["top_k"] == 5
@@ -266,3 +281,7 @@ async def test_arender_responses_prompt_matches_submit_path(
     assert rendered["tool_choice"] == "required"
     assert rendered["task_name"] is None
     assert rendered["reasoning_effort"] is None
+    assert private_payload["thinking_tokens"] == {
+        "start": "<think>\n",
+        "end": "\n</think>",
+    }

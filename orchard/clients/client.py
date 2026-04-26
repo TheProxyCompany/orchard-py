@@ -16,6 +16,7 @@ from orchard.clients.responses import (
     aggregate_non_streaming_response,
     iter_response_events,
 )
+from orchard.defaults import MAX_GENERATED_TOKENS
 from orchard.engine import ClientDelta, ClientResponse, UsageStats
 from orchard.formatter.multimodal import (
     build_multimodal_layout,
@@ -94,8 +95,7 @@ class Client:
                     else:
                         completed_prompt_indexes.add(client_delta.prompt_index)
                         should_stop = (
-                            len(completed_prompt_indexes)
-                            >= expected_final_prompt_count
+                            len(completed_prompt_indexes) >= expected_final_prompt_count
                         )
 
                 try:
@@ -517,9 +517,7 @@ class Client:
                 delta async for delta in self._async_process_raw_stream(response_queue)
             ]
             _cleanup_queue()
-            return aggregate_non_streaming_response(
-                deltas, model_id, response_request
-            )
+            return aggregate_non_streaming_response(deltas, model_id, response_request)
         finally:
             if not response_request.stream or not stream_managed_cleanup:
                 _cleanup_queue()
@@ -658,18 +656,20 @@ class Client:
 
         while True:
             if self._ipc_state.engine_dead:
-                raise RuntimeError("Engine process is dead; cannot receive further deltas.")
+                raise RuntimeError(
+                    "Engine process is dead; cannot receive further deltas."
+                )
             future = asyncio.run_coroutine_threadsafe(
                 _next_delta(),
                 self._sync_loop or asyncio.new_event_loop(),
             )
             try:
                 yield future.result(timeout=DELTA_TIMEOUT_S)
-            except TimeoutError:
+            except TimeoutError as exc:
                 raise RuntimeError(
                     f"Timed out waiting for inference delta after {DELTA_TIMEOUT_S}s. "
                     "Engine may have crashed."
-                )
+                ) from exc
             except StopAsyncIteration:
                 break
 
@@ -753,8 +753,7 @@ class Client:
             (
                 delta.error_message or delta.content or "Inference request failed."
                 for delta in deltas
-                if delta.error_message
-                or (delta.finish_reason or "").lower() == "error"
+                if delta.error_message or (delta.finish_reason or "").lower() == "error"
             ),
             None,
         )
@@ -852,7 +851,9 @@ class Client:
         top_k = int(kwargs.get("top_k", -1))
         min_p = float(kwargs.get("min_p", 0.0))
         rng_seed = int(kwargs.get("rng_seed", random.randint(0, 2**32 - 1)))
-        max_generated_tokens = int(kwargs.get("max_generated_tokens", 1024))
+        max_generated_tokens = int(
+            kwargs.get("max_generated_tokens", MAX_GENERATED_TOKENS)
+        )
         top_logprobs = int(kwargs.get("top_logprobs", 0))
         frequency_penalty = float(kwargs.get("frequency_penalty", 0.0))
         presence_penalty = float(kwargs.get("presence_penalty", 0.0))
@@ -912,6 +913,7 @@ class Client:
             "reasoning_effort": reasoning_effort,
             "max_tool_calls": max_tool_calls,
             "tool_calling_tokens": formatter.get_tool_calling_tokens(),
+            "thinking_tokens": formatter.get_thinking_tokens(),
             "tool_choice": normalized_tool_choice,
         }
         capture_payload = {
@@ -942,6 +944,7 @@ class Client:
             "reasoning_effort": reasoning_effort,
             "max_tool_calls": max_tool_calls,
             "tool_calling_tokens": formatter.get_tool_calling_tokens(),
+            "thinking_tokens": formatter.get_thinking_tokens(),
             "tool_choice": normalized_tool_choice,
         }
         return prompt_payload, capture_payload
