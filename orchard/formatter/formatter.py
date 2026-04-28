@@ -20,7 +20,7 @@ def determine_model_type(config: dict) -> str:
     if model_type == "moondream3" or model_type == "moondream":
         return "moondream3"
 
-    if model_type in ("qwen3_5", "qwen3_5_text"):
+    if model_type in ("qwen3_5", "qwen3_5_text", "qwen3_5_moe"):
         return "qwen3_5"
 
     if model_type in ("gemma4", "gemma4_text"):
