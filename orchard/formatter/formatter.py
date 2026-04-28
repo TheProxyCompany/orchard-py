@@ -68,6 +68,9 @@ class ChatFormatter:
         placeholder = vision.get("placeholders", {}).get("image")
         if placeholder:
             return placeholder
+        placeholder = vision.get("tokens", {}).get("placeholder")
+        if placeholder:
+            return placeholder
         # Vision start token (e.g. gemma: vision.tokens.start)
         start = vision.get("tokens", {}).get("start")
         if start:
@@ -86,6 +89,12 @@ class ChatFormatter:
         (like <|image|>), it gets clipped.
         """
         vision = self.capabilities.get("vision", {})
+        has_placeholder = bool(
+            vision.get("placeholders", {}).get("image")
+            or vision.get("tokens", {}).get("placeholder")
+        )
+        if has_placeholder:
+            return True
         has_vision_tokens = bool(vision.get("tokens", {}).get("start"))
         has_start_token = bool(self.control_tokens.start_image_token)
         return not (has_vision_tokens or has_start_token)

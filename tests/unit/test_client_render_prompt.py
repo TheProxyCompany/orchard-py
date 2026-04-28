@@ -8,6 +8,7 @@ import orchard.clients.client as client_module
 from orchard.app.model_registry import ModelInfo
 from orchard.clients.client import Client
 from orchard.clients.responses import ResponsesRequest
+from orchard.formatter.formatter import ChatFormatter
 
 DATA_URL = "data:image/png;base64,AA=="
 
@@ -112,11 +113,11 @@ class _DummyIPCState:
         return self._next_request_id
 
 
-def _make_client() -> Client:
+def _make_client(formatter: Any | None = None) -> Client:
     info = ModelInfo(
         model_id="test-model",
         model_path="/models/test-model",
-        formatter=_FakeFormatter(),
+        formatter=formatter or _FakeFormatter(),
     )
     return Client(_DummyIPCState(), _FakeRegistry(info))
 
@@ -220,6 +221,47 @@ async def test_arender_prompt_matches_submit_path(
         "start": "<think>\n",
         "end": "\n</think>",
     }
+
+
+@pytest.mark.asyncio
+async def test_gemma4_multimodal_uses_placeholder_token(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    model_path = tmp_path / "gemma4"
+    model_path.mkdir()
+    (model_path / "config.json").write_text('{"model_type": "gemma4"}')
+    formatter = ChatFormatter(str(model_path))
+    client = _make_client(formatter)
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "input_image", "image_url": DATA_URL},
+                {"type": "input_text", "text": "What is shown?"},
+            ],
+        }
+    ]
+
+    captured: dict[str, Any] = {}
+
+    def _capture_request_payload(**payload_kwargs: Any) -> bytes:
+        captured["prompt_payload"] = payload_kwargs["prompts"][0]
+        return b"captured"
+
+    monkeypatch.setattr(
+        client_module, "_build_request_payload", _capture_request_payload
+    )
+
+    rendered = await client.arender_prompt("test-model", messages, rng_seed=1234)
+    await client._asubmit_request(1, "test-model", messages, rng_seed=1234)  # noqa: SLF001
+
+    assert formatter.image_placeholder == "<|image|>"
+    assert formatter.should_clip_image_placeholder is True
+    assert "<|image|>" not in rendered["rendered_prompt_text"]
+    assert any(
+        segment["type"] == "image" for segment in captured["prompt_payload"]["layout"]
+    )
 
 
 @pytest.mark.asyncio
