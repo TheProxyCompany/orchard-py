@@ -15,8 +15,7 @@ pytestmark = pytest.mark.asyncio
 TOOL_MODEL_ID = "meta-llama/Llama-3.1-8B-Instruct"
 SYSTEM_PROMPT_COMPLIANCE_SENTINEL = "7-4-7"
 SYSTEM_PROMPT_COMPLIANCE_INSTRUCTIONS = (
-    "You are a helpful assistant. End every response with the exact string "
-    "7-4-7."
+    "You are a helpful assistant. End every response with the exact string 7-4-7."
 )
 
 WEATHER_TOOL = Function(
@@ -77,9 +76,7 @@ async def test_client_responses_non_streaming_message_items(
 
 
 @pytest.mark.parametrize("model_id", ALL_MODELS, ids=lambda m: m.split("/")[-1])
-async def test_client_responses_streaming_text(
-    client: Client, model_id: str
-) -> None:
+async def test_client_responses_streaming_text(client: Client, model_id: str) -> None:
     stream = await client.aresponses(
         model_id,
         input="Count from 1 to 5.",
@@ -104,7 +101,9 @@ async def test_client_responses_streaming_text(
     accumulated = "".join(
         event.delta for event in events if event.type == "response.output_text.delta"
     )
-    done_events = [event for event in events if event.type == "response.output_text.done"]
+    done_events = [
+        event for event in events if event.type == "response.output_text.done"
+    ]
     assert done_events
     assert accumulated == done_events[0].text
     assert accumulated.strip()
@@ -148,7 +147,7 @@ async def test_client_responses_tool_calling(client: Client) -> None:
                 "content": "What's the weather in San Francisco?",
             },
         ],
-        tools=[WEATHER_TOOL],
+        core_tools=[WEATHER_TOOL],
         tool_choice="required",
         temperature=0.0,
         max_output_tokens=128,
@@ -156,7 +155,9 @@ async def test_client_responses_tool_calling(client: Client) -> None:
     assert isinstance(result, ResponseObject)
     assert result.status.value == "completed"
 
-    assert result.tool_calls, f"Expected function_call output item, got: {result.output}"
+    assert result.tool_calls, (
+        f"Expected function_call output item, got: {result.output}"
+    )
     call = result.tool_calls[0]
     assert call.name == "get_weather"
     assert call.call_id
@@ -183,7 +184,7 @@ async def test_client_responses_tool_result_continuation(client: Client) -> None
                 "content": "What's the weather in San Francisco?",
             },
         ],
-        tools=[WEATHER_TOOL],
+        core_tools=[WEATHER_TOOL],
         tool_choice="required",
         temperature=0.0,
         max_output_tokens=128,
@@ -221,7 +222,7 @@ async def test_client_responses_tool_result_continuation(client: Client) -> None
                 ),
             },
         ],
-        tools=[WEATHER_TOOL],
+        core_tools=[WEATHER_TOOL],
         temperature=0.0,
         max_output_tokens=128,
     )

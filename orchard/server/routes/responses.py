@@ -110,17 +110,33 @@ async def handle_response_request(
             detail="Response request must include at least one content segment.",
         )
 
-    # Tool definitions — used for template rendering and PSE grammar compilation
-    tools_payload = (
-        [tool.to_dict() for tool in request.tools] if request.tools else None
+    # Core tools render in the prompt; active tools drive grammar enforcement.
+    core_tools_source = (
+        request.core_tools if request.core_tools is not None else request.tools
     )
-    tool_schemas_json = json.dumps(tools_payload) if tools_payload else ""
+    active_tools_source = request.active_tools or core_tools_source
+    core_tools_payload = (
+        [tool.to_dict() for tool in core_tools_source] if core_tools_source else None
+    )
+    active_tools_payload = (
+        [tool.to_dict() for tool in active_tools_source]
+        if active_tools_source
+        else None
+    )
+    if core_tools_payload:
+        core_tools_payload.sort(key=lambda tool: tool.get("name", ""))
+    if active_tools_payload:
+        active_tools_payload.sort(key=lambda tool: tool.get("name", ""))
+    tool_schemas_json = json.dumps(core_tools_payload) if core_tools_payload else ""
+    active_tool_schemas_json = (
+        json.dumps(active_tools_payload) if active_tools_payload else tool_schemas_json
+    )
 
     try:
         prompt_text = formatter.apply_template(
             messages_for_template,
             reasoning=request.reasoning is not None,
-            tools=tools_payload,
+            tools=core_tools_payload,
         )
     except Exception as exc:  # pragma: no cover - defensive
         logger.exception("Failed to render chat template: %s", exc)
@@ -200,6 +216,7 @@ async def handle_response_request(
             "max_generated_tokens": max_output_tokens,
             "stop_sequences": [],
             "tool_schemas_json": tool_schemas_json,
+            "active_tool_schemas_json": active_tool_schemas_json,
             "response_format_json": response_format_json,
             "num_candidates": 1,
             "best_of": 1,
@@ -294,7 +311,7 @@ async def handle_response_request(
             truncation=request.truncation,
             parallel_tool_calls=request.parallel_tool_calls or False,
             tool_choice=request.tool_choice,
-            tools=request.tools or [],
+            tools=request.core_tools or [],
             max_tool_calls=request.max_tool_calls,
             text=request.text,
         )

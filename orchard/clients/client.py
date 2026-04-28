@@ -721,7 +721,17 @@ class Client:
                 raise TypeError(
                     "Tools entries must be dict-like or expose a to_dict() method."
                 )
+        serializable.sort(key=Client._tool_schema_name)
         return json.dumps(serializable)
+
+    @staticmethod
+    def _tool_schema_name(tool: Any) -> str:
+        if isinstance(tool, dict):
+            function = tool.get("function")
+            if isinstance(function, dict):
+                return str(function.get("name") or "")
+            return str(tool.get("name") or "")
+        return ""
 
     @staticmethod
     def _normalize_tool_choice_payload(value: Any) -> str | dict[str, Any]:
@@ -818,12 +828,21 @@ class Client:
         if not messages_for_template:
             raise ValueError("Chat request must include at least one content segment.")
 
-        tools_payload = kwargs.get("tools")
+        core_tools_payload = kwargs.get("core_tools")
+        active_tools_payload = kwargs.get("active_tools")
+        if not active_tools_payload:
+            active_tools_payload = core_tools_payload
+        if core_tools_payload:
+            core_tools_payload = sorted(core_tools_payload, key=self._tool_schema_name)
+        if active_tools_payload:
+            active_tools_payload = sorted(
+                active_tools_payload, key=self._tool_schema_name
+            )
         prompt_text = formatter.apply_template(
             messages_for_template,
             reasoning=reasoning_flag,
             task=kwargs.get("task_name"),
-            tools=tools_payload,
+            tools=core_tools_payload,
         )
         try:
             layout_segments = build_multimodal_layout(
@@ -863,7 +882,8 @@ class Client:
             int(k): float(v) for k, v in (kwargs.get("logit_bias") or {}).items()
         }
         stop_sequences = self._normalize_stop_sequences(kwargs.get("stop"))
-        tool_schemas_json = self._serialize_tools(tools_payload)
+        tool_schemas_json = self._serialize_tools(core_tools_payload)
+        active_tool_schemas_json = self._serialize_tools(active_tools_payload)
         response_format_json = self._serialize_optional_payload(
             kwargs.get("response_format")
         )
@@ -905,6 +925,7 @@ class Client:
             "max_generated_tokens": max_generated_tokens,
             "stop_sequences": stop_sequences,
             "tool_schemas_json": tool_schemas_json,
+            "active_tool_schemas_json": active_tool_schemas_json,
             "response_format_json": response_format_json,
             "num_candidates": num_candidates,
             "best_of": best_of,

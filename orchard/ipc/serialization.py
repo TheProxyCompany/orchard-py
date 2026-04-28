@@ -243,6 +243,17 @@ def _build_request_payload(
             tool_schemas_str = tool_schemas_value
         else:
             tool_schemas_str = _coerce_bytes(tool_schemas_value).decode("utf-8")
+        active_tool_schemas_value = prompt.get(
+            "active_tool_schemas_json", tool_schemas_str
+        )
+        if isinstance(active_tool_schemas_value, str):
+            active_tool_schemas_str = active_tool_schemas_value
+        else:
+            active_tool_schemas_str = _coerce_bytes(active_tool_schemas_value).decode(
+                "utf-8"
+            )
+        if not active_tool_schemas_str:
+            active_tool_schemas_str = tool_schemas_str
 
         tool_calling_tokens_raw = prompt.get("tool_calling_tokens") or {}
         raw_formats = tool_calling_tokens_raw.get("formats") or []
@@ -351,6 +362,7 @@ def _build_request_payload(
                 "repetition_penalty": repetition_penalty,
                 "stop_sequences": stop_sequences,
                 "tool_schemas_json": tool_schemas_str,
+                "active_tool_schemas_json": active_tool_schemas_str,
                 "tool_calling_tokens": tool_calling_tokens,
                 "thinking_tokens": thinking_tokens,
                 "tool_choice": tool_choice_str,

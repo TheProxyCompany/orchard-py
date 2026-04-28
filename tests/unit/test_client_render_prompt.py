@@ -156,7 +156,7 @@ async def test_arender_prompt_matches_submit_path(
         "task_name": "point",
         "response_format": {"type": "json_object"},
         "tool_choice": {"type": "function", "name": "lookup"},
-        "tools": [{"name": "lookup", "type": "object", "properties": {}}],
+        "core_tools": [{"name": "lookup", "type": "object", "properties": {}}],
         "max_tool_calls": 3,
         "reasoning_effort": "medium",
     }
@@ -215,10 +215,49 @@ async def test_arender_prompt_matches_submit_path(
     assert rendered["tool_schemas_json"] == (
         '[{"name": "lookup", "type": "object", "properties": {}}]'
     )
+    assert private_payload["active_tool_schemas_json"] == rendered["tool_schemas_json"]
     assert private_payload["thinking_tokens"] == {
         "start": "<think>\n",
         "end": "\n</think>",
     }
+
+
+@pytest.mark.asyncio
+async def test_arender_prompt_splits_core_and_active_tools(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = _make_client()
+    messages = [{"role": "user", "content": "Call the tool."}]
+    kwargs = {
+        "core_tools": [{"name": "search_tools", "type": "object", "properties": {}}],
+        "active_tools": [
+            {"name": "search_tools", "type": "object", "properties": {}},
+            {"name": "loaded_tool", "type": "object", "properties": {}},
+        ],
+    }
+
+    captured: dict[str, Any] = {}
+
+    def _capture_request_payload(**payload_kwargs: Any) -> bytes:
+        captured["prompt_payload"] = payload_kwargs["prompts"][0]
+        return b"captured"
+
+    monkeypatch.setattr(
+        client_module, "_build_request_payload", _capture_request_payload
+    )
+
+    rendered = await client.arender_prompt("test-model", messages, **kwargs)
+    await client._asubmit_request(1, "test-model", messages, **kwargs)  # noqa: SLF001
+
+    private_payload = captured["prompt_payload"]
+    assert "tools=1" in rendered["rendered_prompt_text"]
+    assert private_payload["tool_schemas_json"] == (
+        '[{"name": "search_tools", "type": "object", "properties": {}}]'
+    )
+    assert private_payload["active_tool_schemas_json"] == (
+        '[{"name": "loaded_tool", "type": "object", "properties": {}}, '
+        '{"name": "search_tools", "type": "object", "properties": {}}]'
+    )
 
 
 @pytest.mark.asyncio
@@ -238,7 +277,7 @@ async def test_arender_responses_prompt_matches_submit_path(
         frequency_penalty=0.1,
         presence_penalty=0.4,
         tool_choice="required",
-        tools=[
+        core_tools=[
             {
                 "type": "function",
                 "name": "lookup",
@@ -279,6 +318,15 @@ async def test_arender_responses_prompt_matches_submit_path(
     assert rendered["sampling_params"]["presence_penalty"] == 0.4
     assert rendered["max_generated_tokens"] == 32
     assert rendered["tool_choice"] == "required"
+    assert private_payload["tool_schemas_json"] == (
+        '[{"name": "lookup", "type": "object", "description": "Lookup tool", '
+        '"properties": {"name": {"const": "lookup"}, "arguments": {"type": "object", '
+        '"properties": {}}}, "strict": true, "required": ["name", "arguments"]}]'
+    )
+    assert (
+        private_payload["active_tool_schemas_json"]
+        == private_payload["tool_schemas_json"]
+    )
     assert rendered["task_name"] is None
     assert rendered["reasoning_effort"] is None
     assert private_payload["thinking_tokens"] == {

@@ -123,14 +123,16 @@ async def handle_completion_request(
         messages_as_dicts = [
             msg.model_dump(exclude_none=True) for msg in instance.messages
         ]
-        tools_payload = (
+        core_tools_payload = (
             [tool.to_dict() for tool in instance.tools] if instance.tools else None
         )
-        tool_schemas_str = json.dumps(tools_payload) if tools_payload else ""
+        if core_tools_payload:
+            core_tools_payload.sort(key=lambda tool: tool.get("name", ""))
+        tool_schemas_str = json.dumps(core_tools_payload) if core_tools_payload else ""
         prompt_text = formatter.apply_template(
             messages_as_dicts,
             reasoning=instance.reasoning_effort is not None,
-            tools=tools_payload,
+            tools=core_tools_payload,
         )
         logger.info("Prompt text: %s", prompt_text)
         stop_sequences = _dedupe_stop_sequences(instance.stop_sequences)
@@ -166,6 +168,7 @@ async def handle_completion_request(
             or MAX_GENERATED_TOKENS,
             "stop_sequences": stop_sequences,
             "tool_schemas_json": tool_schemas_str,
+            "active_tool_schemas_json": tool_schemas_str,
             "response_format_json": response_format_str,
             "image_buffers": [],
             "layout": layout,

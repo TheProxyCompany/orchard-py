@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from typing import Any, Literal, TypeAlias
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -32,6 +32,7 @@ from orchard.server.models.responses import (
     ReasoningDeltaEvent,
     ReasoningDoneEvent,
     ResponseCompletedEvent,
+    ResponseCreatedEvent,
     ResponseFailedEvent,
     ResponseIncompleteEvent,
     ResponseInProgressEvent,
@@ -39,11 +40,10 @@ from orchard.server.models.responses import (
     ResponseRequest,
     ResponseStreamState,
     ResponseUsage,
-    ResponseCreatedEvent,
     StreamErrorEvent,
     StreamingEvent,
-    get_current_timestamp,
     generate_response_id,
+    get_current_timestamp,
 )
 
 
@@ -51,7 +51,7 @@ class DoneEvent(BaseModel):
     type: Literal["done"] = "done"
 
 
-ResponseEvent: TypeAlias = StreamingEvent | DoneEvent
+type ResponseEvent = StreamingEvent | DoneEvent
 
 
 class ResponsesRequest(ResponseRequest):
@@ -81,10 +81,16 @@ class ResponsesRequest(ResponseRequest):
         return messages
 
     def to_submit_kwargs(self) -> dict[str, Any]:
-        tools_payload = [
-            normalize_response_tool_schema(tool)
-            for tool in (self.tools or [])
+        core_tools_source = self.core_tools
+        active_tools_source = self.active_tools or core_tools_source
+        core_tools_payload = [
+            normalize_response_tool_schema(tool) for tool in (core_tools_source or [])
         ]
+        active_tools_payload = [
+            normalize_response_tool_schema(tool) for tool in (active_tools_source or [])
+        ]
+        core_tools_payload.sort(key=_response_tool_schema_name)
+        active_tools_payload.sort(key=_response_tool_schema_name)
         response_format = self.text.to_dict() if self.text is not None else None
 
         kwargs = {
@@ -99,7 +105,8 @@ class ResponsesRequest(ResponseRequest):
             if self.max_output_tokens is not None
             else 0,
             "top_logprobs": self.top_logprobs if self.top_logprobs is not None else 0,
-            "tools": tools_payload,
+            "core_tools": core_tools_payload,
+            "active_tools": active_tools_payload,
             "tool_choice": _tool_choice_to_payload(self.tool_choice),
             "response_format": response_format,
             "task_name": self.task,
@@ -169,6 +176,12 @@ def normalize_response_tool_schema(tool: Any) -> Any:
         }
 
     return payload
+
+
+def _response_tool_schema_name(tool: Any) -> str:
+    if isinstance(tool, dict):
+        return str(tool.get("name") or "")
+    return ""
 
 
 def finish_reason_to_incomplete(reason: str | None) -> IncompleteDetails | None:
@@ -314,7 +327,9 @@ def _build_output_items(
             result.append(
                 OutputMessage(
                     status=OutputStatus.COMPLETED,
-                    content=[OutputTextContent(text=item.content)] if item.content else [],
+                    content=[OutputTextContent(text=item.content)]
+                    if item.content
+                    else [],
                 )
             )
         elif item.item_type == "tool_call":
@@ -329,7 +344,9 @@ def _build_output_items(
             result.append(
                 OutputReasoning(
                     status=OutputStatus.COMPLETED,
-                    content=[ReasoningContent(text=item.content)] if item.content else [],
+                    content=[ReasoningContent(text=item.content)]
+                    if item.content
+                    else [],
                 )
             )
 
@@ -412,7 +429,7 @@ def aggregate_non_streaming_response(
         max_output_tokens=request.max_output_tokens,
         top_logprobs=request.top_logprobs,
         tool_choice=request.tool_choice,
-        tools=request.tools or [],
+        tools=request.core_tools or [],
         max_tool_calls=request.max_tool_calls,
         text=request.text,
     )
@@ -654,7 +671,9 @@ async def iter_response_events(
 
         for event in delta.get("state_events") or []:
             if isinstance(event, dict):
-                for mapped_event in _process_state_event_for_streaming(event, stream_state):
+                for mapped_event in _process_state_event_for_streaming(
+                    event, stream_state
+                ):
                     yield mapped_event
 
         _update_usage_from_delta(delta, usage)

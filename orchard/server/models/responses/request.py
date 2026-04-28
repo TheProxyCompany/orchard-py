@@ -212,6 +212,14 @@ class ResponseRequest(BaseModel):
         default=None,
         description="A list of tools that the model can use to generate a response.",
     )
+    core_tools: list[Function] | None = Field(
+        default=None,
+        description="Prompt-rendered core tool schemas.",
+    )
+    active_tools: list[Function] | None = Field(
+        default=None,
+        description="Grammar/runtime tool schemas; falls back to core_tools when absent or empty.",
+    )
     text: ResponseFormat | None = Field(
         default=None,
         description="The format of the response.",
