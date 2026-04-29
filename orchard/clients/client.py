@@ -758,6 +758,93 @@ class Client:
         usage.total_tokens = usage.prompt_tokens + usage.completion_tokens
         return usage
 
+    @staticmethod
+    def _aggregate_message_text(deltas: list[ClientDelta]) -> str:
+        saw_state_events = any(delta.state_events for delta in deltas)
+        if not saw_state_events:
+            return "".join(filter(None, (delta.content or "" for delta in deltas)))
+
+        parts: list[str] = []
+        completed_value: str | None = None
+        for delta in deltas:
+            for event in delta.state_events:
+                if (
+                    event.get("item_type") == "message"
+                    and event.get("event_type") == "content_delta"
+                ):
+                    parts.append(str(event.get("delta", "")))
+                elif (
+                    event.get("item_type") == "message"
+                    and event.get("event_type") == "item_completed"
+                    and "value" in event
+                ):
+                    completed_value = str(event["value"])
+        if parts:
+            return "".join(parts)
+        if completed_value is not None:
+            return completed_value
+        return "".join(parts)
+
+    @staticmethod
+    def _aggregate_structured_items(
+        deltas: list[ClientDelta],
+    ) -> tuple[list[str], list[dict]]:
+        reasoning_by_identifier: dict[str, str] = {}
+        tool_calls_by_index: dict[int, dict] = {}
+
+        for delta in deltas:
+            for event in delta.state_events:
+                event_type = event.get("event_type")
+                item_type = event.get("item_type")
+                identifier = str(event.get("identifier") or item_type or "")
+
+                if item_type == "reasoning":
+                    current = reasoning_by_identifier.get(identifier, "")
+                    if event_type == "content_delta":
+                        reasoning_by_identifier[identifier] = current + str(
+                            event.get("delta", "")
+                        )
+                    elif event_type == "item_completed" and "value" in event:
+                        reasoning_by_identifier[identifier] = str(event["value"])
+                    continue
+
+                if item_type != "tool_call":
+                    continue
+
+                output_index = int(event.get("output_index") or 0)
+                tool_call = tool_calls_by_index.setdefault(
+                    output_index,
+                    {"name": identifier.removeprefix("tool_call:"), "arguments": ""},
+                )
+                if identifier and identifier != "arguments":
+                    tool_call["name"] = identifier.removeprefix("tool_call:")
+
+                if identifier == "arguments" and event_type == "content_delta":
+                    tool_call["arguments"] = str(tool_call.get("arguments", "")) + str(
+                        event.get("delta", "")
+                    )
+                elif event_type == "item_completed" and "value" in event:
+                    value = event["value"]
+                    if isinstance(value, dict):
+                        name = value.get("name")
+                        arguments = value.get("arguments")
+                        if name is not None:
+                            tool_call["name"] = str(name)
+                        if arguments is not None:
+                            tool_call["arguments"] = arguments
+                    elif identifier == "arguments":
+                        tool_call["arguments"] = value
+
+        reasoning = [
+            value for _, value in sorted(reasoning_by_identifier.items()) if value
+        ]
+        tool_calls = [
+            value
+            for _, value in sorted(tool_calls_by_index.items())
+            if value.get("name")
+        ]
+        return reasoning, tool_calls
+
     def _aggregate_response(self, deltas: list[ClientDelta]) -> ClientResponse:
         error_message = next(
             (
@@ -770,18 +857,19 @@ class Client:
         if error_message is not None:
             raise InferenceError(error_message)
 
-        aggregated_text = "".join(
-            filter(None, (delta.content or "" for delta in deltas))
-        )
+        aggregated_text = self._aggregate_message_text(deltas)
         finish_reason = next(
             (delta.finish_reason for delta in reversed(deltas) if delta.finish_reason),
             None,
         )
         usage = self._extract_usage(deltas)
+        reasoning, tool_calls = self._aggregate_structured_items(deltas)
         return ClientResponse(
             text=aggregated_text,
             finish_reason=finish_reason,
             usage=usage,
+            reasoning=reasoning,
+            tool_calls=tool_calls,
             deltas=deltas,
         )
 
@@ -829,6 +917,8 @@ class Client:
             raise ValueError("Chat request must include at least one content segment.")
 
         core_tools_payload = kwargs.get("core_tools")
+        if core_tools_payload is None:
+            core_tools_payload = kwargs.get("tools")
         active_tools_payload = kwargs.get("active_tools")
         if not active_tools_payload:
             active_tools_payload = core_tools_payload
@@ -894,6 +984,7 @@ class Client:
         final_candidates = int(kwargs.get("final_candidates", best_of))
         if final_candidates <= 0:
             final_candidates = best_of
+        min_tool_calls = int(kwargs.get("min_tool_calls") or 1)
         max_tool_calls = int(kwargs.get("max_tool_calls") or 0)
         normalized_tool_choice = self._normalize_tool_choice_payload(
             kwargs.get("tool_choice")
@@ -932,6 +1023,7 @@ class Client:
             "final_candidates": final_candidates,
             "task_name": kwargs.get("task_name"),
             "reasoning_effort": reasoning_effort,
+            "min_tool_calls": min_tool_calls,
             "max_tool_calls": max_tool_calls,
             "tool_calling_tokens": formatter.get_tool_calling_tokens(),
             "thinking_tokens": formatter.get_thinking_tokens(),
@@ -963,6 +1055,7 @@ class Client:
             "response_format_json": response_format_json,
             "task_name": kwargs.get("task_name"),
             "reasoning_effort": reasoning_effort,
+            "min_tool_calls": min_tool_calls,
             "max_tool_calls": max_tool_calls,
             "tool_calling_tokens": formatter.get_tool_calling_tokens(),
             "thinking_tokens": formatter.get_thinking_tokens(),

@@ -279,6 +279,7 @@ def _build_request_payload(
             "start": str(thinking_tokens_raw.get("start", "")),
             "end": str(thinking_tokens_raw.get("end", "")),
         }
+        min_tool_calls = int(prompt.get("min_tool_calls") or 1)
         max_tool_calls = int(prompt.get("max_tool_calls") or 0)
 
         tool_choice_value = prompt.get("tool_choice", "auto")
@@ -366,6 +367,7 @@ def _build_request_payload(
                 "tool_calling_tokens": tool_calling_tokens,
                 "thinking_tokens": thinking_tokens,
                 "tool_choice": tool_choice_str,
+                "min_tool_calls": min_tool_calls,
                 "max_tool_calls": max_tool_calls,
                 "response_format_json": response_format_str,
                 "logit_bias": logit_bias_entries,

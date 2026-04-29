@@ -26,6 +26,7 @@ class ClientDelta(BaseModel):
     modal_decoder_id: str | None = None
     modal_bytes_b64: str | None = None
     error_message: str | None = None
+    state_events: list[dict] = Field(default_factory=list)
     is_final: bool = Field(default=False, alias="is_final_delta")
     finish_reason: str | None = None
 
@@ -36,6 +37,8 @@ class ClientResponse(BaseModel):
     text: str
     finish_reason: str | None = None
     usage: UsageStats = Field(default_factory=UsageStats)
+    reasoning: list[str] = Field(default_factory=list)
+    tool_calls: list[dict] = Field(default_factory=list)
     deltas: list[ClientDelta] = Field(default_factory=list)
 
 

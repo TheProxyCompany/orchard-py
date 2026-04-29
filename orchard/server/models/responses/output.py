@@ -304,6 +304,10 @@ class ResponseObject(BaseModel):
         default=None,
         description="Maximum number of tool calls allowed.",
     )
+    min_tool_calls: int | None = Field(
+        default=None,
+        description="Minimum number of tool calls required.",
+    )
     text: ResponseFormat | None = Field(
         default=None,
         description="Response format used.",
@@ -326,6 +330,4 @@ class ResponseObject(BaseModel):
     @property
     def tool_calls(self) -> list[OutputFunctionCall]:
         """Return all function-call output items in this response."""
-        return [
-            item for item in self.output if isinstance(item, OutputFunctionCall)
-        ]
+        return [item for item in self.output if isinstance(item, OutputFunctionCall)]

@@ -81,10 +81,12 @@ class ResponsesRequest(ResponseRequest):
         return messages
 
     def to_submit_kwargs(self) -> dict[str, Any]:
-        core_tools_source = self.core_tools
+        core_tools_source = (
+            self.core_tools if self.core_tools is not None else self.tools
+        )
         active_tools_source = self.active_tools or core_tools_source
         core_tools_payload = [
-            normalize_response_tool_schema(tool) for tool in (core_tools_source or [])
+            response_tool_prompt_payload(tool) for tool in (core_tools_source or [])
         ]
         active_tools_payload = [
             normalize_response_tool_schema(tool) for tool in (active_tools_source or [])
@@ -111,6 +113,8 @@ class ResponsesRequest(ResponseRequest):
             "response_format": response_format,
             "task_name": self.task,
             "reasoning_effort": _reasoning_effort_from_request(self),
+            "min_tool_calls": self.min_tool_calls,
+            "max_tool_calls": self.max_tool_calls,
         }
         return {key: value for key, value in kwargs.items() if value is not None}
 
@@ -176,6 +180,14 @@ def normalize_response_tool_schema(tool: Any) -> Any:
         }
 
     return payload
+
+
+def response_tool_prompt_payload(tool: Any) -> Any:
+    if hasattr(tool, "model_dump"):
+        return tool.model_dump(exclude_none=True)
+    if hasattr(tool, "to_dict"):
+        return tool.to_dict()
+    return tool
 
 
 def _response_tool_schema_name(tool: Any) -> str:
@@ -430,6 +442,7 @@ def aggregate_non_streaming_response(
         top_logprobs=request.top_logprobs,
         tool_choice=request.tool_choice,
         tools=request.core_tools or [],
+        min_tool_calls=request.min_tool_calls,
         max_tool_calls=request.max_tool_calls,
         text=request.text,
     )

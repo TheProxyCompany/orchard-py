@@ -223,6 +223,7 @@ async def handle_response_request(
             "final_candidates": 1,
             "task_name": request.task,
             "reasoning_effort": reasoning_effort,
+            "min_tool_calls": request.min_tool_calls,
             "max_tool_calls": request.max_tool_calls,
             "tool_calling_tokens": formatter.get_tool_calling_tokens(),
             "thinking_tokens": formatter.get_thinking_tokens(),
@@ -312,6 +313,7 @@ async def handle_response_request(
             parallel_tool_calls=request.parallel_tool_calls or False,
             tool_choice=request.tool_choice,
             tools=request.core_tools or [],
+            min_tool_calls=request.min_tool_calls,
             max_tool_calls=request.max_tool_calls,
             text=request.text,
         )

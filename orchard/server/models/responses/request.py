@@ -153,6 +153,11 @@ class ResponseRequest(BaseModel):
         ge=1,
         description="Maximum number of tool calls the model can emit in one response.",
     )
+    min_tool_calls: int | None = Field(
+        default=None,
+        ge=1,
+        description="Minimum number of tool calls required when a section-delimited tool grammar is active.",
+    )
     instructions: str | None = Field(
         default=None,
         description="System/developer instructions for the model.",

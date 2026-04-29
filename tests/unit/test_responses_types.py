@@ -106,6 +106,51 @@ def test_from_text_convenience_constructor() -> None:
     assert request.to_messages() == [{"role": "user", "content": "Hello there"}]
 
 
+def test_to_submit_kwargs_uses_openai_tools_as_core_tools() -> None:
+    request = ResponsesRequest.from_text(
+        "Call the tool.",
+        tools=[
+            {
+                "type": "function",
+                "name": "lookup",
+                "description": "Lookup tool",
+                "parameters": {"type": "object", "properties": {}},
+            }
+        ],
+        tool_choice="required",
+        min_tool_calls=1,
+        max_tool_calls=1,
+    )
+
+    kwargs = request.to_submit_kwargs()
+
+    assert kwargs["tool_choice"] == "required"
+    assert kwargs["min_tool_calls"] == 1
+    assert kwargs["max_tool_calls"] == 1
+    assert kwargs["core_tools"] == [
+        {
+            "type": "function",
+            "name": "lookup",
+            "description": "Lookup tool",
+            "strict": True,
+            "parameters": {"type": "object", "properties": {}},
+        }
+    ]
+    assert kwargs["active_tools"] == [
+        {
+            "name": "lookup",
+            "type": "object",
+            "description": "Lookup tool",
+            "properties": {
+                "name": {"const": "lookup"},
+                "arguments": {"type": "object", "properties": {}},
+            },
+            "strict": True,
+            "required": ["name", "arguments"],
+        }
+    ]
+
+
 def test_finish_reason_to_incomplete() -> None:
     assert finish_reason_to_incomplete("length") is not None
     assert finish_reason_to_incomplete("max_output_tokens") is not None
@@ -183,9 +228,7 @@ async def test_delta_to_event_mapping_streaming() -> None:
     assert event_types[-1] == "done"
 
     seq_numbers = [
-        event.sequence_number
-        for event in events
-        if hasattr(event, "sequence_number")
+        event.sequence_number for event in events if hasattr(event, "sequence_number")
     ]
     assert seq_numbers == sorted(seq_numbers)
     assert len(seq_numbers) == len(set(seq_numbers))

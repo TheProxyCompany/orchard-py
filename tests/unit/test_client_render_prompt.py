@@ -8,6 +8,7 @@ import orchard.clients.client as client_module
 from orchard.app.model_registry import ModelInfo
 from orchard.clients.client import Client
 from orchard.clients.responses import ResponsesRequest
+from orchard.engine import ClientDelta
 from orchard.formatter.formatter import ChatFormatter
 
 DATA_URL = "data:image/png;base64,AA=="
@@ -122,6 +123,137 @@ def _make_client(formatter: Any | None = None) -> Client:
     return Client(_DummyIPCState(), _FakeRegistry(info))
 
 
+def test_chat_aggregate_uses_message_state_events_when_present() -> None:
+    client = _make_client()
+    deltas = [
+        ClientDelta(
+            request_id=1,
+            content="hidden thought",
+            state_events=[
+                {
+                    "event_type": "content_delta",
+                    "item_type": "reasoning",
+                    "identifier": "reasoning",
+                    "delta": "hidden thought",
+                }
+            ],
+        ),
+        ClientDelta(
+            request_id=1,
+            content="visible answer",
+            state_events=[
+                {
+                    "event_type": "content_delta",
+                    "item_type": "message",
+                    "identifier": "message",
+                    "delta": "visible answer",
+                }
+            ],
+        ),
+        ClientDelta(request_id=1, is_final_delta=True, finish_reason="stop"),
+    ]
+
+    response = client._aggregate_response(deltas)  # noqa: SLF001
+    assert response.text == "visible answer"
+    assert response.reasoning == ["hidden thought"]
+
+
+def test_chat_aggregate_does_not_duplicate_completed_message_value() -> None:
+    client = _make_client()
+    deltas = [
+        ClientDelta(
+            request_id=1,
+            content='{"answer":"A"}',
+            state_events=[
+                {
+                    "event_type": "content_delta",
+                    "item_type": "message",
+                    "identifier": "message",
+                    "delta": '{"answer":"A"}',
+                }
+            ],
+        ),
+        ClientDelta(
+            request_id=1,
+            state_events=[
+                {
+                    "event_type": "item_completed",
+                    "item_type": "message",
+                    "identifier": "message",
+                    "value": '{"answer":"A"}',
+                }
+            ],
+        ),
+        ClientDelta(request_id=1, is_final_delta=True, finish_reason="stop"),
+    ]
+
+    assert client._aggregate_response(deltas).text == '{"answer":"A"}'  # noqa: SLF001
+
+
+def test_chat_aggregate_uses_completed_message_when_no_delta_seen() -> None:
+    client = _make_client()
+    deltas = [
+        ClientDelta(
+            request_id=1,
+            state_events=[
+                {
+                    "event_type": "item_completed",
+                    "item_type": "message",
+                    "identifier": "message",
+                    "value": "complete",
+                }
+            ],
+        ),
+    ]
+
+    assert client._aggregate_response(deltas).text == "complete"  # noqa: SLF001
+
+
+def test_chat_aggregate_keeps_raw_content_without_state_events() -> None:
+    client = _make_client()
+    deltas = [
+        ClientDelta(request_id=1, content="hello "),
+        ClientDelta(request_id=1, content="world"),
+    ]
+
+    assert client._aggregate_response(deltas).text == "hello world"  # noqa: SLF001
+
+
+def test_chat_aggregate_exposes_tool_calls_from_state_events() -> None:
+    client = _make_client()
+    deltas = [
+        ClientDelta(
+            request_id=1,
+            state_events=[
+                {
+                    "event_type": "content_delta",
+                    "item_type": "tool_call",
+                    "output_index": 0,
+                    "identifier": "arguments",
+                    "delta": '{"content":"hi"}',
+                },
+                {
+                    "event_type": "item_completed",
+                    "item_type": "tool_call",
+                    "output_index": 0,
+                    "identifier": "tool_call:share_to_party",
+                    "value": {
+                        "name": "share_to_party",
+                        "arguments": {"content": "hi"},
+                    },
+                },
+            ],
+        )
+    ]
+
+    response = client._aggregate_response(deltas)  # noqa: SLF001
+
+    assert response.text == ""
+    assert response.tool_calls == [
+        {"name": "share_to_party", "arguments": {"content": "hi"}}
+    ]
+
+
 @pytest.mark.asyncio
 async def test_arender_prompt_matches_submit_path(
     monkeypatch: pytest.MonkeyPatch,
@@ -158,6 +290,7 @@ async def test_arender_prompt_matches_submit_path(
         "response_format": {"type": "json_object"},
         "tool_choice": {"type": "function", "name": "lookup"},
         "core_tools": [{"name": "lookup", "type": "object", "properties": {}}],
+        "min_tool_calls": 2,
         "max_tool_calls": 3,
         "reasoning_effort": "medium",
     }
@@ -221,6 +354,58 @@ async def test_arender_prompt_matches_submit_path(
         "start": "<think>\n",
         "end": "\n</think>",
     }
+
+
+@pytest.mark.asyncio
+async def test_arender_responses_prompt_maps_tools_to_core_tools(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = _make_client()
+    request = ResponsesRequest.from_text(
+        "Call the tool.",
+        tools=[
+            {
+                "type": "function",
+                "name": "lookup",
+                "description": "Lookup tool",
+                "parameters": {"type": "object", "properties": {}},
+            }
+        ],
+        tool_choice="required",
+        min_tool_calls=1,
+        max_tool_calls=1,
+    )
+
+    captured: dict[str, Any] = {}
+
+    def _capture_request_payload(**payload_kwargs: Any) -> bytes:
+        captured["prompt_payload"] = payload_kwargs["prompts"][0]
+        return b"captured"
+
+    monkeypatch.setattr(
+        client_module, "_build_request_payload", _capture_request_payload
+    )
+
+    await client._asubmit_request(  # noqa: SLF001
+        1,
+        "test-model",
+        request.to_messages(),
+        **request.to_submit_kwargs(),
+    )
+
+    private_payload = captured["prompt_payload"]
+    assert private_payload["tool_choice"] == "required"
+    assert private_payload["min_tool_calls"] == 1
+    assert private_payload["max_tool_calls"] == 1
+    assert private_payload["tool_schemas_json"] == (
+        '[{"name": "lookup", "type": "function", "description": "Lookup tool", '
+        '"strict": true, "parameters": {"type": "object", "properties": {}}}]'
+    )
+    assert private_payload["active_tool_schemas_json"] == (
+        '[{"name": "lookup", "type": "object", "description": "Lookup tool", '
+        '"properties": {"name": {"const": "lookup"}, "arguments": {"type": "object", '
+        '"properties": {}}}, "strict": true, "required": ["name", "arguments"]}]'
+    )
 
 
 @pytest.mark.asyncio
@@ -361,13 +546,13 @@ async def test_arender_responses_prompt_matches_submit_path(
     assert rendered["max_generated_tokens"] == 32
     assert rendered["tool_choice"] == "required"
     assert private_payload["tool_schemas_json"] == (
+        '[{"name": "lookup", "type": "function", "description": "Lookup tool", '
+        '"strict": true, "parameters": {"type": "object", "properties": {}}}]'
+    )
+    assert private_payload["active_tool_schemas_json"] == (
         '[{"name": "lookup", "type": "object", "description": "Lookup tool", '
         '"properties": {"name": {"const": "lookup"}, "arguments": {"type": "object", '
         '"properties": {}}}, "strict": true, "required": ["name", "arguments"]}]'
-    )
-    assert (
-        private_payload["active_tool_schemas_json"]
-        == private_payload["tool_schemas_json"]
     )
     assert rendered["task_name"] is None
     assert rendered["reasoning_effort"] is None
