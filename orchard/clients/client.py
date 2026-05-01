@@ -180,6 +180,23 @@ class Client:
             return messages
         return [messages]
 
+    @staticmethod
+    def _kwargs_for_prompt(
+        kwargs: dict[str, Any], prompt_index: int, batch_size: int
+    ) -> dict[str, Any]:
+        prompt_kwargs = dict(kwargs)
+        response_format = kwargs.get("response_format")
+        if isinstance(response_format, list):
+            if len(response_format) == batch_size:
+                prompt_kwargs["response_format"] = response_format[prompt_index]
+            elif len(response_format) == 1:
+                prompt_kwargs["response_format"] = response_format[0]
+            else:
+                raise ValueError(
+                    f"Length of 'response_format' ({len(response_format)}) does not match batch size {batch_size}."
+                )
+        return prompt_kwargs
+
     async def arender_prompt(
         self,
         model_id: str,
@@ -1105,13 +1122,15 @@ class Client:
 
         # Build a prompt payload for each conversation
         prompt_payloads = []
-        for messages in conversations:
+        batch_size = len(conversations)
+        for prompt_index, messages in enumerate(conversations):
+            prompt_kwargs = self._kwargs_for_prompt(kwargs, prompt_index, batch_size)
             prompt_payload, _ = self._prepare_prompt_payload(
                 model_id=model_id,
                 model_path=info.model_path,
                 formatter=info.formatter,
                 messages=messages,
-                **kwargs,
+                **prompt_kwargs,
             )
             prompt_payloads.append(prompt_payload)
 

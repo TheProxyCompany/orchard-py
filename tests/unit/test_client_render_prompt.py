@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import pytest
@@ -354,6 +355,53 @@ async def test_arender_prompt_matches_submit_path(
         "start": "<think>\n",
         "end": "\n</think>",
     }
+
+
+@pytest.mark.asyncio
+async def test_batched_prompt_payload_uses_per_prompt_response_format(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = _make_client()
+    conversations = [
+        [{"role": "user", "content": "Return city JSON."}],
+        [{"role": "user", "content": "Return animal JSON."}],
+    ]
+    response_formats = [
+        {
+            "type": "json_schema",
+            "json_schema": {"name": "city", "schema": {"type": "object"}},
+        },
+        {
+            "type": "json_schema",
+            "json_schema": {"name": "animal", "schema": {"type": "array"}},
+        },
+    ]
+    captured: dict[str, Any] = {}
+
+    def _capture_request_payload(**payload_kwargs: Any) -> bytes:
+        captured["prompts"] = payload_kwargs["prompts"]
+        return b"captured"
+
+    monkeypatch.setattr(
+        client_module, "_build_request_payload", _capture_request_payload
+    )
+
+    await client._asubmit_request_batch(  # noqa: SLF001
+        1,
+        "test-model",
+        conversations,
+        response_format=response_formats,
+    )
+
+    assert len(captured["prompts"]) == 2
+    assert (
+        json.loads(captured["prompts"][0]["response_format_json"])
+        == response_formats[0]
+    )
+    assert (
+        json.loads(captured["prompts"][1]["response_format_json"])
+        == response_formats[1]
+    )
 
 
 @pytest.mark.asyncio
