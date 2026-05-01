@@ -443,7 +443,15 @@ async def test_gemma4_multimodal_uses_placeholder_token(
 
     assert formatter.image_placeholder == "<|image|>"
     assert formatter.should_clip_image_placeholder is True
+    assert formatter.get_thinking_tokens() == {
+        "start": "<|channel>thought\n",
+        "end": "<channel|>",
+    }
     assert "<|image|>" not in rendered["rendered_prompt_text"]
+    assert captured["prompt_payload"]["thinking_tokens"] == {
+        "start": "<|channel>thought\n",
+        "end": "<channel|>",
+    }
     assert any(
         segment["type"] == "image" for segment in captured["prompt_payload"]["layout"]
     )

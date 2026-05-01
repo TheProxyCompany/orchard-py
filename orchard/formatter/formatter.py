@@ -218,10 +218,8 @@ class ChatFormatter:
         }
 
     def get_thinking_tokens(self) -> dict[str, str]:
-        """Extract linear-fence thinking delimiters from capabilities.yaml."""
+        """Extract generated-output thinking delimiters from capabilities.yaml."""
         tokens = self.capabilities.get("thinking", {}).get("tokens", {})
-        if "enable" in tokens or "suppress" in tokens:
-            return {"start": "", "end": ""}
         return {
             "start": str(tokens.get("start", "")),
             "end": str(tokens.get("end", "")),
