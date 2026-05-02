@@ -224,3 +224,6 @@ class ChatFormatter:
             "start": str(tokens.get("start", "")),
             "end": str(tokens.get("end", "")),
         }
+
+    def supports_native_thinking(self) -> bool:
+        return bool(self.capabilities.get("thinking", {}).get("native"))

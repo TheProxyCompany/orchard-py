@@ -917,8 +917,17 @@ class Client:
         messages: list[dict[str, Any]],
         **kwargs: Any,
     ) -> tuple[dict[str, Any], dict[str, Any]]:
-        reasoning_effort = kwargs.get("reasoning_effort")
-        reasoning_flag = bool(kwargs.get("reasoning") or reasoning_effort)
+        requested_reasoning_effort = kwargs.get("reasoning_effort")
+        reasoning_flag = bool(
+            (kwargs.get("reasoning") or requested_reasoning_effort)
+            and formatter.supports_native_thinking()
+        )
+        reasoning_effort = requested_reasoning_effort if reasoning_flag else None
+        thinking_tokens = (
+            formatter.get_thinking_tokens()
+            if reasoning_flag
+            else {"start": "", "end": ""}
+        )
         try:
             messages_for_template, image_buffers, capabilities, content_order = (
                 build_multimodal_messages(
@@ -1043,7 +1052,7 @@ class Client:
             "min_tool_calls": min_tool_calls,
             "max_tool_calls": max_tool_calls,
             "tool_calling_tokens": formatter.get_tool_calling_tokens(),
-            "thinking_tokens": formatter.get_thinking_tokens(),
+            "thinking_tokens": thinking_tokens,
             "tool_choice": normalized_tool_choice,
         }
         capture_payload = {
@@ -1075,7 +1084,7 @@ class Client:
             "min_tool_calls": min_tool_calls,
             "max_tool_calls": max_tool_calls,
             "tool_calling_tokens": formatter.get_tool_calling_tokens(),
-            "thinking_tokens": formatter.get_thinking_tokens(),
+            "thinking_tokens": thinking_tokens,
             "tool_choice": normalized_tool_choice,
         }
         return prompt_payload, capture_payload

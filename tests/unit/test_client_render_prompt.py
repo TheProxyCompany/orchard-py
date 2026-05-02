@@ -75,6 +75,9 @@ class _FakeFormatter:
     def get_thinking_tokens(self) -> dict[str, str]:
         return {"start": "<think>\n", "end": "\n</think>"}
 
+    def supports_native_thinking(self) -> bool:
+        return True
+
     def _render_part(self, part: Any) -> str:
         part_type = part["type"]
         if part_type == "image":
@@ -486,8 +489,12 @@ async def test_gemma4_multimodal_uses_placeholder_token(
         client_module, "_build_request_payload", _capture_request_payload
     )
 
-    rendered = await client.arender_prompt("test-model", messages, rng_seed=1234)
-    await client._asubmit_request(1, "test-model", messages, rng_seed=1234)  # noqa: SLF001
+    rendered = await client.arender_prompt(
+        "test-model", messages, rng_seed=1234, reasoning_effort="high"
+    )
+    await client._asubmit_request(  # noqa: SLF001
+        1, "test-model", messages, rng_seed=1234, reasoning_effort="high"
+    )
 
     assert formatter.image_placeholder == "<|image|>"
     assert formatter.should_clip_image_placeholder is True
@@ -500,9 +507,58 @@ async def test_gemma4_multimodal_uses_placeholder_token(
         "start": "<|channel>thought\n",
         "end": "<channel|>",
     }
+    assert captured["prompt_payload"]["reasoning_effort"] == "high"
     assert any(
         segment["type"] == "image" for segment in captured["prompt_payload"]["layout"]
     )
+
+
+@pytest.mark.asyncio
+async def test_non_native_thinking_profile_drops_reasoning_payload(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    model_path = tmp_path / "llama3"
+    model_path.mkdir()
+    (model_path / "config.json").write_text('{"model_type": "llama3"}')
+    formatter = ChatFormatter(str(model_path))
+    client = _make_client(formatter)
+    messages = [{"role": "user", "content": "Return JSON."}]
+
+    captured: dict[str, Any] = {}
+
+    def _capture_request_payload(**payload_kwargs: Any) -> bytes:
+        captured["prompt_payload"] = payload_kwargs["prompts"][0]
+        return b"captured"
+
+    monkeypatch.setattr(
+        client_module, "_build_request_payload", _capture_request_payload
+    )
+
+    rendered = await client.arender_prompt(
+        "test-model",
+        messages,
+        rng_seed=1234,
+        reasoning=True,
+        reasoning_effort="high",
+    )
+    await client._asubmit_request(  # noqa: SLF001
+        1,
+        "test-model",
+        messages,
+        rng_seed=1234,
+        reasoning=True,
+        reasoning_effort="high",
+    )
+
+    assert formatter.supports_native_thinking() is False
+    assert formatter.get_thinking_tokens() == {
+        "start": "```thinking\n",
+        "end": "\n```",
+    }
+    assert rendered["reasoning_effort"] is None
+    assert captured["prompt_payload"]["reasoning_effort"] is None
+    assert captured["prompt_payload"]["thinking_tokens"] == {"start": "", "end": ""}
 
 
 @pytest.mark.asyncio
@@ -612,7 +668,4 @@ async def test_arender_responses_prompt_matches_submit_path(
     )
     assert rendered["task_name"] is None
     assert rendered["reasoning_effort"] is None
-    assert private_payload["thinking_tokens"] == {
-        "start": "<think>\n",
-        "end": "\n</think>",
-    }
+    assert private_payload["thinking_tokens"] == {"start": "", "end": ""}

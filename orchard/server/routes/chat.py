@@ -129,9 +129,13 @@ async def handle_completion_request(
         if core_tools_payload:
             core_tools_payload.sort(key=lambda tool: tool.get("name", ""))
         tool_schemas_str = json.dumps(core_tools_payload) if core_tools_payload else ""
+        reasoning_flag = (
+            instance.reasoning_effort is not None
+            and formatter.supports_native_thinking()
+        )
         prompt_text = formatter.apply_template(
             messages_as_dicts,
-            reasoning=instance.reasoning_effort is not None,
+            reasoning=reasoning_flag,
             tools=core_tools_payload,
         )
         logger.info("Prompt text: %s", prompt_text)
@@ -178,11 +182,15 @@ async def handle_completion_request(
         }
         if instance.task is not None:
             payload["task_name"] = instance.task
-        if instance.reasoning_effort is not None:
+        if reasoning_flag:
             payload["reasoning_effort"] = instance.reasoning_effort
 
         payload["tool_calling_tokens"] = formatter.get_tool_calling_tokens()
-        payload["thinking_tokens"] = formatter.get_thinking_tokens()
+        payload["thinking_tokens"] = (
+            formatter.get_thinking_tokens()
+            if reasoning_flag
+            else {"start": "", "end": ""}
+        )
         payload["tool_choice"] = (
             request.tool_choice.to_dict() if request.tool_choice else "auto"
         )

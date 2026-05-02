@@ -131,11 +131,15 @@ async def handle_response_request(
     active_tool_schemas_json = (
         json.dumps(active_tools_payload) if active_tools_payload else tool_schemas_json
     )
+    reasoning_effort = normalize_reasoning_value(request.reasoning)
+    reasoning_flag = (
+        reasoning_effort is not None and formatter.supports_native_thinking()
+    )
 
     try:
         prompt_text = formatter.apply_template(
             messages_for_template,
-            reasoning=request.reasoning is not None,
+            reasoning=reasoning_flag,
             tools=core_tools_payload,
         )
     except Exception as exc:  # pragma: no cover - defensive
@@ -179,7 +183,9 @@ async def handle_response_request(
     rng_seed = random.randint(0, 2**32 - 1)
 
     response_format_json = json.dumps(request.text.to_dict()) if request.text else ""
-    reasoning_effort = normalize_reasoning_value(request.reasoning)
+    thinking_tokens = (
+        formatter.get_thinking_tokens() if reasoning_flag else {"start": "", "end": ""}
+    )
 
     response_queue: asyncio.Queue[ResponseDeltaDict] = asyncio.Queue()
     exit_stack = AsyncExitStack()
@@ -222,11 +228,11 @@ async def handle_response_request(
             "best_of": 1,
             "final_candidates": 1,
             "task_name": request.task,
-            "reasoning_effort": reasoning_effort,
+            "reasoning_effort": reasoning_effort if reasoning_flag else None,
             "min_tool_calls": request.min_tool_calls,
             "max_tool_calls": request.max_tool_calls,
             "tool_calling_tokens": formatter.get_tool_calling_tokens(),
-            "thinking_tokens": formatter.get_thinking_tokens(),
+            "thinking_tokens": thinking_tokens,
             "tool_choice": request.tool_choice.to_dict()
             if request.tool_choice
             else "auto",
