@@ -116,7 +116,9 @@ async def handle_response_request(
     )
     active_tools_source = request.active_tools or core_tools_source
     core_tools_payload = (
-        [tool.to_dict() for tool in core_tools_source] if core_tools_source else None
+        [tool.model_dump(exclude_none=True) for tool in core_tools_source]
+        if core_tools_source
+        else None
     )
     active_tools_payload = (
         [tool.to_dict() for tool in active_tools_source]
