@@ -502,6 +502,7 @@ async def test_gemma4_multimodal_uses_placeholder_token(
         "start": "<|channel>thought\n",
         "end": "<channel|>",
     }
+    assert "What is shown?" in rendered["rendered_prompt_text"]
     assert "<|image|>" not in rendered["rendered_prompt_text"]
     assert captured["prompt_payload"]["thinking_tokens"] == {
         "start": "<|channel>thought\n",
@@ -511,6 +512,61 @@ async def test_gemma4_multimodal_uses_placeholder_token(
     assert any(
         segment["type"] == "image" for segment in captured["prompt_payload"]["layout"]
     )
+
+
+@pytest.mark.asyncio
+async def test_gemma4_multimodal_sends_thinking_delimiters_when_reasoning_disabled(
+    tmp_path,
+) -> None:
+    model_path = tmp_path / "gemma4"
+    model_path.mkdir()
+    (model_path / "config.json").write_text('{"model_type": "gemma4"}')
+    formatter = ChatFormatter(str(model_path))
+    client = _make_client(formatter)
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "input_image", "image_url": DATA_URL},
+                {"type": "input_text", "text": "What is shown?"},
+            ],
+        }
+    ]
+
+    rendered = await client.arender_prompt("test-model", messages, rng_seed=1234)
+
+    assert "What is shown?" in rendered["rendered_prompt_text"]
+    assert rendered["rendered_prompt_text"].endswith(
+        "<|turn>model\n<|channel>thought\n<channel|>"
+    )
+    assert rendered["reasoning_effort"] is None
+    assert rendered["thinking_tokens"] == {
+        "start": "<|channel>thought\n",
+        "end": "<channel|>",
+    }
+
+
+@pytest.mark.asyncio
+async def test_gemma4_e4b_does_not_suppress_thinking_when_reasoning_disabled(
+    tmp_path,
+) -> None:
+    model_path = tmp_path / "gemma4-e4b"
+    model_path.mkdir()
+    (model_path / "config.json").write_text(
+        json.dumps({"model_type": "gemma4", "text_config": {"hidden_size": 2560}})
+    )
+    formatter = ChatFormatter(str(model_path))
+    client = _make_client(formatter)
+    messages = [{"role": "user", "content": "Return only 7."}]
+
+    rendered = await client.arender_prompt("test-model", messages, rng_seed=1234)
+
+    assert rendered["rendered_prompt_text"].endswith("<|turn>model\n")
+    assert "<|channel>thought\n<channel|>" not in rendered["rendered_prompt_text"]
+    assert rendered["thinking_tokens"] == {
+        "start": "<|channel>thought\n",
+        "end": "<channel|>",
+    }
 
 
 @pytest.mark.asyncio
@@ -668,4 +724,7 @@ async def test_arender_responses_prompt_matches_submit_path(
     )
     assert rendered["task_name"] is None
     assert rendered["reasoning_effort"] is None
-    assert private_payload["thinking_tokens"] == {"start": "", "end": ""}
+    assert private_payload["thinking_tokens"] == {
+        "start": "<think>\n",
+        "end": "\n</think>",
+    }

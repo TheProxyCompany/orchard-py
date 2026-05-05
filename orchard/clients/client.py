@@ -925,7 +925,7 @@ class Client:
         reasoning_effort = requested_reasoning_effort if reasoning_flag else None
         thinking_tokens = (
             formatter.get_thinking_tokens()
-            if reasoning_flag
+            if formatter.supports_native_thinking()
             else {"start": "", "end": ""}
         )
         try:

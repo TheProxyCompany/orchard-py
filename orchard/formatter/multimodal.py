@@ -41,6 +41,8 @@ class _RenderableText:
     def __getitem__(self, key: str) -> str:
         if key == "type":
             return self._TYPE
+        if key == "text":
+            return self._text
         raise KeyError(key)
 
     def __str__(self) -> str:
@@ -204,7 +206,7 @@ def build_multimodal_messages(
                         f"Image content part {part_index} in message {message_index} missing image_url."
                     )
                 decoded_bytes = _decode_image_payload(image_url)
-                logger.info("Decoded image bytes: %d", len(decoded_bytes))
+                logger.debug("Decoded image bytes: %d", len(decoded_bytes))
                 content_order.append(("image", len(image_buffers)))
                 image_buffers.append(decoded_bytes)
                 parts.append(_RenderableImage())

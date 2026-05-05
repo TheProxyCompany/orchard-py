@@ -176,6 +176,7 @@ class ChatFormatter:
             "roles": self.control_tokens.roles.model_dump(),
             "prefill": prefill,
             "capabilities": self.capabilities,
+            "model_config": self.tokenizer_config,
             "tools": tools,
         }
         return self.template.render(**context)

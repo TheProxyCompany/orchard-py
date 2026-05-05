@@ -188,7 +188,7 @@ async def handle_completion_request(
         payload["tool_calling_tokens"] = formatter.get_tool_calling_tokens()
         payload["thinking_tokens"] = (
             formatter.get_thinking_tokens()
-            if reasoning_flag
+            if formatter.supports_native_thinking()
             else {"start": "", "end": ""}
         )
         payload["tool_choice"] = (

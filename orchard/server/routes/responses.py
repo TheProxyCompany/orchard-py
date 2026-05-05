@@ -186,7 +186,9 @@ async def handle_response_request(
 
     response_format_json = json.dumps(request.text.to_dict()) if request.text else ""
     thinking_tokens = (
-        formatter.get_thinking_tokens() if reasoning_flag else {"start": "", "end": ""}
+        formatter.get_thinking_tokens()
+        if formatter.supports_native_thinking()
+        else {"start": "", "end": ""}
     )
 
     response_queue: asyncio.Queue[ResponseDeltaDict] = asyncio.Queue()
