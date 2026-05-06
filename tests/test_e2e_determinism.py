@@ -3,6 +3,10 @@ import pytest
 
 pytestmark = pytest.mark.asyncio
 
+DETERMINISM_PROMPT = (
+    "Reply with exactly this text and nothing else: Orchard determinism check."
+)
+
 
 @pytest.mark.parametrize("batch_size", [2, 4, 8, 16])
 async def test_multi_candidate_determinism(live_server, any_model_id, batch_size):
@@ -15,7 +19,7 @@ async def test_multi_candidate_determinism(live_server, any_model_id, batch_size
         "messages": [
             {
                 "role": "user",
-                "content": "Provide one friendly sentence introducing yourself.",
+                "content": DETERMINISM_PROMPT,
             }
         ],
         "max_completion_tokens": 64,
@@ -66,7 +70,7 @@ async def test_sequential_request_determinism(live_server, any_model_id):
         "messages": [
             {
                 "role": "user",
-                "content": "Provide one friendly sentence introducing yourself.",
+                "content": DETERMINISM_PROMPT,
             }
         ],
         "max_completion_tokens": 64,
