@@ -20,6 +20,7 @@ async def test_multi_candidate_determinism(live_server, any_model_id, batch_size
         ],
         "max_completion_tokens": 64,
         "temperature": 0.0,  # Greedy for deterministic output
+        "deterministic": True,
         "stream": False,
         "n": batch_size,
     }
@@ -71,6 +72,7 @@ async def test_sequential_request_determinism(live_server, any_model_id):
         ],
         "max_completion_tokens": 64,
         "temperature": 0.0,  # Greedy for deterministic output
+        "deterministic": True,
         "stream": False,
     }
 
