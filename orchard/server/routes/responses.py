@@ -214,6 +214,7 @@ async def handle_response_request(
                 "top_k": top_k,
                 "min_p": min_p,
                 "rng_seed": rng_seed,
+                "deterministic": request.deterministic,
             },
             "logits_params": {
                 "top_logprobs": request.top_logprobs or 0,

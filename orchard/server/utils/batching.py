@@ -24,6 +24,7 @@ class NormalizedChatInstance:
     top_p: float | None
     top_k: int | None
     min_p: float | None
+    deterministic: bool
     logprobs: bool
     top_logprobs: int | None
     tools: list[ChatCompletionTool] | None
@@ -50,6 +51,7 @@ def normalize_chat_request(
     top_ps = request.get_normalized_field("top_p")
     top_ks = request.get_normalized_field("top_k")
     min_ps = request.get_normalized_field("min_p")
+    deterministic_flags = request.get_normalized_field("deterministic")
     logprobs_flags = request.get_normalized_field("logprobs")
     top_logprobs = request.get_normalized_field("top_logprobs")
     tools_list = request.get_normalized_field("tools")
@@ -96,6 +98,7 @@ def normalize_chat_request(
                 top_p=float(top_p_value) if top_p_value is not None else None,
                 top_k=int(top_k_value) if top_k_value is not None else None,
                 min_p=float(min_p_value) if min_p_value is not None else None,
+                deterministic=bool(deterministic_flags[idx]),
                 logprobs=logprobs_enabled,
                 top_logprobs=int(top_logprobs_value) if top_logprobs_value else 0,
                 tools=tools_value,

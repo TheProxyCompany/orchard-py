@@ -203,6 +203,10 @@ class ResponseRequest(BaseModel):
         le=1.0,
         description="Minimum probability threshold for token consideration.",
     )
+    deterministic: bool = Field(
+        default=False,
+        description="Use deterministic kernels for this request.",
+    )
     top_logprobs: int | None = Field(
         default=None,
         ge=0,

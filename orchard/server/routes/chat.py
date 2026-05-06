@@ -159,6 +159,7 @@ async def handle_completion_request(
                 "top_k": instance.top_k if instance.top_k is not None else -1,
                 "min_p": instance.min_p if instance.min_p is not None else 0.0,
                 "rng_seed": random.randint(0, 2**32 - 1),
+                "deterministic": instance.deterministic,
             },
             "logits_params": {
                 "top_logprobs": instance.top_logprobs,

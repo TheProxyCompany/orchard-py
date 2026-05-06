@@ -324,6 +324,7 @@ async def test_arender_prompt_matches_submit_path(
         "top_k": 7,
         "min_p": 0.1,
         "rng_seed": 1234,
+        "deterministic": False,
         "top_logprobs": 3,
         "frequency_penalty": 0.2,
         "presence_penalty": 0.3,
@@ -340,6 +341,7 @@ async def test_arender_prompt_matches_submit_path(
         "top_k": 7,
         "min_p": 0.1,
         "rng_seed": 1234,
+        "deterministic": False,
     }
     assert private_payload["logits_params"] == {
         "top_logprobs": 3,

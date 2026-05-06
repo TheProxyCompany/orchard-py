@@ -117,6 +117,7 @@ async def handle_completion_request(
                     "top_k": normalized_top_k,
                     "min_p": request.min_p,
                     "rng_seed": rng_seed,
+                    "deterministic": request.deterministic,
                 },
                 "logits_params": {
                     "top_logprobs": request.logprobs or 0,

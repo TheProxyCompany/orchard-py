@@ -249,6 +249,7 @@ class Client:
         top_p: float | None = None,
         top_k: int | None = None,
         min_p: float | None = None,
+        deterministic: bool | None = None,
         max_output_tokens: int | None = None,
         frequency_penalty: float | None = None,
         presence_penalty: float | None = None,
@@ -266,6 +267,7 @@ class Client:
             "top_p": top_p,
             "top_k": top_k,
             "min_p": min_p,
+            "deterministic": deterministic,
             "max_output_tokens": max_output_tokens,
             "frequency_penalty": frequency_penalty,
             "presence_penalty": presence_penalty,
@@ -986,6 +988,7 @@ class Client:
         top_k = int(kwargs.get("top_k", -1))
         min_p = float(kwargs.get("min_p", 0.0))
         rng_seed = int(kwargs.get("rng_seed", random.randint(0, 2**32 - 1)))
+        deterministic = bool(kwargs.get("deterministic", False))
         max_generated_tokens = int(
             kwargs.get("max_generated_tokens", MAX_GENERATED_TOKENS)
         )
@@ -1030,6 +1033,7 @@ class Client:
                 "top_k": top_k,
                 "min_p": min_p,
                 "rng_seed": rng_seed,
+                "deterministic": deterministic,
             },
             "logits_params": {
                 "top_logprobs": top_logprobs,
@@ -1065,6 +1069,7 @@ class Client:
                 "top_k": top_k,
                 "min_p": min_p,
                 "rng_seed": rng_seed,
+                "deterministic": deterministic,
                 "top_logprobs": top_logprobs,
                 "frequency_penalty": frequency_penalty,
                 "presence_penalty": presence_penalty,

@@ -316,6 +316,7 @@ def _build_request_payload(
         top_k = int(sampling_params.get("top_k", -1))
         min_p = float(sampling_params.get("min_p", 0.0))
         rng_seed = int(sampling_params.get("rng_seed", 0)) & 0xFFFFFFFF
+        deterministic = bool(sampling_params.get("deterministic", False))
 
         top_logprobs = int(logits_params.get("top_logprobs", 0))
         frequency_penalty = float(logits_params.get("frequency_penalty", 0.0))
@@ -356,6 +357,7 @@ def _build_request_payload(
                 "top_k": top_k,
                 "min_p": min_p,
                 "rng_seed": rng_seed,
+                "deterministic": deterministic,
                 "top_logprobs": top_logprobs,
                 "frequency_penalty": frequency_penalty,
                 "presence_penalty": presence_penalty,

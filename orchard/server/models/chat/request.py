@@ -87,6 +87,10 @@ class ChatCompletionRequest(BaseModel):
         default=0.0,
         description="Minimum probability threshold for token consideration.",
     )
+    deterministic: bool | list[bool] = Field(
+        default=False,
+        description="Use deterministic kernels for this request.",
+    )
     logprobs: bool | list[bool] | None = Field(
         default=False,
         description="Whether to include the log probabilities of each token in the response.",
@@ -470,6 +474,9 @@ class ChatCompletionRequest(BaseModel):
         )
         normalized_fields["min_p"] = self._broadcast_list(
             self.min_p, batch_size, "min_p"
+        )
+        normalized_fields["deterministic"] = self._broadcast_list(
+            self.deterministic, batch_size, "deterministic"
         )
         normalized_fields["logprobs"] = self._broadcast_list(
             self.logprobs, batch_size, "logprobs"

@@ -54,6 +54,10 @@ class CompletionRequest(BaseModel):
         le=1.0,
         description="Minimum probability threshold for token consideration during sampling.",
     )
+    deterministic: bool = Field(
+        default=False,
+        description="Use deterministic kernels for this request.",
+    )
     n: int = Field(
         default=1,
         ge=1,
