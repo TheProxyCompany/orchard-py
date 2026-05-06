@@ -3,9 +3,7 @@ import pytest
 
 pytestmark = pytest.mark.asyncio
 
-DETERMINISM_PROMPT = (
-    "Reply with exactly this text and nothing else: Orchard determinism check."
-)
+DETERMINISM_PROMPT = "Answer with the single character X."
 
 
 @pytest.mark.parametrize("batch_size", [2, 4, 8, 16])
