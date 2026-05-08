@@ -97,3 +97,15 @@ def test_resolve_downloads_when_cached_single_file_snapshot_is_broken(
     assert calls == [True, False]
     assert resolved.source == "hf_hub"
     assert resolved.model_path == downloaded.resolve()
+
+
+def test_resolve_local_file_as_engine_inspected_source(tmp_path: Path) -> None:
+    model_file = tmp_path / "model.gguf"
+    model_file.write_bytes(b"GGUF")
+
+    resolved = ModelResolver().resolve(str(model_file))
+
+    assert resolved.source == "local_source"
+    assert resolved.canonical_id == "model"
+    assert resolved.model_path == model_file.resolve()
+    assert resolved.formatter_config is None

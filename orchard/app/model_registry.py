@@ -61,6 +61,7 @@ class ModelRegistry:
         self._lock = asyncio.Lock()
         self._resolver = ModelResolver()
         self._alias_cache: dict[str, str] = {}
+        self._local_source_inspection_cache: dict[str, ResolvedModel] = {}
         self._ipc_state = ipc_state
 
     async def ensure_ready(
@@ -143,7 +144,17 @@ class ModelRegistry:
     ) -> tuple[ModelLoadState, str]:
         """Ensure a model is loading or ready and return the canonical identifier."""
 
+        if not force_reload and (canonical_id := self._canonicalize(requested_model_id)):
+            async with self._lock:
+                entry = self._entries.get(canonical_id)
+                if entry and entry.state != ModelLoadState.IDLE:
+                    return entry.state, canonical_id
+
         resolved = self._resolver.resolve(requested_model_id)
+        if resolved.source == "local_source":
+            resolved = await self._inspect_model_source(
+                requested_model_id, resolved, refresh=force_reload
+            )
         canonical_id = resolved.canonical_id
         self._alias_cache[requested_model_id.lower()] = canonical_id
         self._alias_cache.setdefault(canonical_id.lower(), canonical_id)
@@ -181,13 +192,20 @@ class ModelRegistry:
             entry.activation_loop = None
 
             # If the model is already local (or in HF cache), build formatter immediately.
-            if resolved.source in {"local", "hf_cache"} or (
+            if resolved.source in {"local", "local_source", "hf_cache"} or (
                 resolved.model_path and (resolved.model_path / "config.json").exists()
             ):
                 try:
-                    formatter = await asyncio.to_thread(
-                        ChatFormatter, str(resolved.model_path)
-                    )
+                    if resolved.formatter_config is not None:
+                        formatter = await asyncio.to_thread(
+                            ChatFormatter.from_config,
+                            str(resolved.model_path),
+                            resolved.formatter_config,
+                        )
+                    else:
+                        formatter = await asyncio.to_thread(
+                            ChatFormatter, str(resolved.model_path)
+                        )
                     info = ModelInfo(
                         model_id=resolved.canonical_id,
                         model_path=str(resolved.model_path),
@@ -343,10 +361,69 @@ class ModelRegistry:
     def resolve(self, model_id: str) -> ResolvedModel:
         return self._resolver.resolve(model_id)
 
+    async def _inspect_model_source(
+        self, requested_model_id: str, resolved: ResolvedModel, *, refresh: bool = False
+    ) -> ResolvedModel:
+        cache_key = self._local_source_cache_key(resolved.model_path)
+        if not refresh and (cached := self._local_source_inspection_cache.get(cache_key)):
+            return cached
+
+        ipc_state = self._ipc_state
+        if not ipc_state or not ipc_state.management_socket:
+            raise ModelResolutionError("IPC state is not initialized.")
+
+        command = {
+            "type": "inspect_model_source",
+            "requested_id": requested_model_id,
+            "model_path": str(resolved.model_path),
+        }
+        payload = json.dumps(command).encode("utf-8")
+        management_socket = ipc_state.management_socket
+        assert management_socket is not None
+
+        async with ipc_state.management_lock:
+            await management_socket.asend(payload)
+            reply_bytes = await management_socket.arecv()
+
+        response = json.loads(reply_bytes.decode("utf-8"))
+        if response.get("status") != "ok":
+            message = response.get("message", "unknown error")
+            raise ModelResolutionError(f"Engine rejected inspect_model_source: {message}")
+
+        data = response.get("data") or {}
+        source = data.get("inspect_model_source") or {}
+        formatter_config = source.get("formatter_config") or {}
+        if not isinstance(formatter_config, dict):
+            formatter_config = {}
+        metadata = dict(resolved.metadata)
+        for key in ("source_format", "architecture", "model_type"):
+            value = source.get(key)
+            if value is not None:
+                metadata[key] = str(value)
+
+        inspected = ResolvedModel(
+            canonical_id=str(source.get("canonical_id") or resolved.canonical_id),
+            model_path=Path(str(source.get("model_path") or resolved.model_path)),
+            source="local_source",
+            metadata=metadata,
+            hf_repo=None,
+            formatter_config=formatter_config,
+        )
+        self._local_source_inspection_cache[cache_key] = inspected
+        self._local_source_inspection_cache[
+            self._local_source_cache_key(inspected.model_path)
+        ] = inspected
+        return inspected
+
+    @staticmethod
+    def _local_source_cache_key(model_path: Path) -> str:
+        return str(model_path.resolve())
+
     async def get_info(self, model_id: str) -> ModelInfo:
+        alias_key = model_id.lower()
         if (
-            model_id in self._alias_cache
-            and (canonical := self._alias_cache[model_id]) in self._entries
+            alias_key in self._alias_cache
+            and (canonical := self._alias_cache[alias_key]) in self._entries
             and (info := self._entries[canonical].info) is not None
         ):
             return info

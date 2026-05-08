@@ -619,6 +619,26 @@ async def test_non_native_thinking_profile_drops_reasoning_payload(
     assert captured["prompt_payload"]["thinking_tokens"] == {"start": "", "end": ""}
 
 
+def test_formatter_can_use_engine_inspected_config(tmp_path) -> None:
+    model_path = tmp_path / "llama.gguf"
+    model_path.write_bytes(b"GGUF")
+
+    formatter = ChatFormatter.from_config(
+        str(model_path),
+        {
+            "model_type": "llama",
+            "source_format": "gguf",
+        },
+    )
+
+    assert formatter.model_type == "llama3"
+    rendered = formatter.apply_template(
+        [{"role": "user", "content": "hello"}],
+        add_generation_prompt=True,
+    )
+    assert "<|start_header_id|>user<|end_header_id|>" in rendered
+
+
 @pytest.mark.asyncio
 async def test_arender_prompt_splits_core_and_active_tools(
     monkeypatch: pytest.MonkeyPatch,

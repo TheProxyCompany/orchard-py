@@ -101,17 +101,25 @@ class ChatFormatter:
 
     def __init__(self, model_path: str):
         self.model_path = Path(model_path)
-
-        # 1. Load tokenizer_config to determine model family
         tokenizer_config_path = self.model_path / "config.json"
         if not tokenizer_config_path.exists():
             raise FileNotFoundError(
                 f"tokenizer_config.json not found in {self.model_path}"
             )
         with open(tokenizer_config_path) as f:
-            self.tokenizer_config = json.load(f)
+            tokenizer_config = json.load(f)
+        self._configure(tokenizer_config)
 
-        model_type = determine_model_type(self.tokenizer_config)
+    @classmethod
+    def from_config(cls, model_path: str, tokenizer_config: dict[str, Any]) -> "ChatFormatter":
+        formatter = cls.__new__(cls)
+        formatter.model_path = Path(model_path)
+        cls._configure(formatter, dict(tokenizer_config))
+        return formatter
+
+    def _configure(self, tokenizer_config: dict[str, Any]) -> None:
+        self.tokenizer_config = tokenizer_config
+        model_type = determine_model_type(tokenizer_config)
         self.model_type = model_type
         profile_dir = Path(__file__).parent / "profiles" / model_type
         if not profile_dir.is_dir():

@@ -1099,8 +1099,9 @@ class Client:
     ):
         """Prepares and submits the request over the pynng IPC channel."""
         info = await self._model_registry.get_info(model_id)
+        engine_model_id = info.model_id
         prompt_payload, _ = self._prepare_prompt_payload(
-            model_id=model_id,
+            model_id=engine_model_id,
             model_path=info.model_path,
             formatter=info.formatter,
             messages=messages,
@@ -1108,11 +1109,11 @@ class Client:
         )
         response_channel_id = self._ipc_state.response_channel_id or request_id
         logger.debug(
-            f"Submitting request {request_id} for model {model_id} with response channel id: {response_channel_id}"
+            f"Submitting request {request_id} for model {engine_model_id} with response channel id: {response_channel_id}"
         )
         request_bytes = _build_request_payload(
             request_id=request_id,
-            model_id=model_id,
+            model_id=engine_model_id,
             model_path=info.model_path,
             request_type="generation",
             response_channel_id=response_channel_id,
@@ -1133,6 +1134,7 @@ class Client:
     ):
         """Prepares and submits a batched request over the pynng IPC channel."""
         info = await self._model_registry.get_info(model_id)
+        engine_model_id = info.model_id
 
         # Build a prompt payload for each conversation
         prompt_payloads = []
@@ -1140,7 +1142,7 @@ class Client:
         for prompt_index, messages in enumerate(conversations):
             prompt_kwargs = self._kwargs_for_prompt(kwargs, prompt_index, batch_size)
             prompt_payload, _ = self._prepare_prompt_payload(
-                model_id=model_id,
+                model_id=engine_model_id,
                 model_path=info.model_path,
                 formatter=info.formatter,
                 messages=messages,
@@ -1150,12 +1152,12 @@ class Client:
 
         response_channel_id = self._ipc_state.response_channel_id or request_id
         logger.debug(
-            f"Submitting batched request {request_id} for model {model_id} "
+            f"Submitting batched request {request_id} for model {engine_model_id} "
             f"with {len(prompt_payloads)} prompts, response channel: {response_channel_id}"
         )
         request_bytes = _build_request_payload(
             request_id=request_id,
-            model_id=model_id,
+            model_id=engine_model_id,
             model_path=info.model_path,
             request_type="generation",
             response_channel_id=response_channel_id,

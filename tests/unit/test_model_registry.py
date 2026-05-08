@@ -9,6 +9,7 @@ from orchard.app.model_registry import (
     ModelLoadState,
     ModelRegistry,
 )
+from orchard.app.model_resolver import ResolvedModel
 from orchard.engine.global_context import GlobalContext
 
 
@@ -94,3 +95,77 @@ def test_handle_model_loaded_updates_minimum_memory_bytes():
 
     assert registry._entries[canonical_id].info is not None
     assert registry._entries[canonical_id].info.minimum_memory_bytes == 123456789
+
+
+@pytest.mark.asyncio
+async def test_schedule_model_uses_ready_alias_before_local_source_inspection(tmp_path):
+    ctx = GlobalContext()
+    ipc_state = IPCState(ctx)
+    registry = ModelRegistry(ipc_state)
+    model_path = tmp_path / "Model.GGUF"
+    model_path.write_bytes(b"GGUF")
+    canonical_id = "inspected-model"
+
+    registry._alias_cache[str(model_path).lower()] = canonical_id
+    registry._entries[canonical_id] = ModelEntry(
+        state=ModelLoadState.READY,
+        info=ModelInfo(
+            model_id=canonical_id,
+            model_path=str(model_path),
+            formatter=object(),
+        ),
+    )
+
+    state, resolved_id = await registry.schedule_model(str(model_path))
+
+    assert state == ModelLoadState.READY
+    assert resolved_id == canonical_id
+
+
+@pytest.mark.asyncio
+async def test_inspect_model_source_uses_path_cache(tmp_path):
+    ctx = GlobalContext()
+    ipc_state = IPCState(ctx)
+    registry = ModelRegistry(ipc_state)
+    model_path = tmp_path / "model.gguf"
+    model_path.write_bytes(b"GGUF")
+    inspected = ResolvedModel(
+        canonical_id="inspected-model",
+        model_path=model_path,
+        source="local_source",
+        formatter_config={"model_type": "llama"},
+    )
+    registry._local_source_inspection_cache[str(model_path.resolve())] = inspected
+
+    resolved = await registry._inspect_model_source(
+        str(model_path),
+        ResolvedModel(
+            canonical_id="model",
+            model_path=model_path,
+            source="local_source",
+        ),
+    )
+
+    assert resolved is inspected
+
+
+@pytest.mark.asyncio
+async def test_get_info_uses_lowercase_alias_lookup(tmp_path):
+    ctx = GlobalContext()
+    ipc_state = IPCState(ctx)
+    registry = ModelRegistry(ipc_state)
+    requested_id = str(tmp_path / "Model.GGUF")
+    canonical_id = "inspected-model"
+    info = ModelInfo(
+        model_id=canonical_id,
+        model_path=requested_id,
+        formatter=object(),
+    )
+
+    registry._alias_cache[requested_id.lower()] = canonical_id
+    registry._entries[canonical_id] = ModelEntry(
+        state=ModelLoadState.READY,
+        info=info,
+    )
+
+    assert await registry.get_info(requested_id) is info

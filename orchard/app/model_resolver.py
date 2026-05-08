@@ -30,9 +30,10 @@ class ResolvedModel:
 
     canonical_id: str
     model_path: Path
-    source: str  # "local" | "hf_cache" | "hf_hub"
+    source: str  # "local" | "local_source" | "hf_cache" | "hf_hub"
     metadata: dict[str, str] = field(default_factory=dict)
     hf_repo: str | None = None
+    formatter_config: dict[str, Any] | None = None
 
 
 class ModelResolutionError(RuntimeError):
@@ -100,12 +101,20 @@ class ModelResolver:
         # Check absolute path
         if path.is_absolute():
             if path.exists() and path.is_dir():
-                return self._build_resolved_model(path, source="local")
+                if (path / "config.json").exists():
+                    return self._build_resolved_model(path, source="local")
+                return self._build_local_source_model(path)
+            if path.exists() and path.is_file():
+                return self._build_local_source_model(path)
             return None
 
         # Check relative path (relative to CWD)
-        if path.exists() and path.is_dir():
-            return self._build_resolved_model(path.resolve(), source="local")
+        if path.exists():
+            resolved_path = path.resolve()
+            if resolved_path.is_dir() and (resolved_path / "config.json").exists():
+                return self._build_resolved_model(resolved_path, source="local")
+            if resolved_path.is_dir() or resolved_path.is_file():
+                return self._build_local_source_model(resolved_path)
 
         return None
 
@@ -184,6 +193,18 @@ class ModelResolver:
             source=source,
             metadata=metadata,
             hf_repo=hf_repo,
+        )
+
+    @staticmethod
+    def _build_local_source_model(model_path: Path) -> ResolvedModel:
+        model_path = model_path.resolve()
+        canonical_id = model_path.stem if model_path.is_file() else model_path.name
+        return ResolvedModel(
+            canonical_id=canonical_id,
+            model_path=model_path,
+            source="local_source",
+            metadata={"source": "local_source"},
+            hf_repo=None,
         )
 
     # -------------------------------------------------------------------------
