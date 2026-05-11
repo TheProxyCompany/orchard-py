@@ -1,6 +1,7 @@
 import asyncio
 import atexit
 import logging
+import os
 import subprocess
 import sys
 from collections.abc import Generator
@@ -49,7 +50,9 @@ VISION_MODELS = [
 ALL_MODELS = list(dict.fromkeys(TEXT_MODELS + VISION_MODELS))
 
 SERVER_PORT = 8001
-SERVER_STARTUP_TIMEOUT_SECONDS = 120.0
+SERVER_STARTUP_TIMEOUT_SECONDS = float(
+    os.getenv("ORCHARD_TEST_SERVER_STARTUP_TIMEOUT_SECONDS", "120.0")
+)
 
 # Ensure we start with a clean slate in case a prior run crashed and left the engine up.
 try:
