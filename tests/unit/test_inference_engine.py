@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 import pytest
@@ -130,3 +131,25 @@ def test_acquire_lease_reuses_matching_engine_when_local_build_is_explicit(
 
     assert events == [("client_register", None)]
     assert engine._lease_active is True
+
+
+@pytest.mark.asyncio
+async def test_load_models_loads_each_model_sequentially() -> None:
+    engine = InferenceEngine.__new__(InferenceEngine)
+    events: list[tuple[str, str]] = []
+
+    async def load_model(model_id: str) -> None:
+        events.append(("start", model_id))
+        await asyncio.sleep(0)
+        events.append(("finish", model_id))
+
+    engine.load_model = load_model
+
+    await engine.load_models(["first", "second"])
+
+    assert events == [
+        ("start", "first"),
+        ("finish", "first"),
+        ("start", "second"),
+        ("finish", "second"),
+    ]

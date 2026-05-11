@@ -147,10 +147,8 @@ class InferenceEngine:
 
     async def load_models(self, model_ids: list[str]):
         logger.info("Loading models: %s", ", ".join(model_ids))
-        tasks = [
-            asyncio.create_task(self.load_model(model_id)) for model_id in model_ids
-        ]
-        await asyncio.gather(*tasks)
+        for model_id in model_ids:
+            await self.load_model(model_id)
         logger.info("Models loaded: %s", ", ".join(model_ids))
 
     async def load_model(self, model_id: str):
