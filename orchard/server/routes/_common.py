@@ -35,15 +35,22 @@ async def resolve_model(
             detail={"message": str(exc), "candidates": exc.candidates},
         ) from exc
 
-    if model_state in {ModelLoadState.LOADING, ModelLoadState.DOWNLOADING}:
-        status_text = (
-            "downloading" if model_state == ModelLoadState.DOWNLOADING else "loading"
-        )
+    if model_state in {ModelLoadState.LOADING, ModelLoadState.ACTIVATING}:
+        try:
+            model_info = await model_registry.ensure_loaded(canonical_id)
+        except RuntimeError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=str(exc),
+            ) from exc
+        return canonical_id, model_info
+
+    if model_state == ModelLoadState.DOWNLOADING:
         raise _ModelNotReadyError(
             JSONResponse(
                 status_code=status.HTTP_202_ACCEPTED,
                 content={
-                    "status": status_text,
+                    "status": "downloading",
                     "message": "Model download in progress. Retry after a short delay.",
                     "model_id": canonical_id,
                 },
