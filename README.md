@@ -119,17 +119,6 @@ Orchard runs entirely on your Mac. No telemetry, no analytics, no phone-home.
 | Engine binary | ✅ One-time | GitHub release → `~/.orchard/bin/` |
 | Telemetry | ✅ None | No tracking SDKs — verify with `grep -r analytics orchard/` |
 
-## How it works
-
-Orchard is the Python layer over a stack built for Apple Silicon:
-
-- [**PIE**](https://github.com/TheProxyCompany/proxy-inference-engine) — C++ inference engine: prefix caching, continuous batching, multi-model scheduling
-- [**PAL**](https://github.com/TheProxyCompany/proxy-attention-lab) — Metal GPU kernels
-- [**PSE**](https://github.com/TheProxyCompany/proxy-state-engine) — grammar-constrained generation for tool calls, structured output, and thinking
-- [**Pantheon**](https://github.com/TheProxyCompany/Pantheon) — chat templates and capability manifests, shared across all Orchard SDKs
-
-The Python package handles IPC, model resolution, HuggingFace downloads, prompt rendering, and the FastAPI server.
-
 ## CLI
 
 ```bash
@@ -150,7 +139,6 @@ orchard engine stop                               # kill background engine
 - [orchard-rs](https://github.com/TheProxyCompany/orchard-rs) — Rust client
 - [orchard-swift](https://github.com/TheProxyCompany/orchard-swift) — Swift telemetry client
 - [Pantheon](https://github.com/TheProxyCompany/Pantheon) — model profiles
-- [PIE](https://github.com/TheProxyCompany/proxy-inference-engine) — the engine
 
 ## License
 
