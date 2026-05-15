@@ -258,6 +258,37 @@ def test_chat_aggregate_exposes_tool_calls_from_state_events() -> None:
     ]
 
 
+def test_chat_aggregate_parses_tool_call_json_string_completion() -> None:
+    client = _make_client()
+    deltas = [
+        ClientDelta(
+            request_id=1,
+            state_events=[
+                {
+                    "event_type": "content_delta",
+                    "item_type": "tool_call",
+                    "output_index": 0,
+                    "identifier": "arguments",
+                    "delta": '{content:<|"|>hi<|"|>}',
+                },
+                {
+                    "event_type": "item_completed",
+                    "item_type": "tool_call",
+                    "output_index": 0,
+                    "identifier": "tool_call:share_to_party",
+                    "value": '{"name":"share_to_party","arguments":{"content":"hi"}}',
+                },
+            ],
+        )
+    ]
+
+    response = client._aggregate_response(deltas)  # noqa: SLF001
+
+    assert response.tool_calls == [
+        {"name": "share_to_party", "arguments": {"content": "hi"}}
+    ]
+
+
 @pytest.mark.asyncio
 async def test_arender_prompt_matches_submit_path(
     monkeypatch: pytest.MonkeyPatch,

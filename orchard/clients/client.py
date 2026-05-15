@@ -844,6 +844,13 @@ class Client:
                     )
                 elif event_type == "item_completed" and "value" in event:
                     value = event["value"]
+                    if isinstance(value, str):
+                        try:
+                            parsed_value = json.loads(value)
+                            if isinstance(parsed_value, dict):
+                                value = parsed_value
+                        except json.JSONDecodeError:
+                            pass
                     if isinstance(value, dict):
                         name = value.get("name")
                         arguments = value.get("arguments")
