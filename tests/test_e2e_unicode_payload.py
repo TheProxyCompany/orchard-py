@@ -14,7 +14,14 @@ async def test_unicode_payload_round_trip(
     request_payload = {
         "model": text_model_id,
         "messages": [
-            {"role": "user", "content": "Respond with this emoji: " + target},
+            {
+                "role": "user",
+                "content": (
+                    "Output exactly one character: 😊\n"
+                    "The rest is padding to test unicode transport; do not repeat it: "
+                    + target
+                ),
+            },
         ],
         "temperature": 0.0,
         "max_completion_tokens": 10,

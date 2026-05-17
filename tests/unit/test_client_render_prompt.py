@@ -670,6 +670,22 @@ def test_formatter_can_use_engine_inspected_config(tmp_path) -> None:
     assert "<|start_header_id|>user<|end_header_id|>" in rendered
 
 
+def test_llama3_formatter_includes_default_system_prelude(tmp_path) -> None:
+    model_path = tmp_path / "llama3"
+    model_path.mkdir()
+    (model_path / "config.json").write_text('{"model_type": "llama3"}')
+
+    formatter = ChatFormatter(str(model_path))
+    rendered = formatter.apply_template([{"role": "user", "content": "hello"}])
+
+    assert rendered.startswith(
+        "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n"
+        "Cutting Knowledge Date: December 2023\n"
+        "Today Date: 26 Jul 2024\n\n"
+        "<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nhello"
+    )
+
+
 @pytest.mark.asyncio
 async def test_arender_prompt_splits_core_and_active_tools(
     monkeypatch: pytest.MonkeyPatch,
