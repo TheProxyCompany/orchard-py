@@ -603,6 +603,63 @@ async def test_gemma4_e4b_does_not_suppress_thinking_when_reasoning_disabled(
 
 
 @pytest.mark.asyncio
+async def test_gemma4_tool_turn_preserves_assistant_reasoning_history(
+    tmp_path,
+) -> None:
+    model_path = tmp_path / "gemma4-moe"
+    model_path.mkdir()
+    (model_path / "config.json").write_text(
+        json.dumps(
+            {
+                "model_type": "gemma4",
+                "text_config": {"hidden_size": 2816, "num_experts": 128},
+            }
+        )
+    )
+    formatter = ChatFormatter(str(model_path))
+    client = _make_client(formatter)
+    messages = [
+        {"role": "user", "content": "Use the schedule tool for Tuesday."},
+        {
+            "role": "assistant",
+            "content": "",
+            "reasoning": "The schedule tool is the correct tool.",
+            "tool_calls": [
+                {
+                    "id": "call_1",
+                    "type": "function",
+                    "function": {
+                        "name": "lookup_schedule",
+                        "arguments": {"day": "Tuesday"},
+                    },
+                }
+            ],
+        },
+        {
+            "role": "tool",
+            "tool_call_id": "call_1",
+            "content": '{"status":"ok"}',
+        },
+    ]
+
+    rendered = await client.arender_prompt(
+        "test-model", messages, rng_seed=1234, reasoning=True
+    )
+
+    prompt = rendered["rendered_prompt_text"]
+    assert "<|turn>agent" not in prompt
+    assert (
+        "<|turn>model\n<|channel>thought\n"
+        "The schedule tool is the correct tool.\n<channel|>"
+    ) in prompt
+    assert "<|tool_call>call:lookup_schedule{day:<|\"|>Tuesday<|\"|>}<tool_call|>" in prompt
+    assert (
+        '<|tool_response>response:lookup_schedule{value:<|"|>{"status":"ok"}<|"|>}<tool_response|>'
+        in prompt
+    )
+
+
+@pytest.mark.asyncio
 async def test_non_native_thinking_profile_drops_reasoning_payload(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path,

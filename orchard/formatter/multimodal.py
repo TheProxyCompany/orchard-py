@@ -162,17 +162,18 @@ def build_multimodal_messages(
         content = _get_field(message, "content")
         raw_tool_calls = _get_field(message, "tool_calls")
         tool_calls = _parse_tool_calls(raw_tool_calls) if raw_tool_calls else None
-        tool_call_id = _get_field(message, "tool_call_id")
-        tool_name = _get_field(message, "name")
+        if isinstance(message, dict):
+            msg = dict(message)
+        elif hasattr(message, "model_dump"):
+            msg = message.model_dump()
+        else:
+            msg = {"role": role, "content": content}
 
         if isinstance(content, str):
-            msg: dict[str, Any] = {"role": role, "content": content}
-            if tool_calls:
+            msg["role"] = role
+            msg["content"] = content
+            if tool_calls is not None:
                 msg["tool_calls"] = tool_calls
-            if isinstance(tool_call_id, str):
-                msg["tool_call_id"] = tool_call_id
-            if isinstance(tool_name, str):
-                msg["name"] = tool_name
             messages.append(msg)
             continue
 
@@ -234,13 +235,10 @@ def build_multimodal_messages(
                 )
                 raise ValueError(f"Unsupported content type: {part_type}")
 
-        msg = {"role": role, "content": parts}
-        if tool_calls:
+        msg["role"] = role
+        msg["content"] = parts
+        if tool_calls is not None:
             msg["tool_calls"] = tool_calls
-        if isinstance(tool_call_id, str):
-            msg["tool_call_id"] = tool_call_id
-        if isinstance(tool_name, str):
-            msg["name"] = tool_name
         messages.append(msg)
 
     return messages, image_buffers, capabilities, content_order
