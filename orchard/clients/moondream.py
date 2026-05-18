@@ -114,6 +114,9 @@ class MoondreamClient(Client):
 
         messages = [{"role": "user", "content": content}]
 
+        if spatial_refs and "reasoning" not in kwargs and "reasoning_effort" not in kwargs:
+            kwargs["reasoning"] = True
+
         # enforce streaming to process output delta by delta
         kwargs["stream"] = True
         stream = self.chat(self.model_id, messages, **kwargs)

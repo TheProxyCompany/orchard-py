@@ -171,6 +171,6 @@ def test_moondream_detect_gaze(engine: InferenceEngine, moondream_model_id: str)
     gaze = result["gaze"]
     assert isinstance(gaze, dict)
     assert "x" in gaze and "y" in gaze
-    assert gaze["x"] == 0.517578125
-    assert gaze["y"] == 0.48046875
+    assert gaze["x"] == 0.568359375
+    assert gaze["y"] == 0.349609375
     print(f"Gaze: ({gaze['x']}, {gaze['y']})")
