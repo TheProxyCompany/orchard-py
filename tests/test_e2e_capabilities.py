@@ -171,7 +171,6 @@ def test_moondream_detect_gaze(engine: InferenceEngine, moondream_model_id: str)
     gaze = result["gaze"]
     assert isinstance(gaze, dict)
     assert "x" in gaze and "y" in gaze
-    # baseline implementation of gaze detection returns the center of the image
-    assert gaze["x"] == 0.5
-    assert gaze["y"] == 0.5
+    assert gaze["x"] == 0.517578125
+    assert gaze["y"] == 0.48046875
     print(f"Gaze: ({gaze['x']}, {gaze['y']})")
