@@ -792,6 +792,14 @@ async def _process_state_event_for_streaming(
     output_index = event.get("output_index", 0)
     identifier = event.get("identifier", "")
 
+    if (
+        item_type == "tool_call"
+        and identifier
+        and identifier != "arguments"
+        and not identifier.startswith("tool_call:")
+    ):
+        return
+
     item = stream_state.get_or_create_item(output_index, item_type, identifier)
 
     # Sub-item events (e.g. "arguments" within a tool call) are handled

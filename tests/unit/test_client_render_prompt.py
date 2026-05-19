@@ -647,12 +647,15 @@ async def test_gemma4_tool_turn_preserves_assistant_reasoning_history(
     )
 
     prompt = rendered["rendered_prompt_text"]
+    assert rendered["reasoning_effort"] == "medium"
     assert "<|turn>agent" not in prompt
     assert (
         "<|turn>model\n<|channel>thought\n"
         "The schedule tool is the correct tool.\n<channel|>"
     ) in prompt
-    assert "<|tool_call>call:lookup_schedule{day:<|\"|>Tuesday<|\"|>}<tool_call|>" in prompt
+    assert (
+        '<|tool_call>call:lookup_schedule{day:<|"|>Tuesday<|"|>}<tool_call|>' in prompt
+    )
     assert (
         '<|tool_response>response:lookup_schedule{value:<|"|>{"status":"ok"}<|"|>}<tool_response|>'
         in prompt

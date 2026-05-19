@@ -29,6 +29,7 @@ from orchard.ipc.utils import (
     release_delta_resources,
 )
 from orchard.server.exceptions import InferenceError
+from orchard.server.models.reasoning import DEFAULT_BOOLEAN_REASONING_EFFORT
 from orchard.server.models.responses import OutputTextDeltaEvent, ResponseObject
 
 logger = logging.getLogger(__name__)
@@ -835,7 +836,7 @@ class Client:
                     output_index,
                     {"name": identifier.removeprefix("tool_call:"), "arguments": ""},
                 )
-                if identifier and identifier != "arguments":
+                if identifier.startswith("tool_call:"):
                     tool_call["name"] = identifier.removeprefix("tool_call:")
 
                 if identifier == "arguments" and event_type == "content_delta":
@@ -931,7 +932,11 @@ class Client:
             (kwargs.get("reasoning") or requested_reasoning_effort)
             and formatter.supports_native_thinking()
         )
-        reasoning_effort = requested_reasoning_effort if reasoning_flag else None
+        reasoning_effort = (
+            requested_reasoning_effort or DEFAULT_BOOLEAN_REASONING_EFFORT
+            if reasoning_flag
+            else None
+        )
         thinking_tokens = (
             formatter.get_thinking_tokens()
             if formatter.supports_native_thinking()

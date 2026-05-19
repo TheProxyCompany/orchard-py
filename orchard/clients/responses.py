@@ -460,6 +460,14 @@ def _process_state_event_for_streaming(
     output_index = int(event.get("output_index", 0))
     identifier = str(event.get("identifier", ""))
 
+    if (
+        item_type == "tool_call"
+        and identifier
+        and identifier != "arguments"
+        and not identifier.startswith("tool_call:")
+    ):
+        return mapped_events
+
     item = stream_state.get_or_create_item(output_index, item_type, identifier)
 
     if item_type == "tool_call" and identifier == "arguments":
