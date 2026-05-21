@@ -99,6 +99,8 @@ async def handle_completion_request(
 
     batch_size = len(normalized_instances)
     logger.debug("Normalized chat batch size: %d", batch_size)
+    generation_defaults = formatter.get_generation_defaults()
+    request_fields = request.model_fields_set
 
     fanout_counts = [instance.best_of for instance in normalized_instances]
     final_candidate_counts = [
@@ -145,6 +147,26 @@ async def handle_completion_request(
             if instance.response_format
             else ""
         )
+        temperature = instance.temperature
+        top_p = instance.top_p
+        top_k = instance.top_k
+        min_p = instance.min_p
+        if "temperature" not in request_fields:
+            temperature = float(generation_defaults.get("temperature", temperature))
+        if "top_p" not in request_fields:
+            top_p = float(generation_defaults.get("top_p", top_p or 1.0))
+        if "top_k" not in request_fields:
+            top_k = int(
+                generation_defaults.get("top_k", top_k if top_k is not None else -1)
+            )
+        if "min_p" not in request_fields:
+            min_p = float(generation_defaults.get("min_p", min_p or 0.0))
+        frequency_penalty = float(generation_defaults.get("frequency_penalty", 0.0))
+        presence_penalty = float(generation_defaults.get("presence_penalty", 0.0))
+        repetition_context_size = int(
+            generation_defaults.get("repetition_context_size", 60)
+        )
+        repetition_penalty = float(generation_defaults.get("repetition_penalty", 1.0))
 
         conversation_bytes = prompt_text.encode("utf-8")
         layout: list[dict[str, Any]] = [
@@ -154,20 +176,20 @@ async def handle_completion_request(
         payload: dict[str, Any] = {
             "prompt": prompt_text,
             "sampling_params": {
-                "temperature": instance.temperature,
-                "top_p": instance.top_p if instance.top_p is not None else 1.0,
-                "top_k": instance.top_k if instance.top_k is not None else -1,
-                "min_p": instance.min_p if instance.min_p is not None else 0.0,
+                "temperature": temperature,
+                "top_p": top_p if top_p is not None else 1.0,
+                "top_k": top_k if top_k is not None else -1,
+                "min_p": min_p if min_p is not None else 0.0,
                 "rng_seed": random.randint(0, 2**32 - 1),
                 "deterministic": instance.deterministic,
             },
             "logits_params": {
                 "top_logprobs": instance.top_logprobs,
-                "frequency_penalty": 0.0,
+                "frequency_penalty": frequency_penalty,
                 "logit_bias": {},
-                "presence_penalty": 0.0,
-                "repetition_context_size": 60,
-                "repetition_penalty": 1.0,
+                "presence_penalty": presence_penalty,
+                "repetition_context_size": repetition_context_size,
+                "repetition_penalty": repetition_penalty,
             },
             "max_generated_tokens": instance.max_completion_tokens
             or MAX_GENERATED_TOKENS,

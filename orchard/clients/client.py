@@ -995,20 +995,37 @@ class Client:
             prompt_text = prompt_text.replace(coord_placeholder, "")
 
         prompt_bytes = prompt_text.encode("utf-8")
-        temperature = float(kwargs.get("temperature", 1.0))
-        top_p = float(kwargs.get("top_p", 1.0))
-        top_k = int(kwargs.get("top_k", -1))
-        min_p = float(kwargs.get("min_p", 0.0))
+        generation_defaults = self._formatter_generation_defaults(formatter)
+        temperature = float(
+            self._generation_value(kwargs, generation_defaults, "temperature", 1.0)
+        )
+        top_p = float(self._generation_value(kwargs, generation_defaults, "top_p", 1.0))
+        top_k = int(self._generation_value(kwargs, generation_defaults, "top_k", -1))
+        min_p = float(self._generation_value(kwargs, generation_defaults, "min_p", 0.0))
         rng_seed = int(kwargs.get("rng_seed", random.randint(0, 2**32 - 1)))
         deterministic = bool(kwargs.get("deterministic", False))
         max_generated_tokens = int(
             kwargs.get("max_generated_tokens", MAX_GENERATED_TOKENS)
         )
         top_logprobs = int(kwargs.get("top_logprobs", 0))
-        frequency_penalty = float(kwargs.get("frequency_penalty", 0.0))
-        presence_penalty = float(kwargs.get("presence_penalty", 0.0))
-        repetition_context_size = int(kwargs.get("repetition_context_size", 60))
-        repetition_penalty = float(kwargs.get("repetition_penalty", 1.0))
+        frequency_penalty = float(
+            self._generation_value(
+                kwargs, generation_defaults, "frequency_penalty", 0.0
+            )
+        )
+        presence_penalty = float(
+            self._generation_value(kwargs, generation_defaults, "presence_penalty", 0.0)
+        )
+        repetition_context_size = int(
+            self._generation_value(
+                kwargs, generation_defaults, "repetition_context_size", 60
+            )
+        )
+        repetition_penalty = float(
+            self._generation_value(
+                kwargs, generation_defaults, "repetition_penalty", 1.0
+            )
+        )
         logit_bias = {
             int(k): float(v) for k, v in (kwargs.get("logit_bias") or {}).items()
         }
@@ -1105,6 +1122,27 @@ class Client:
             "tool_choice": normalized_tool_choice,
         }
         return prompt_payload, capture_payload
+
+    @staticmethod
+    def _formatter_generation_defaults(formatter: Any) -> dict[str, Any]:
+        getter = getattr(formatter, "get_generation_defaults", None)
+        if not callable(getter):
+            return {}
+        defaults = getter("default")
+        return defaults if isinstance(defaults, dict) else {}
+
+    @staticmethod
+    def _generation_value(
+        kwargs: dict[str, Any],
+        defaults: dict[str, Any],
+        key: str,
+        fallback: Any,
+    ) -> Any:
+        value = kwargs.get(key)
+        if value is not None:
+            return value
+        default_value = defaults.get(key)
+        return fallback if default_value is None else default_value
 
     async def _asubmit_request(
         self, request_id: int, model_id: str, messages: list[dict], **kwargs: Any

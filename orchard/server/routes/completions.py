@@ -62,6 +62,8 @@ async def handle_completion_request(
 
     formatter = model_info.formatter
     model_path = model_info.model_path
+    generation_defaults = formatter.get_generation_defaults()
+    request_fields = request.model_fields_set
 
     current_request_id = await ipc_state.get_next_request_id()
     response_channel_id = ipc_state.response_channel_id or current_request_id
@@ -99,7 +101,24 @@ async def handle_completion_request(
         ]
 
         rng_seed = random.randint(0, 2**32 - 1)
-        normalized_top_k = request.top_k if request.top_k > 0 else -1
+        temperature = request.temperature
+        top_p = request.top_p
+        top_k = request.top_k if request.top_k > 0 else -1
+        min_p = request.min_p
+        if "temperature" not in request_fields:
+            temperature = float(generation_defaults.get("temperature", temperature))
+        if "top_p" not in request_fields:
+            top_p = float(generation_defaults.get("top_p", top_p))
+        if "top_k" not in request_fields:
+            top_k = int(generation_defaults.get("top_k", top_k))
+        if "min_p" not in request_fields:
+            min_p = float(generation_defaults.get("min_p", min_p))
+        frequency_penalty = float(generation_defaults.get("frequency_penalty", 0.0))
+        presence_penalty = float(generation_defaults.get("presence_penalty", 0.0))
+        repetition_context_size = int(
+            generation_defaults.get("repetition_context_size", 60)
+        )
+        repetition_penalty = float(generation_defaults.get("repetition_penalty", 1.0))
         num_candidates = request.best_of if request.best_of is not None else request.n
         num_candidates = max(1, num_candidates)
         final_candidates = max(1, request.n)
@@ -112,20 +131,20 @@ async def handle_completion_request(
                 "image_buffers": [],
                 "layout": layout_segments,
                 "sampling_params": {
-                    "temperature": request.temperature,
-                    "top_p": request.top_p,
-                    "top_k": normalized_top_k,
-                    "min_p": request.min_p,
+                    "temperature": temperature,
+                    "top_p": top_p,
+                    "top_k": top_k,
+                    "min_p": min_p,
                     "rng_seed": rng_seed,
                     "deterministic": request.deterministic,
                 },
                 "logits_params": {
                     "top_logprobs": request.logprobs or 0,
-                    "frequency_penalty": 0.0,
+                    "frequency_penalty": frequency_penalty,
                     "logit_bias": {},
-                    "presence_penalty": 0.0,
-                    "repetition_context_size": 60,
-                    "repetition_penalty": 1.0,
+                    "presence_penalty": presence_penalty,
+                    "repetition_context_size": repetition_context_size,
+                    "repetition_penalty": repetition_penalty,
                 },
                 "max_generated_tokens": request.max_completion_tokens,
                 "stop_sequences": [],

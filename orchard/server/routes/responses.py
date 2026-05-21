@@ -177,10 +177,41 @@ async def handle_response_request(
     )
     response_channel_id = ipc_state.response_channel_id or current_request_id
 
-    temperature = request.temperature if request.temperature is not None else 1.0
-    top_p = request.top_p if request.top_p is not None else 1.0
-    top_k = request.top_k if request.top_k is not None else -1
-    min_p = request.min_p if request.min_p is not None else 0.0
+    generation_defaults = formatter.get_generation_defaults()
+    temperature = (
+        request.temperature
+        if request.temperature is not None
+        else float(generation_defaults.get("temperature", 1.0))
+    )
+    top_p = (
+        request.top_p
+        if request.top_p is not None
+        else float(generation_defaults.get("top_p", 1.0))
+    )
+    top_k = (
+        request.top_k
+        if request.top_k is not None
+        else int(generation_defaults.get("top_k", -1))
+    )
+    min_p = (
+        request.min_p
+        if request.min_p is not None
+        else float(generation_defaults.get("min_p", 0.0))
+    )
+    frequency_penalty = (
+        request.frequency_penalty
+        if request.frequency_penalty is not None
+        else float(generation_defaults.get("frequency_penalty", 0.0))
+    )
+    presence_penalty = (
+        request.presence_penalty
+        if request.presence_penalty is not None
+        else float(generation_defaults.get("presence_penalty", 0.0))
+    )
+    repetition_context_size = int(
+        generation_defaults.get("repetition_context_size", 60)
+    )
+    repetition_penalty = float(generation_defaults.get("repetition_penalty", 1.0))
     max_output_tokens = request.max_output_tokens or 0
     rng_seed = random.randint(0, 2**32 - 1)
 
@@ -218,11 +249,11 @@ async def handle_response_request(
             },
             "logits_params": {
                 "top_logprobs": request.top_logprobs or 0,
-                "frequency_penalty": request.frequency_penalty or 0.0,
+                "frequency_penalty": frequency_penalty,
                 "logit_bias": {},
-                "presence_penalty": request.presence_penalty or 0.0,
-                "repetition_context_size": 60,
-                "repetition_penalty": 1.0,
+                "presence_penalty": presence_penalty,
+                "repetition_context_size": repetition_context_size,
+                "repetition_penalty": repetition_penalty,
             },
             "max_generated_tokens": max_output_tokens,
             "stop_sequences": [],

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, ClassVar
 
 import pytest
 
@@ -33,6 +33,7 @@ class _FakeFormatter:
     control_tokens = _FakeControlTokens()
     image_placeholder = "<|image|>"
     should_clip_image_placeholder = True
+    generation_defaults: ClassVar[dict[str, Any]] = {}
 
     def apply_template(
         self,
@@ -77,6 +78,9 @@ class _FakeFormatter:
 
     def supports_native_thinking(self) -> bool:
         return True
+
+    def get_generation_defaults(self, profile: str = "default") -> dict[str, Any]:
+        return dict(self.generation_defaults)
 
     def _render_part(self, part: Any) -> str:
         part_type = part["type"]
@@ -857,3 +861,52 @@ async def test_arender_responses_prompt_matches_submit_path(
         "start": "<think>\n",
         "end": "\n</think>",
     }
+
+
+@pytest.mark.asyncio
+async def test_arender_prompt_uses_profile_generation_defaults() -> None:
+    formatter = _FakeFormatter()
+    formatter.generation_defaults = {
+        "temperature": 0.6,
+        "top_p": 0.9,
+        "top_k": 20,
+        "min_p": 0.05,
+        "presence_penalty": 1.5,
+        "repetition_penalty": 1.1,
+    }
+    client = _make_client(formatter)
+
+    rendered = await client.arender_prompt(
+        "test-model",
+        [{"role": "user", "content": "Hello"}],
+    )
+
+    assert rendered["sampling_params"]["temperature"] == 0.6
+    assert rendered["sampling_params"]["top_p"] == 0.9
+    assert rendered["sampling_params"]["top_k"] == 20
+    assert rendered["sampling_params"]["min_p"] == 0.05
+    assert rendered["sampling_params"]["presence_penalty"] == 1.5
+    assert rendered["sampling_params"]["repetition_penalty"] == 1.1
+
+
+@pytest.mark.asyncio
+async def test_arender_prompt_explicit_sampling_overrides_profile_defaults() -> None:
+    formatter = _FakeFormatter()
+    formatter.generation_defaults = {
+        "temperature": 0.6,
+        "top_p": 0.9,
+        "top_k": 20,
+    }
+    client = _make_client(formatter)
+
+    rendered = await client.arender_prompt(
+        "test-model",
+        [{"role": "user", "content": "Hello"}],
+        temperature=0.0,
+        top_p=1.0,
+        top_k=-1,
+    )
+
+    assert rendered["sampling_params"]["temperature"] == 0.0
+    assert rendered["sampling_params"]["top_p"] == 1.0
+    assert rendered["sampling_params"]["top_k"] == -1

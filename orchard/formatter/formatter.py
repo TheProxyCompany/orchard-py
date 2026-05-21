@@ -137,6 +137,13 @@ class ChatFormatter:
             yaml.safe_load(caps_path.read_text()) if caps_path.exists() else {}
         )
 
+        generation_path = profile_dir / "generation.yaml"
+        self.generation: dict[str, Any] = (
+            yaml.safe_load(generation_path.read_text())
+            if generation_path.exists()
+            else {}
+        )
+
         # 3. Set up Jinja2 environment
         loader_paths = [str(profile_dir)]
         shared_template_dir = find_shared_template_dir(profile_dir)
@@ -233,6 +240,13 @@ class ChatFormatter:
             "start": str(tokens.get("start", "")),
             "end": str(tokens.get("end", "")),
         }
+
+    def get_generation_defaults(self, profile: str = "default") -> dict[str, Any]:
+        """Return sampling defaults from generation.yaml."""
+        value = self.generation.get(profile)
+        if not isinstance(value, dict):
+            value = self.generation.get("default")
+        return dict(value) if isinstance(value, dict) else {}
 
     def supports_native_thinking(self) -> bool:
         return bool(self.capabilities.get("thinking", {}).get("native"))
