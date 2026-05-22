@@ -13,6 +13,8 @@ def _resolve_ipc_root() -> Path:
     # ORCHARD_IPC_ROOT is an escape hatch for development or containerized environments.
     if ipc_root_env := os.getenv("ORCHARD_IPC_ROOT"):
         path = Path(ipc_root_env).expanduser().resolve()
+    elif cache_root_env := os.getenv("ORCHARD_CACHE_ROOT"):
+        path = Path(cache_root_env).expanduser().resolve() / "ipc"
     else:
         # Default to the standard application cache directory.
         home = Path.home()

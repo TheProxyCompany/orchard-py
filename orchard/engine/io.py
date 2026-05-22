@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -44,6 +45,11 @@ def get_engine_file_paths(
 
 
 def cache_root() -> Path:
+    if cache_root_env := os.getenv("ORCHARD_CACHE_ROOT"):
+        target = Path(cache_root_env).expanduser().resolve()
+        target.mkdir(parents=True, exist_ok=True)
+        return target
+
     home = Path.home()
     mac_cache = home / "Library" / "Caches"
     base = mac_cache if mac_cache.exists() else home / ".cache"

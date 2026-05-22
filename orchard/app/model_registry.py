@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import os
 import time
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -619,6 +620,9 @@ class ModelRegistry:
     # ------------------------------------------------------------------
     @staticmethod
     def _engine_pid_file() -> Path:
+        if cache_root_env := os.getenv("ORCHARD_CACHE_ROOT"):
+            return Path(cache_root_env).expanduser().resolve() / "engine.pid"
+
         home = Path.home()
         mac_cache = home / "Library" / "Caches"
         base = mac_cache if mac_cache.exists() else home / ".cache"
