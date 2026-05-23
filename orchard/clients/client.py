@@ -18,6 +18,7 @@ from orchard.clients.responses import (
 )
 from orchard.defaults import MAX_GENERATED_TOKENS
 from orchard.engine import ClientDelta, ClientResponse, UsageStats
+from orchard.formatter import ChatFormatter
 from orchard.formatter.multimodal import (
     build_multimodal_layout,
     build_multimodal_messages,
@@ -1086,7 +1087,7 @@ class Client:
         *,
         model_id: str,
         model_path: str,
-        formatter: Any,
+        formatter: ChatFormatter,
         messages: list[dict[str, Any]],
         **kwargs: Any,
     ) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -1203,6 +1204,8 @@ class Client:
             int(k): float(v) for k, v in (kwargs.get("logit_bias") or {}).items()
         }
         stop_sequences = self._normalize_stop_sequences(kwargs.get("stop"))
+        if not stop_sequences and formatter.control_tokens.end_of_sequence:
+            stop_sequences = [formatter.control_tokens.end_of_sequence]
         tool_schemas_json = self._serialize_tools(core_tools_payload)
         active_tool_schemas_json = self._serialize_tools(active_tools_payload)
         response_format_json = self._serialize_optional_payload(
@@ -1299,12 +1302,8 @@ class Client:
         return prompt_payload, capture_payload
 
     @staticmethod
-    def _formatter_generation_defaults(formatter: Any) -> dict[str, Any]:
-        getter = getattr(formatter, "get_generation_defaults", None)
-        if not callable(getter):
-            return {}
-        defaults = getter("default")
-        return defaults if isinstance(defaults, dict) else {}
+    def _formatter_generation_defaults(formatter: ChatFormatter) -> dict[str, Any]:
+        return formatter.get_generation_defaults("default")
 
     @staticmethod
     def _generation_value(

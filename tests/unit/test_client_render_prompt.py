@@ -26,6 +26,7 @@ class _FakeRoles:
 
 
 class _FakeControlTokens:
+    end_of_sequence = ""
     roles = _FakeRoles()
 
 

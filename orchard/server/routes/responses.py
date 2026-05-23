@@ -233,6 +233,11 @@ async def handle_response_request(
     rng_seed = random.randint(0, 2**32 - 1)
 
     response_format_json = json.dumps(request.text.to_dict()) if request.text else ""
+    stop_sequences = (
+        [formatter.control_tokens.end_of_sequence]
+        if formatter.control_tokens.end_of_sequence
+        else []
+    )
     thinking_tokens = (
         formatter.get_thinking_tokens()
         if formatter.supports_native_thinking()
@@ -273,7 +278,7 @@ async def handle_response_request(
                 "repetition_penalty": repetition_penalty,
             },
             "max_generated_tokens": max_output_tokens,
-            "stop_sequences": [],
+            "stop_sequences": stop_sequences,
             "tool_schemas_json": tool_schemas_json,
             "active_tool_schemas_json": active_tool_schemas_json,
             "response_format_json": response_format_json,
