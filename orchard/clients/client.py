@@ -29,7 +29,10 @@ from orchard.ipc.utils import (
     release_delta_resources,
 )
 from orchard.server.exceptions import InferenceError
-from orchard.server.models.reasoning import DEFAULT_BOOLEAN_REASONING_EFFORT
+from orchard.server.models.reasoning import (
+    DEFAULT_BOOLEAN_REASONING_EFFORT,
+    DEFAULT_NATIVE_REASONING_MIN_TOKENS,
+)
 from orchard.server.models.responses import OutputTextDeltaEvent, ResponseObject
 
 logger = logging.getLogger(__name__)
@@ -144,6 +147,166 @@ class Client:
                     release_delta_resources(leftover)
                 except asyncio.QueueEmpty:
                     break
+
+    async def _asubmit_prefill_task(
+        self,
+        request_id: int,
+        model_id: str,
+        texts: list[str],
+        task_name: str,
+    ) -> None:
+        info = await self._model_registry.get_info(model_id)
+        engine_model_id = info.model_id
+        response_channel_id = self._ipc_state.response_channel_id or request_id
+        request_bytes = _build_request_payload(
+            request_id=request_id,
+            model_id=engine_model_id,
+            model_path=info.model_path,
+            request_type="prefill_task",
+            response_channel_id=response_channel_id,
+            prompts=[
+                {
+                    "prompt_bytes": text.encode("utf-8"),
+                    "max_generated_tokens": 0,
+                    "task_name": task_name,
+                }
+                for text in texts
+            ],
+        )
+        socket = self._ipc_state.request_socket
+        if socket is None:
+            raise RuntimeError("Request socket is not initialized.")
+        await socket.asend(request_bytes)
+
+    async def aprefill_task(
+        self,
+        model_id: str,
+        text: str,
+        task_name: str,
+        *,
+        stream: bool = False,
+    ) -> list[ClientDelta] | AsyncIterator[ClientDelta]:
+        if self._ipc_state.engine_dead:
+            raise RuntimeError("Engine process is dead; cannot submit new requests.")
+
+        request_id = await self._ipc_state.get_next_request_id()
+        response_queue: asyncio.Queue[ResponseDeltaDict] = asyncio.Queue()
+        owner_loop = asyncio.get_running_loop()
+        self._ipc_state.active_request_queues[request_id] = QueueRegistration(
+            loop=owner_loop, queue=response_queue
+        )
+        queue_cleared = False
+        stream_managed_cleanup = False
+
+        def _cleanup_queue() -> None:
+            nonlocal queue_cleared
+            if queue_cleared:
+                return
+            queue_cleared = True
+            self._ipc_state.active_request_queues.pop(request_id, None)
+
+        try:
+            await self._asubmit_prefill_task(request_id, model_id, [text], task_name)
+
+            async def _stream_generator() -> AsyncIterator[ClientDelta]:
+                try:
+                    async for delta in self._async_process_stream(response_queue):
+                        yield delta
+                finally:
+                    _cleanup_queue()
+
+            if stream:
+                stream_managed_cleanup = True
+                return _stream_generator()
+
+            deltas = [delta async for delta in self._async_process_stream(response_queue)]
+            _cleanup_queue()
+            return deltas
+        finally:
+            if not stream or not stream_managed_cleanup:
+                _cleanup_queue()
+
+    def prefill_task(
+        self,
+        model_id: str,
+        text: str,
+        task_name: str,
+        *,
+        stream: bool = False,
+    ) -> list[ClientDelta] | Iterator[ClientDelta]:
+        if (
+            not self._sync_loop
+            or not self._sync_thread
+            or not self._sync_thread.is_alive()
+        ):
+            self._start_sync_event_loop()
+
+        assert self._sync_loop, "Sync loop not initialized"
+        future = asyncio.run_coroutine_threadsafe(
+            self.aprefill_task(model_id, text, task_name, stream=stream),
+            self._sync_loop,
+        )
+        result = future.result()
+        if isinstance(result, AsyncIterator):
+            return self._sync_iterator_bridge(result)
+        return result
+
+    async def aprefill_task_batch(
+        self,
+        model_id: str,
+        texts: list[str],
+        task_name: str,
+    ) -> list[list[ClientDelta]]:
+        if not texts:
+            return []
+        if self._ipc_state.engine_dead:
+            raise RuntimeError("Engine process is dead; cannot submit new requests.")
+
+        request_id = await self._ipc_state.get_next_request_id()
+        response_queue: asyncio.Queue[ResponseDeltaDict] = asyncio.Queue()
+        owner_loop = asyncio.get_running_loop()
+        self._ipc_state.active_request_queues[request_id] = QueueRegistration(
+            loop=owner_loop, queue=response_queue
+        )
+
+        try:
+            await self._asubmit_prefill_task(request_id, model_id, texts, task_name)
+            deltas = [
+                delta
+                async for delta in self._async_process_stream(
+                    response_queue,
+                    expected_final_prompt_count=len(texts),
+                )
+            ]
+        finally:
+            self._ipc_state.active_request_queues.pop(request_id, None)
+
+        deltas_by_prompt: list[list[ClientDelta]] = [[] for _ in texts]
+        for delta in deltas:
+            prompt_index = delta.prompt_index if delta.prompt_index is not None else 0
+            if 0 <= prompt_index < len(deltas_by_prompt):
+                deltas_by_prompt[prompt_index].append(delta)
+        return deltas_by_prompt
+
+    def prefill_task_batch(
+        self,
+        model_id: str,
+        texts: list[str],
+        task_name: str,
+    ) -> list[list[ClientDelta]]:
+        if (
+            not self._sync_loop
+            or not self._sync_thread
+            or not self._sync_thread.is_alive()
+        ):
+            self._start_sync_event_loop()
+
+        assert self._sync_loop, "Sync loop not initialized"
+        future = asyncio.run_coroutine_threadsafe(
+            self.aprefill_task_batch(model_id, texts, task_name),
+            self._sync_loop,
+        )
+        return future.result()
 
     def _build_responses_request(
         self,
@@ -928,9 +1091,21 @@ class Client:
         **kwargs: Any,
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         requested_reasoning_effort = kwargs.get("reasoning_effort")
+        native_reasoning = formatter.supports_native_thinking()
+        max_generated_tokens = int(
+            kwargs.get("max_generated_tokens", MAX_GENERATED_TOKENS)
+        )
+        default_reasoning = (
+            native_reasoning
+            and "reasoning" not in kwargs
+            and requested_reasoning_effort is None
+            and kwargs.get("response_format") is None
+            and max_generated_tokens >= DEFAULT_NATIVE_REASONING_MIN_TOKENS
+            and bool(formatter.capabilities.get("thinking", {}).get("default"))
+        )
         reasoning_flag = bool(
-            (kwargs.get("reasoning") or requested_reasoning_effort)
-            and formatter.supports_native_thinking()
+            (kwargs.get("reasoning") or requested_reasoning_effort or default_reasoning)
+            and native_reasoning
         )
         reasoning_effort = (
             requested_reasoning_effort or DEFAULT_BOOLEAN_REASONING_EFFORT
@@ -971,6 +1146,7 @@ class Client:
         prompt_text = formatter.apply_template(
             messages_for_template,
             reasoning=reasoning_flag,
+            reasoning_effort=reasoning_effort,
             task=kwargs.get("task_name"),
             tools=core_tools_payload,
         )
@@ -1004,9 +1180,6 @@ class Client:
         min_p = float(self._generation_value(kwargs, generation_defaults, "min_p", 0.0))
         rng_seed = int(kwargs.get("rng_seed", random.randint(0, 2**32 - 1)))
         deterministic = bool(kwargs.get("deterministic", False))
-        max_generated_tokens = int(
-            kwargs.get("max_generated_tokens", MAX_GENERATED_TOKENS)
-        )
         top_logprobs = int(kwargs.get("top_logprobs", 0))
         frequency_penalty = float(
             self._generation_value(
@@ -1085,6 +1258,7 @@ class Client:
             "min_tool_calls": min_tool_calls,
             "max_tool_calls": max_tool_calls,
             "tool_calling_tokens": formatter.get_tool_calling_tokens(),
+            "output_frame_tokens": formatter.get_output_frame_tokens(),
             "thinking_tokens": thinking_tokens,
             "tool_choice": normalized_tool_choice,
         }
@@ -1118,6 +1292,7 @@ class Client:
             "min_tool_calls": min_tool_calls,
             "max_tool_calls": max_tool_calls,
             "tool_calling_tokens": formatter.get_tool_calling_tokens(),
+            "output_frame_tokens": formatter.get_output_frame_tokens(),
             "thinking_tokens": thinking_tokens,
             "tool_choice": normalized_tool_choice,
         }

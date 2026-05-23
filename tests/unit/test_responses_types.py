@@ -247,6 +247,81 @@ async def test_delta_to_event_mapping_streaming() -> None:
     assert completed_event.response.usage.output_tokens == 2
 
 
+@pytest.mark.asyncio
+async def test_harmony_reasoning_state_events_stream_deltas() -> None:
+    deltas = [
+        {
+            "request_id": 1,
+            "is_final_delta": False,
+            "state_events": [
+                {
+                    "event_type": "item_started",
+                    "item_type": "reasoning",
+                    "output_index": 0,
+                    "identifier": "reasoning",
+                    "delta": "",
+                },
+                {
+                    "event_type": "content_delta",
+                    "item_type": "reasoning",
+                    "output_index": 0,
+                    "identifier": "reasoning",
+                    "delta": "First thought. ",
+                },
+            ],
+        },
+        {
+            "request_id": 1,
+            "is_final_delta": True,
+            "finish_reason": "stop",
+            "state_events": [
+                {
+                    "event_type": "content_delta",
+                    "item_type": "reasoning",
+                    "output_index": 0,
+                    "identifier": "reasoning",
+                    "delta": "Second thought.",
+                },
+                {
+                    "event_type": "item_completed",
+                    "item_type": "reasoning",
+                    "output_index": 0,
+                    "identifier": "reasoning",
+                    "value": "First thought. Second thought.",
+                },
+            ],
+        },
+    ]
+
+    async def _delta_iter():
+        for delta in deltas:
+            yield delta
+
+    events = [
+        event
+        async for event in iter_response_events(
+            _delta_iter(), model_id="gpt-oss-test", response_id="resp_test"
+        )
+    ]
+
+    reasoning_deltas = [
+        event.delta for event in events if event.type == "response.reasoning.delta"
+    ]
+    assert reasoning_deltas == ["First thought. ", "Second thought."]
+
+    reasoning_done = next(
+        event for event in events if event.type == "response.reasoning.done"
+    )
+    assert reasoning_done.text == "First thought. Second thought."
+
+    output_item_done = next(
+        event
+        for event in events
+        if event.type == "response.output_item.done" and event.item.type == "reasoning"
+    )
+    assert output_item_done.item.content[0].text == "First thought. Second thought."
+
+
 def test_non_streaming_tool_call_uses_structured_completion_value() -> None:
     response = aggregate_non_streaming_response(
         [

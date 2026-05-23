@@ -10,11 +10,12 @@ async def test_chat_completion_respects_stop_sequence(live_server, text_model_id
         "messages": [
             {
                 "role": "user",
-                "content": "What are the national colors of the United States of America?",
+                "content": "Reply with exactly: red, white, blue",
             }
         ],
         "temperature": 0.0,
         "stream": False,
+        "max_completion_tokens": 32,
         "stop": ["blue"],
         "logprobs": True,
         "top_logprobs": 10,

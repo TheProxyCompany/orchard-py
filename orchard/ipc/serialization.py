@@ -22,6 +22,7 @@ _REQUEST_TYPE_CODES = {
     "detect": 4,
     "agent": 5,
     "omni": 6,
+    "prefill_task": 7,
 }
 
 __all__ = ["_build_request_payload"]
@@ -265,6 +266,12 @@ def _build_request_payload(
                 {
                     "name": str(format_entry.get("name", "")),
                     "call_start": str(format_entry.get("call_start", "")),
+                    "inline_start": str(format_entry.get("inline_start", "")),
+                    "channel": str(format_entry.get("channel", "")),
+                    "recipient_prefix": str(format_entry.get("recipient_prefix", "")),
+                    "constraint_prefix": str(format_entry.get("constraint_prefix", "")),
+                    "constraint": str(format_entry.get("constraint", "")),
+                    "message": str(format_entry.get("message", "")),
                     "call_end": str(format_entry.get("call_end", "")),
                 }
             )
@@ -274,6 +281,13 @@ def _build_request_payload(
             "section_start": str(tool_calling_tokens_raw.get("section_start", "")),
             "section_end": str(tool_calling_tokens_raw.get("section_end", "")),
         }
+        output_frame_tokens_raw = prompt.get("output_frame_tokens") or {}
+        output_frame_tokens: dict[str, str] = {}
+        if isinstance(output_frame_tokens_raw, dict):
+            output_frame_tokens = {
+                str(name): str(token)
+                for name, token in output_frame_tokens_raw.items()
+            }
         thinking_tokens_raw = prompt.get("thinking_tokens") or {}
         thinking_tokens = {
             "start": str(thinking_tokens_raw.get("start", "")),
@@ -367,6 +381,7 @@ def _build_request_payload(
                 "tool_schemas_json": tool_schemas_str,
                 "active_tool_schemas_json": active_tool_schemas_str,
                 "tool_calling_tokens": tool_calling_tokens,
+                "output_frame_tokens": output_frame_tokens,
                 "thinking_tokens": thinking_tokens,
                 "tool_choice": tool_choice_str,
                 "min_tool_calls": min_tool_calls,

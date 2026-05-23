@@ -193,6 +193,7 @@ class ModelResolver:
             source=source,
             metadata=metadata,
             hf_repo=hf_repo,
+            formatter_config=None,
         )
 
     @staticmethod

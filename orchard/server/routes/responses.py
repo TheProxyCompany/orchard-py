@@ -22,7 +22,11 @@ from orchard.ipc.utils import (
 )
 from orchard.server.dependencies import IPCStateDep, ModelRegistryDep
 from orchard.server.exceptions import InferenceError
-from orchard.server.models.reasoning import normalize_reasoning_value
+from orchard.server.models.reasoning import (
+    DEFAULT_BOOLEAN_REASONING_EFFORT,
+    DEFAULT_NATIVE_REASONING_MIN_TOKENS,
+    normalize_reasoning_value,
+)
 from orchard.server.models.responses import (
     ContentPartAddedEvent,
     ContentPartDoneEvent,
@@ -134,6 +138,18 @@ async def handle_response_request(
         json.dumps(active_tools_payload) if active_tools_payload else tool_schemas_json
     )
     reasoning_effort = normalize_reasoning_value(request.reasoning)
+    if (
+        reasoning_effort is None
+        and "reasoning" not in request.model_fields_set
+        and request.text is None
+        and formatter.supports_native_thinking()
+        and (
+            request.max_output_tokens is None
+            or request.max_output_tokens >= DEFAULT_NATIVE_REASONING_MIN_TOKENS
+        )
+        and bool(formatter.capabilities.get("thinking", {}).get("default"))
+    ):
+        reasoning_effort = DEFAULT_BOOLEAN_REASONING_EFFORT
     reasoning_flag = (
         reasoning_effort is not None and formatter.supports_native_thinking()
     )
@@ -142,6 +158,7 @@ async def handle_response_request(
         prompt_text = formatter.apply_template(
             messages_for_template,
             reasoning=reasoning_flag,
+            reasoning_effort=reasoning_effort,
             tools=core_tools_payload,
         )
     except Exception as exc:  # pragma: no cover - defensive
@@ -268,6 +285,7 @@ async def handle_response_request(
             "min_tool_calls": request.min_tool_calls,
             "max_tool_calls": request.max_tool_calls,
             "tool_calling_tokens": formatter.get_tool_calling_tokens(),
+            "output_frame_tokens": formatter.get_output_frame_tokens(),
             "thinking_tokens": thinking_tokens,
             "tool_choice": request.tool_choice.to_dict()
             if request.tool_choice

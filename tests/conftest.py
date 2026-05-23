@@ -36,14 +36,19 @@ CLIENT_LOG_PATH = LOG_DIR / "client.test.log"
 
 TEXT_MODELS = [
     "meta-llama/Llama-3.1-8B-Instruct",
-    "google/gemma-3-4b-it",
     "google/gemma-4-E2B-it",
     "Qwen/Qwen3.5-4B",
     "moondream/moondream3-preview",
+    "mlx-community/Trinity-Mini-4bit",
+    "LiquidAI/LFM2.5-1.2B-Instruct",
+    "allenai/Olmo-Hybrid-Instruct-DPO-7B",
+    "nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16",
+    "ibm-granite/granite-switch-4.1-30b-preview",
+    "microsoft/Phi-4-reasoning-plus",
 ]
 
 VISION_MODELS = [
-    "google/gemma-3-4b-it",
+    "google/gemma-4-E2B-it",
     "moondream/moondream3-preview",
 ]
 

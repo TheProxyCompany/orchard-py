@@ -7,6 +7,7 @@ ReasoningEffort = Literal["minimal", "low", "medium", "high"]
 
 _VALID_EFFORT_VALUES = {"minimal", "low", "medium", "high"}
 DEFAULT_BOOLEAN_REASONING_EFFORT: ReasoningEffort = "medium"
+DEFAULT_NATIVE_REASONING_MIN_TOKENS = 256
 
 
 def normalize_reasoning_effort(value: str | None) -> ReasoningEffort | None:
@@ -46,6 +47,7 @@ def normalize_reasoning_value(
 
 __all__ = [
     "DEFAULT_BOOLEAN_REASONING_EFFORT",
+    "DEFAULT_NATIVE_REASONING_MIN_TOKENS",
     "ReasoningEffort",
     "normalize_reasoning_effort",
     "normalize_reasoning_value",

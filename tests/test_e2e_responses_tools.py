@@ -22,9 +22,6 @@ WEATHER_TOOL = {
     },
 }
 
-MULTI_TURN_TOOL_UNSUPPORTED_MODELS = {"moondream/moondream3-preview"}
-
-
 # ---------------------------------------------------------------------------
 # Tool calling (non-streaming)
 # ---------------------------------------------------------------------------
@@ -151,9 +148,6 @@ async def test_responses_tool_call_streaming(live_server, text_model_id):
 
 async def test_responses_tool_result_continuation(live_server, text_model_id):
     """Client sends tool result back and model continues with a message."""
-    if text_model_id in MULTI_TURN_TOOL_UNSUPPORTED_MODELS:
-        pytest.skip(f"{text_model_id} is not a multi-turn tool-use target")
-
     # Turn 1: trigger tool call
     payload_1 = {
         "model": text_model_id,

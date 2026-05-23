@@ -34,6 +34,10 @@ from orchard.server.models.chat.output import (
     generate_chat_completion_id,
     get_current_timestamp,
 )
+from orchard.server.models.reasoning import (
+    DEFAULT_BOOLEAN_REASONING_EFFORT,
+    DEFAULT_NATIVE_REASONING_MIN_TOKENS,
+)
 from orchard.server.routes._common import (
     _ModelNotReadyError,
     managed_stream_session,
@@ -131,13 +135,28 @@ async def handle_completion_request(
         if core_tools_payload:
             core_tools_payload.sort(key=lambda tool: tool.get("name", ""))
         tool_schemas_str = json.dumps(core_tools_payload) if core_tools_payload else ""
+        max_generated_tokens = instance.max_completion_tokens or MAX_GENERATED_TOKENS
+        native_reasoning = formatter.supports_native_thinking()
+        default_reasoning = (
+            native_reasoning
+            and instance.reasoning_effort is None
+            and "reasoning" not in request_fields
+            and "reasoning_effort" not in request_fields
+            and instance.response_format is None
+            and max_generated_tokens >= DEFAULT_NATIVE_REASONING_MIN_TOKENS
+            and bool(formatter.capabilities.get("thinking", {}).get("default"))
+        )
+        reasoning_effort = instance.reasoning_effort or (
+            DEFAULT_BOOLEAN_REASONING_EFFORT if default_reasoning else None
+        )
         reasoning_flag = (
-            instance.reasoning_effort is not None
-            and formatter.supports_native_thinking()
+            reasoning_effort is not None
+            and native_reasoning
         )
         prompt_text = formatter.apply_template(
             messages_as_dicts,
             reasoning=reasoning_flag,
+            reasoning_effort=reasoning_effort,
             tools=core_tools_payload,
         )
         logger.info("Prompt text: %s", prompt_text)
@@ -191,8 +210,7 @@ async def handle_completion_request(
                 "repetition_context_size": repetition_context_size,
                 "repetition_penalty": repetition_penalty,
             },
-            "max_generated_tokens": instance.max_completion_tokens
-            or MAX_GENERATED_TOKENS,
+            "max_generated_tokens": max_generated_tokens,
             "stop_sequences": stop_sequences,
             "tool_schemas_json": tool_schemas_str,
             "active_tool_schemas_json": tool_schemas_str,
@@ -206,9 +224,10 @@ async def handle_completion_request(
         if instance.task is not None:
             payload["task_name"] = instance.task
         if reasoning_flag:
-            payload["reasoning_effort"] = instance.reasoning_effort
+            payload["reasoning_effort"] = reasoning_effort
 
         payload["tool_calling_tokens"] = formatter.get_tool_calling_tokens()
+        payload["output_frame_tokens"] = formatter.get_output_frame_tokens()
         payload["thinking_tokens"] = (
             formatter.get_thinking_tokens()
             if formatter.supports_native_thinking()
@@ -390,7 +409,30 @@ async def gather_non_streaming_batch_response(
                 if prompt_token_count > 0 and prompt_token_totals[prompt_index] == 0:
                     prompt_token_totals[prompt_index] = prompt_token_count
 
-                delta_content = delta.get("content") or ""
+                state_events = delta.get("state_events") or []
+                if state_events:
+                    message_deltas = [
+                        str(event.get("delta", ""))
+                        for event in state_events
+                        if (
+                            event.get("item_type") == "message"
+                            and event.get("event_type") == "content_delta"
+                        )
+                    ]
+                    delta_content = ""
+                    if message_deltas:
+                        delta_content = delta.get("content") or message_deltas[0]
+                    for event in state_events:
+                        if (
+                            event.get("item_type") == "message"
+                            and event.get("event_type") == "item_completed"
+                            and "value" in event
+                            and not state["content"]
+                            and not delta_content
+                        ):
+                            state["content"] = str(event["value"])
+                else:
+                    delta_content = delta.get("content") or ""
                 if delta_content:
                     state["content"] += delta_content
 

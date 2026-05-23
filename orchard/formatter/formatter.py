@@ -9,11 +9,33 @@ from jinja2 import Environment, FileSystemLoader
 from orchard.formatter.control_tokens import ControlTokens, load_control_tokens
 
 logger = logging.getLogger(__name__)
+_PROFILE_ROOT = Path(__file__).parent / "profiles"
+_PROFILE_DIRS: dict[str, Path] | None = None
+
+
+def _profile_dirs() -> dict[str, Path]:
+    global _PROFILE_DIRS
+    if _PROFILE_DIRS is None:
+        profile_dirs = {}
+        for profile_dir in _PROFILE_ROOT.iterdir():
+            control_tokens_path = profile_dir / "control_tokens.json"
+            if not control_tokens_path.is_file():
+                continue
+            with open(control_tokens_path) as f:
+                control_tokens = json.load(f)
+            profile_dirs[profile_dir.name] = profile_dir
+            for model_type in control_tokens.get("model_types", []):
+                if isinstance(model_type, str) and model_type:
+                    profile_dirs[model_type] = profile_dir
+        _PROFILE_DIRS = profile_dirs
+    return _PROFILE_DIRS
 
 
 def determine_model_type(config: dict) -> str:
     """Determine the model type from the model path."""
-    model_type = config.get("model_type", "llama")
+    model_type = config.get("model_type")
+    if not isinstance(model_type, str) or not model_type:
+        raise ValueError("Formatter config must include a non-empty 'model_type'")
     if model_type == "llama" or model_type == "llama3":
         return "llama3"
 
@@ -111,7 +133,9 @@ class ChatFormatter:
         self._configure(tokenizer_config)
 
     @classmethod
-    def from_config(cls, model_path: str, tokenizer_config: dict[str, Any]) -> "ChatFormatter":
+    def from_config(
+        cls, model_path: str, tokenizer_config: dict[str, Any]
+    ) -> "ChatFormatter":
         formatter = cls.__new__(cls)
         formatter.model_path = Path(model_path)
         cls._configure(formatter, dict(tokenizer_config))
@@ -121,7 +145,9 @@ class ChatFormatter:
         self.tokenizer_config = tokenizer_config
         model_type = determine_model_type(tokenizer_config)
         self.model_type = model_type
-        profile_dir = Path(__file__).parent / "profiles" / model_type
+        profile_dir = _PROFILE_ROOT / model_type
+        if not profile_dir.is_dir():
+            profile_dir = _profile_dirs().get(model_type, profile_dir)
         if not profile_dir.is_dir():
             raise ValueError(
                 f"Profile directory for model_type '{model_type}' not found at "
@@ -131,18 +157,14 @@ class ChatFormatter:
 
         self.control_tokens: ControlTokens = load_control_tokens(profile_dir)
 
-        # 2b. Load capabilities manifest
         caps_path = profile_dir / "capabilities.yaml"
-        self.capabilities: dict[str, Any] = (
-            yaml.safe_load(caps_path.read_text()) if caps_path.exists() else {}
-        )
-
         generation_path = profile_dir / "generation.yaml"
-        self.generation: dict[str, Any] = (
-            yaml.safe_load(generation_path.read_text())
-            if generation_path.exists()
-            else {}
-        )
+        if not caps_path.is_file():
+            raise ValueError(f"Profile for model_type '{model_type}' is missing capabilities.yaml")
+        if not generation_path.is_file():
+            raise ValueError(f"Profile for model_type '{model_type}' is missing generation.yaml")
+        self.capabilities = yaml.safe_load(caps_path.read_text()) or {}
+        self.generation = yaml.safe_load(generation_path.read_text()) or {}
 
         # 3. Set up Jinja2 environment
         loader_paths = [str(profile_dir)]
@@ -164,6 +186,7 @@ class ChatFormatter:
         task: str | None = None,
         prefill: str | None = None,
         tools: list[dict[str, Any]] | None = None,
+        reasoning_effort: str | None = None,
     ) -> str:
         """
         Applies the loaded chat template to a conversation.
@@ -180,6 +203,7 @@ class ChatFormatter:
         """
         context = {
             "interactions": conversation,
+            "messages": conversation,
             "add_generation_prompt": add_generation_prompt,
             "begin_of_text": self.control_tokens.begin_of_text,
             "end_of_sequence": self.control_tokens.end_of_sequence,
@@ -193,6 +217,7 @@ class ChatFormatter:
             "capabilities": self.capabilities,
             "model_config": self.tokenizer_config,
             "tools": tools,
+            "reasoning_effort": reasoning_effort or "medium",
         }
         return self.template.render(**context)
 
@@ -220,6 +245,12 @@ class ChatFormatter:
                 {
                     "name": fmt.get("name", ""),
                     "call_start": tokens.get("start", ""),
+                    "inline_start": tokens.get("inline_start", ""),
+                    "channel": tokens.get("channel", ""),
+                    "recipient_prefix": tokens.get("recipient_prefix", ""),
+                    "constraint_prefix": tokens.get("constraint_prefix", ""),
+                    "constraint": tokens.get("constraint", ""),
+                    "message": tokens.get("message", ""),
                     "call_end": tokens.get("end", ""),
                 }
             )
@@ -232,6 +263,34 @@ class ChatFormatter:
             "section_start": section_start,
             "section_end": section_end,
         }
+
+    def get_output_frame_tokens(self) -> dict[str, str]:
+        framing = self.capabilities.get("output_framing", {})
+        if not isinstance(framing, dict):
+            return {}
+
+        tokens: dict[str, str] = {}
+        markers = framing.get("markers", {})
+        if isinstance(markers, dict):
+            tokens.update(
+                {
+                    f"marker.{name}": str(value)
+                    for name, value in markers.items()
+                    if value
+                }
+            )
+
+        channels = framing.get("channels", {})
+        if isinstance(channels, dict):
+            tokens.update(
+                {
+                    f"channel.{name}": str(value)
+                    for name, value in channels.items()
+                    if value
+                }
+            )
+
+        return tokens
 
     def get_thinking_tokens(self) -> dict[str, str]:
         """Extract generated-output thinking delimiters from capabilities.yaml."""

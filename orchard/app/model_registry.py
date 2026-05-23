@@ -193,7 +193,7 @@ class ModelRegistry:
             entry.activation_loop = None
 
             # If the model is already local (or in HF cache), build formatter immediately.
-            if resolved.source in {"local", "local_source", "hf_cache"} or (
+            if resolved.source in {"local", "local_source", "hf_cache", "hf_hub"} or (
                 resolved.model_path and (resolved.model_path / "config.json").exists()
             ):
                 try:
@@ -394,8 +394,8 @@ class ModelRegistry:
         data = response.get("data") or {}
         source = data.get("inspect_model_source") or {}
         formatter_config = source.get("formatter_config") or {}
-        if not isinstance(formatter_config, dict):
-            formatter_config = {}
+        if not isinstance(formatter_config, dict) or not formatter_config.get("model_type"):
+            raise ModelResolutionError("Engine inspect_model_source did not return formatter_config.model_type")
         metadata = dict(resolved.metadata)
         for key in ("source_format", "architecture", "model_type"):
             value = source.get(key)

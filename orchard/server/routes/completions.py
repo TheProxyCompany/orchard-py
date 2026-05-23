@@ -154,6 +154,7 @@ async def handle_completion_request(
                 "best_of": num_candidates,
                 "final_candidates": final_candidates,
                 "tool_calling_tokens": formatter.get_tool_calling_tokens(),
+                "output_frame_tokens": formatter.get_output_frame_tokens(),
                 "thinking_tokens": formatter.get_thinking_tokens(),
             }
         )
