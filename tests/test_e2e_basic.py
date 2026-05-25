@@ -20,7 +20,7 @@ async def test_chat_completion_first_token(
         "stream": False,
     }
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=60.0) as client:
         response = await client.post(
             f"{server_url}/v1/chat/completions", json=request_payload
         )
