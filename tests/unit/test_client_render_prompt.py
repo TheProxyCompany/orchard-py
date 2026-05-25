@@ -154,6 +154,7 @@ def _make_client(formatter: Any | None = None) -> Client:
         ("afmoe", "afmoe"),
         ("glm4_moe", "glm4_moe"),
         ("gpt_oss", "gpt_oss"),
+        ("granite", "granite"),
         ("granite_switch", "granite_switch"),
         ("nemotron_h", "nemotron_h"),
         ("olmo_hybrid", "olmo_hybrid"),
@@ -178,6 +179,7 @@ def test_determine_model_type_requires_model_type() -> None:
         ("phi3", "phi3", "<|im_start|>assistant<|im_sep|>"),
         ("olmo_hybrid", "olmo_hybrid", "<|im_start|>assistant\n"),
         ("nemotron_h", "nemotron_h", "<|im_start|>assistant\n<think>\n"),
+        ("granite", "granite", "<|start_of_role|>assistant<|end_of_role|>"),
         ("granite_switch", "granite_switch", "<|start_of_role|>assistant<|end_of_role|>"),
     ],
 )

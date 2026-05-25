@@ -43,7 +43,7 @@ TEXT_MODELS = [
     "LiquidAI/LFM2.5-1.2B-Instruct",
     "allenai/Olmo-Hybrid-Instruct-DPO-7B",
     "nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16",
-    "ibm-granite/granite-switch-4.1-30b-preview",
+    "mlx-community/granite-4.1-30b-4bit",
     "microsoft/Phi-4-reasoning-plus",
 ]
 
