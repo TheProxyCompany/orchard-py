@@ -12,7 +12,7 @@ pytestmark = pytest.mark.asyncio
 @pytest.mark.parametrize(
     "prompt",
     [
-        "You have 5 output tokens. Respond with a 5 token poem.",
+        "You have 5 output tokens. Respond with exactly five words: alpha beta gamma delta epsilon.",
         "You have 5 output tokens. Respond with a 5 token plea for more tokens.",
     ],
 )
