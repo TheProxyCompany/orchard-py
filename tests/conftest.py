@@ -44,7 +44,7 @@ TEXT_MODELS = [
     "allenai/Olmo-Hybrid-Instruct-DPO-7B",
     "nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16",
     "mlx-community/granite-4.1-30b-4bit",
-    "microsoft/Phi-4-reasoning-plus",
+    "mlx-community/Phi-4-reasoning-plus-4bit",
 ]
 
 VISION_MODELS = [

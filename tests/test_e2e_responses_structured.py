@@ -23,7 +23,7 @@ async def test_responses_structured_json_schema(live_server, text_model_id):
 
     payload = {
         "model": text_model_id,
-        "input": "What is the capital of France and its approximate population? Respond as JSON.",
+        "input": "Return the capital of France and population 2148327 as JSON. Use the integer literal 2148327 without a decimal point.",
         "temperature": 0.0,
         "max_output_tokens": 64,
         "text": {
