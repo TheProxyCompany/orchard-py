@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any, Literal
 
+from pydantic import BaseModel
+
 ReasoningEffort = Literal["minimal", "low", "medium", "high"]
 
 _VALID_EFFORT_VALUES = {"minimal", "low", "medium", "high"}
@@ -35,6 +37,8 @@ def normalize_reasoning_value(
         return DEFAULT_BOOLEAN_REASONING_EFFORT if value else None
     if isinstance(value, str):
         return normalize_reasoning_effort(value)
+    if isinstance(value, BaseModel):
+        value = value.model_dump()
     if isinstance(value, Mapping):
         if "effort" not in value:
             raise ValueError(f"'{field_name}' object must include an 'effort' field.")

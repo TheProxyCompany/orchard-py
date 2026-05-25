@@ -1100,7 +1100,6 @@ class Client:
             native_reasoning
             and "reasoning" not in kwargs
             and requested_reasoning_effort is None
-            and kwargs.get("response_format") is None
             and max_generated_tokens >= DEFAULT_NATIVE_REASONING_MIN_TOKENS
             and bool(formatter.capabilities.get("thinking", {}).get("default"))
         )

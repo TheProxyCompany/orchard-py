@@ -141,7 +141,6 @@ async def handle_response_request(
     if (
         reasoning_effort is None
         and "reasoning" not in request.model_fields_set
-        and request.text is None
         and formatter.supports_native_thinking()
         and (
             request.max_output_tokens is None

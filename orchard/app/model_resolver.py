@@ -187,13 +187,18 @@ class ModelResolver:
         if hf_repo is None:
             hf_repo = self._infer_hf_repo(config)
 
+        formatter_config = None
+        if hf_repo is not None:
+            formatter_config = dict(config)
+            formatter_config.setdefault("_name_or_path", hf_repo)
+
         return ResolvedModel(
             canonical_id=canonical_id,
             model_path=model_path,
             source=source,
             metadata=metadata,
             hf_repo=hf_repo,
-            formatter_config=None,
+            formatter_config=formatter_config,
         )
 
     @staticmethod

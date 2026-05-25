@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from orchard.app.model_resolver import ModelResolver
+from orchard.formatter.formatter import determine_template_type
 
 
 def _write_common_model_files(model_dir: Path, *, repo_id: str) -> None:
@@ -109,3 +110,26 @@ def test_resolve_local_file_as_engine_inspected_source(tmp_path: Path) -> None:
     assert resolved.canonical_id == "model"
     assert resolved.model_path == model_file.resolve()
     assert resolved.formatter_config is None
+
+
+def test_hf_resolved_model_passes_repo_hint_to_formatter_config(tmp_path: Path) -> None:
+    repo_id = "microsoft/Phi-4-reasoning-plus"
+    model_dir = tmp_path / "downloaded"
+    model_dir.mkdir()
+    (model_dir / "config.json").write_text(
+        json.dumps({"model_type": "phi3"}),
+        encoding="utf-8",
+    )
+    (model_dir / "tokenizer.json").write_text("{}", encoding="utf-8")
+
+    resolved = ModelResolver()._build_resolved_model(  # noqa: SLF001
+        model_dir,
+        source="hf_cache",
+        canonical_id=repo_id,
+        hf_repo=repo_id,
+    )
+
+    assert resolved.formatter_config is not None
+    assert resolved.formatter_config["model_type"] == "phi3"
+    assert resolved.formatter_config["_name_or_path"] == repo_id
+    assert determine_template_type(resolved.formatter_config) == "phi4_reasoning"

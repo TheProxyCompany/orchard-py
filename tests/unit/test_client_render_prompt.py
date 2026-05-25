@@ -10,7 +10,11 @@ from orchard.app.model_registry import ModelInfo
 from orchard.clients.client import Client
 from orchard.clients.responses import ResponsesRequest
 from orchard.engine import ClientDelta
-from orchard.formatter.formatter import ChatFormatter, determine_model_type
+from orchard.formatter.formatter import (
+    ChatFormatter,
+    determine_model_type,
+    determine_template_type,
+)
 
 DATA_URL = "data:image/png;base64,AA=="
 
@@ -162,8 +166,25 @@ def _make_client(formatter: Any | None = None) -> Client:
         ("phi3", "phi3"),
     ],
 )
-def test_determine_model_type_maps_known_profiles(source_type: str, profile_type: str) -> None:
-    assert determine_model_type({"model_type": source_type}) == profile_type
+def test_determine_template_type_maps_known_profiles(source_type: str, profile_type: str) -> None:
+    assert determine_template_type({"model_type": source_type}) == profile_type
+
+
+def test_determine_template_type_prefers_explicit_template_type() -> None:
+    config = {"model_type": "phi3", "template_type": "phi4_reasoning"}
+
+    assert determine_model_type(config) == "phi3"
+    assert determine_template_type(config) == "phi4_reasoning"
+
+
+def test_determine_template_type_detects_phi4_reasoning_repo() -> None:
+    config = {
+        "model_type": "phi3",
+        "_name_or_path": "microsoft/Phi-4-reasoning-plus",
+    }
+
+    assert determine_model_type(config) == "phi3"
+    assert determine_template_type(config) == "phi4_reasoning"
 
 
 def test_determine_model_type_requires_model_type() -> None:
@@ -196,7 +217,8 @@ def test_new_text_model_profiles_render_generation_prompt(
         reasoning=source_type == "nemotron_h",
     )
 
-    assert formatter.model_type == profile_type
+    assert formatter.model_type == source_type
+    assert formatter.template_type == profile_type
     assert rendered.endswith(expected_prefix)
 
 
@@ -328,6 +350,44 @@ def test_phi_profile_preserves_system_messages_and_gates_thinking(tmp_path) -> N
         reasoning=True,
     )
     assert "Structure responses with <think>" in reasoning_rendered
+
+
+def test_phi4_reasoning_profile_keeps_phi3_architecture_type(tmp_path) -> None:
+    model_path = tmp_path / "phi4-reasoning"
+    model_path.mkdir()
+    (model_path / "config.json").write_text(
+        json.dumps(
+            {
+                "model_type": "phi3",
+                "template_type": "phi4_reasoning",
+            }
+        )
+    )
+
+    formatter = ChatFormatter(str(model_path))
+    rendered = formatter.apply_template(
+        [
+            {"role": "system", "content": "End every response with 7-4-7."},
+            {"role": "user", "content": "What is your name?"},
+        ],
+        reasoning=False,
+    )
+
+    assert formatter.model_type == "phi3"
+    assert formatter.template_type == "phi4_reasoning"
+    assert formatter.supports_native_thinking()
+    assert formatter.capabilities["thinking"]["default"] is False
+    assert "<think> {Thought section} </think> {Solution section}" not in rendered
+    assert "End every response with 7-4-7." in rendered
+    assert "Structure responses with <think>" not in rendered
+    assert "<|im_start|>user<|im_sep|>What is your name?<|im_end|>" in rendered
+    assert rendered.endswith("<|im_start|>assistant<|im_sep|>")
+
+    reasoning_rendered = formatter.apply_template(
+        [{"role": "user", "content": "Think first."}],
+        reasoning=True,
+    )
+    assert "<think> {Thought section} </think> {Solution section}" in reasoning_rendered
 
 
 @pytest.mark.asyncio
@@ -735,6 +795,47 @@ async def test_batched_prompt_payload_uses_per_prompt_response_format(
 
 
 @pytest.mark.asyncio
+async def test_default_reasoning_survives_chat_response_format() -> None:
+    formatter = _FakeFormatter()
+    formatter.capabilities = {"thinking": {"native": True, "default": True}}
+    client = _make_client(formatter)
+
+    rendered = await client.arender_prompt(
+        "test-model",
+        [{"role": "user", "content": "Return city JSON."}],
+        max_generated_tokens=256,
+        response_format={"type": "json_object"},
+    )
+
+    assert "reasoning=1" in rendered["rendered_prompt_text"]
+    assert rendered["reasoning_effort"] == "medium"
+
+
+@pytest.mark.asyncio
+async def test_default_reasoning_survives_responses_text_format() -> None:
+    formatter = _FakeFormatter()
+    formatter.capabilities = {"thinking": {"native": True, "default": True}}
+    client = _make_client(formatter)
+    request = ResponsesRequest(
+        input="Return city JSON.",
+        max_output_tokens=256,
+        text={
+            "format": {
+                "type": "json_schema",
+                "name": "city",
+                "schema": {"type": "object"},
+                "strict": True,
+            }
+        },
+    )
+
+    rendered = await client.arender_responses_prompt("test-model", request=request)
+
+    assert "reasoning=1" in rendered["rendered_prompt_text"]
+    assert rendered["reasoning_effort"] == "medium"
+
+
+@pytest.mark.asyncio
 async def test_arender_responses_prompt_maps_tools_to_core_tools(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1026,7 +1127,8 @@ def test_formatter_can_use_engine_inspected_config(tmp_path) -> None:
         },
     )
 
-    assert formatter.model_type == "llama3"
+    assert formatter.model_type == "llama"
+    assert formatter.template_type == "llama3"
     rendered = formatter.apply_template(
         [{"role": "user", "content": "hello"}],
         add_generation_prompt=True,

@@ -10,11 +10,15 @@ from orchard.clients.responses import (
     finish_reason_to_incomplete,
     iter_response_events,
 )
+from orchard.server.models.reasoning import normalize_reasoning_value
 from orchard.server.models.responses.request import (
     InputFunctionCall,
     InputFunctionCallOutput,
     InputMessageItem,
     InputReasoning,
+)
+from orchard.server.models.responses.request import (
+    ResponseRequest as ServerResponseRequest,
 )
 
 
@@ -104,6 +108,18 @@ def test_from_text_convenience_constructor() -> None:
     assert request.stream is True
     assert request.temperature == 0.2
     assert request.to_messages() == [{"role": "user", "content": "Hello there"}]
+
+
+def test_server_response_reasoning_object_normalizes() -> None:
+    explicit = ServerResponseRequest(
+        model="test-model",
+        input="Hello",
+        reasoning={"effort": "medium"},
+    )
+    boolean = ServerResponseRequest(model="test-model", input="Hello", reasoning=True)
+
+    assert normalize_reasoning_value(explicit.reasoning) == "medium"
+    assert normalize_reasoning_value(boolean.reasoning) == "medium"
 
 
 def test_to_submit_kwargs_uses_openai_tools_as_core_tools() -> None:

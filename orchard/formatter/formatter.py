@@ -32,10 +32,29 @@ def _profile_dirs() -> dict[str, Path]:
 
 
 def determine_model_type(config: dict) -> str:
-    """Determine the model type from the model path."""
+    """Determine the architecture model type from model config."""
     model_type = config.get("model_type")
     if not isinstance(model_type, str) or not model_type:
         raise ValueError("Formatter config must include a non-empty 'model_type'")
+    return model_type
+
+
+def determine_template_type(config: dict) -> str:
+    """Determine the Pantheon template type from model config."""
+    template_type = config.get("template_type")
+    if isinstance(template_type, str) and template_type:
+        return template_type
+
+    model_type = determine_model_type(config)
+    model_name = ""
+    for key in ("_name_or_path", "model_id", "original_repo"):
+        value = config.get(key)
+        if isinstance(value, str):
+            model_name = value.lower()
+            break
+    if model_type == "phi3" and "phi-4-reasoning" in model_name:
+        return "phi4_reasoning"
+
     if model_type == "llama" or model_type == "llama3":
         return "llama3"
 
@@ -144,13 +163,15 @@ class ChatFormatter:
     def _configure(self, tokenizer_config: dict[str, Any]) -> None:
         self.tokenizer_config = tokenizer_config
         model_type = determine_model_type(tokenizer_config)
+        template_type = determine_template_type(tokenizer_config)
         self.model_type = model_type
-        profile_dir = _PROFILE_ROOT / model_type
+        self.template_type = template_type
+        profile_dir = _PROFILE_ROOT / template_type
         if not profile_dir.is_dir():
-            profile_dir = _profile_dirs().get(model_type, profile_dir)
+            profile_dir = _profile_dirs().get(template_type, profile_dir)
         if not profile_dir.is_dir():
             raise ValueError(
-                f"Profile directory for model_type '{model_type}' not found at "
+                f"Profile directory for template_type '{template_type}' not found at "
                 f"{profile_dir}"
             )
         self.profile_dir = profile_dir
@@ -160,9 +181,13 @@ class ChatFormatter:
         caps_path = profile_dir / "capabilities.yaml"
         generation_path = profile_dir / "generation.yaml"
         if not caps_path.is_file():
-            raise ValueError(f"Profile for model_type '{model_type}' is missing capabilities.yaml")
+            raise ValueError(
+                f"Profile for template_type '{template_type}' is missing capabilities.yaml"
+            )
         if not generation_path.is_file():
-            raise ValueError(f"Profile for model_type '{model_type}' is missing generation.yaml")
+            raise ValueError(
+                f"Profile for template_type '{template_type}' is missing generation.yaml"
+            )
         self.capabilities = yaml.safe_load(caps_path.read_text()) or {}
         self.generation = yaml.safe_load(generation_path.read_text()) or {}
 

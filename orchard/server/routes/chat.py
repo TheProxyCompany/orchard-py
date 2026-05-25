@@ -142,7 +142,6 @@ async def handle_completion_request(
             and instance.reasoning_effort is None
             and "reasoning" not in request_fields
             and "reasoning_effort" not in request_fields
-            and instance.response_format is None
             and max_generated_tokens >= DEFAULT_NATIVE_REASONING_MIN_TOKENS
             and bool(formatter.capabilities.get("thinking", {}).get("default"))
         )
