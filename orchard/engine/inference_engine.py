@@ -146,9 +146,9 @@ class InferenceEngine:
         await loop.run_in_executor(None, self.close)
 
     async def load_models(self, model_ids: list[str]):
+        model_ids = list(dict.fromkeys(model_ids))
         logger.info("Loading models: %s", ", ".join(model_ids))
-        for model_id in model_ids:
-            await self.load_model(model_id)
+        await asyncio.gather(*(self.load_model(model_id) for model_id in model_ids))
         logger.info("Models loaded: %s", ", ".join(model_ids))
 
     async def load_model(self, model_id: str):

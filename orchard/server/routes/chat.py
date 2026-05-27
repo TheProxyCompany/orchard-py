@@ -374,6 +374,13 @@ async def gather_non_streaming_batch_response(
                 prompt_index = delta.get("prompt_index")
                 candidate_index = delta.get("candidate_index")
                 sequence_id = delta.get("sequence_id")
+                if (delta.get("finish_reason") or "").lower() == "error":
+                    raise InferenceError(
+                        delta.get("error_message")
+                        or delta.get("error")
+                        or delta.get("content")
+                        or "Inference request failed."
+                    )
 
                 if prompt_index is None or candidate_index is None:
                     logger.warning(

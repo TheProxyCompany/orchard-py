@@ -134,22 +134,27 @@ def test_acquire_lease_reuses_matching_engine_when_local_build_is_explicit(
 
 
 @pytest.mark.asyncio
-async def test_load_models_loads_each_model_sequentially() -> None:
+async def test_load_models_loads_models_concurrently() -> None:
     engine = InferenceEngine.__new__(InferenceEngine)
     events: list[tuple[str, str]] = []
+    active = 0
+    max_active = 0
 
     async def load_model(model_id: str) -> None:
+        nonlocal active, max_active
         events.append(("start", model_id))
+        active += 1
+        max_active = max(max_active, active)
         await asyncio.sleep(0)
+        active -= 1
         events.append(("finish", model_id))
 
     engine.load_model = load_model
 
     await engine.load_models(["first", "second"])
 
-    assert events == [
+    assert events[:2] == [
         ("start", "first"),
-        ("finish", "first"),
         ("start", "second"),
-        ("finish", "second"),
     ]
+    assert max_active == 2
