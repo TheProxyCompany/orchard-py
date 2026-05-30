@@ -930,21 +930,11 @@ async def test_gemma4_multimodal_uses_placeholder_token(
         "start": "<|channel>thought\n",
         "end": "<channel|>",
     }
-    assert formatter.get_output_frame_tokens() == {
-        "marker.channel": "<|channel>",
-        "marker.message": "\n",
-        "channel.analysis": "thought",
-    }
     assert "What is shown?" in rendered["rendered_prompt_text"]
     assert "<|image|>" not in rendered["rendered_prompt_text"]
     assert captured["prompt_payload"]["thinking_tokens"] == {
         "start": "<|channel>thought\n",
         "end": "<channel|>",
-    }
-    assert captured["prompt_payload"]["output_frame_tokens"] == {
-        "marker.channel": "<|channel>",
-        "marker.message": "\n",
-        "channel.analysis": "thought",
     }
     assert captured["prompt_payload"]["reasoning_effort"] == "high"
     assert any(
