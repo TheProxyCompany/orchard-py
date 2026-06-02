@@ -62,7 +62,11 @@ class ChatCompletionUsage(BaseModel):
         description="The number of tokens constituting the input prompt(s)."
     )
     output_tokens: int = Field(
-        description="The total number of tokens generated across all completion choices."
+        description="The total number of non-reasoning tokens generated across all completion choices."
+    )
+    reasoning_tokens: int = Field(
+        default=0,
+        description="The total number of reasoning tokens generated across all completion choices.",
     )
     total_tokens: int = Field(
         description="The sum of `input_tokens` and `output_tokens`."

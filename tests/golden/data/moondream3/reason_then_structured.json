@@ -1,0 +1,940 @@
+{
+  "turn1": [
+    {
+      "type": "response.created",
+      "sequence_number": 0,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "in_progress",
+        "incomplete_details": null,
+        "stop_token_id": null,
+        "stop_token": null,
+        "model": "moondream/moondream3-preview",
+        "output": [],
+        "usage": null
+      }
+    },
+    {
+      "type": "response.in_progress",
+      "sequence_number": 1,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "in_progress",
+        "incomplete_details": null,
+        "stop_token_id": null,
+        "stop_token": null,
+        "model": "moondream/moondream3-preview",
+        "output": [],
+        "usage": null
+      }
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 2,
+      "token_id": 489,
+      "content": "The"
+    },
+    {
+      "type": "response.output_item.added",
+      "sequence_number": 3,
+      "output_index": 0,
+      "item": {
+        "type": "reasoning",
+        "id": "reasoning_0",
+        "status": "in_progress",
+        "summary": [],
+        "content": [],
+        "encrypted_content": null
+      }
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 4,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "The"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 5,
+      "token_id": 1222,
+      "content": " user"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 6,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " user"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 7,
+      "token_id": 316,
+      "content": " is"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 8,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " is"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 9,
+      "token_id": 8022,
+      "content": " asking"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 10,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " asking"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 11,
+      "token_id": 41203,
+      "content": " for the"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 12,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " for the"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 13,
+      "token_id": 3059,
+      "content": " capital"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 14,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " capital"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 15,
+      "token_id": 45320,
+      "content": " of France"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 16,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " of France"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 17,
+      "token_id": 41665,
+      "content": " and its"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 18,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " and its"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 19,
+      "token_id": 2335,
+      "content": " population"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 20,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " population"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 21,
+      "token_id": 41187,
+      "content": ". The"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 22,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": ". The"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 23,
+      "token_id": 3059,
+      "content": " capital"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 24,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " capital"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 25,
+      "token_id": 44462,
+      "content": " is \""
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 26,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " is \""
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 27,
+      "token_id": 28605,
+      "content": "Paris"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 28,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "Paris"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 29,
+      "token_id": 49971,
+      "content": "\" and the"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 30,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "\" and the"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 31,
+      "token_id": 2335,
+      "content": " population"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 32,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " population"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 33,
+      "token_id": 41649,
+      "content": " is "
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 34,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " is "
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 35,
+      "token_id": 38,
+      "content": "2"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 36,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "2"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 37,
+      "token_id": 14143,
+      "content": "148"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 38,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "148"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 39,
+      "token_id": 19919,
+      "content": "327"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 40,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "327"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 41,
+      "token_id": 41254,
+      "content": ". I"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 42,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": ". I"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 43,
+      "token_id": 41410,
+      "content": " need to"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 44,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " need to"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 45,
+      "token_id": 647,
+      "content": " return"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 46,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " return"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 47,
+      "token_id": 465,
+      "content": " this"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 48,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " this"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 49,
+      "token_id": 41224,
+      "content": " as a"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 50,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " as a"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 51,
+      "token_id": 12275,
+      "content": " JSON"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 52,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " JSON"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 53,
+      "token_id": 1282,
+      "content": " object"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 54,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " object"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 55,
+      "token_id": 9999,
+      "content": " matching"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 56,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " matching"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 57,
+      "token_id": 267,
+      "content": " the"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 58,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " the"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 59,
+      "token_id": 10369,
+      "content": " requested"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 60,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " requested"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 61,
+      "token_id": 28817,
+      "content": " schema"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 62,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " schema"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 63,
+      "token_id": 4340,
+      "content": " exactly"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 64,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " exactly"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 65,
+      "token_id": 34,
+      "content": "."
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 66,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "."
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 67,
+      "token_id": 3,
+      "content": "<|md_reserved_2|>"
+    },
+    {
+      "type": "response.reasoning.done",
+      "sequence_number": 68,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "text": "The user is asking for the capital of France and its population. The capital is \"Paris\" and the population is 2148327. I need to return this as a JSON object matching the requested schema exactly."
+    },
+    {
+      "type": "response.output_item.done",
+      "sequence_number": 69,
+      "output_index": 0,
+      "item": {
+        "type": "reasoning",
+        "id": "reasoning_0",
+        "status": "completed",
+        "summary": [],
+        "content": [
+          {
+            "type": "reasoning_text",
+            "text": "The user is asking for the capital of France and its population. The capital is \"Paris\" and the population is 2148327. I need to return this as a JSON object matching the requested schema exactly."
+          }
+        ],
+        "encrypted_content": null
+      }
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 70,
+      "token_id": 111,
+      "content": "{"
+    },
+    {
+      "type": "response.output_item.added",
+      "sequence_number": 71,
+      "output_index": 1,
+      "item": {
+        "type": "message",
+        "id": "msg_0",
+        "status": "in_progress",
+        "role": "assistant",
+        "content": []
+      }
+    },
+    {
+      "type": "response.content_part.added",
+      "sequence_number": 72,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "part": {
+        "type": "output_text",
+        "text": "",
+        "annotations": [],
+        "logprobs": []
+      }
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 73,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "{",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 74,
+      "token_id": 203,
+      "content": "\n"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 75,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "\n",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 76,
+      "token_id": 262,
+      "content": "  "
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 77,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "  ",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 78,
+      "token_id": 22,
+      "content": "\""
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 79,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "\"",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 80,
+      "token_id": 16035,
+      "content": "capital"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 81,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "capital",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 82,
+      "token_id": 2247,
+      "content": "\":"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 83,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "\":",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 84,
+      "token_id": 421,
+      "content": " \""
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 85,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": " \"",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 86,
+      "token_id": 28605,
+      "content": "Paris"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 87,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "Paris",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 88,
+      "token_id": 42410,
+      "content": "\",\n"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 89,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "\",\n",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 90,
+      "token_id": 262,
+      "content": "  "
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 91,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "  ",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 92,
+      "token_id": 22,
+      "content": "\""
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 93,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "\"",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 94,
+      "token_id": 13000,
+      "content": "population"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 95,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "population",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 96,
+      "token_id": 2247,
+      "content": "\":"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 97,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "\":",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 98,
+      "token_id": 225,
+      "content": " "
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 99,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": " ",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 100,
+      "token_id": 38,
+      "content": "2"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 101,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "2",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 102,
+      "token_id": 14143,
+      "content": "148"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 103,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "148",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 104,
+      "token_id": 19919,
+      "content": "327"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 105,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "327",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 106,
+      "token_id": 203,
+      "content": "\n"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 107,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "\n",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 108,
+      "token_id": 113,
+      "content": "}"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 109,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "}",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_text.done",
+      "sequence_number": 110,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "text": "{\n  \"capital\": \"Paris\",\n  \"population\": 2148327\n}",
+      "logprobs": []
+    },
+    {
+      "type": "response.content_part.done",
+      "sequence_number": 111,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "part": {
+        "type": "output_text",
+        "text": "{\n  \"capital\": \"Paris\",\n  \"population\": 2148327\n}",
+        "annotations": [],
+        "logprobs": []
+      }
+    },
+    {
+      "type": "response.output_item.done",
+      "sequence_number": 112,
+      "output_index": 1,
+      "item": {
+        "type": "message",
+        "id": "msg_0",
+        "status": "completed",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "output_text",
+            "text": "{\n  \"capital\": \"Paris\",\n  \"population\": 2148327\n}",
+            "annotations": [],
+            "logprobs": []
+          }
+        ]
+      }
+    },
+    {
+      "type": "response.completed",
+      "sequence_number": 113,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "completed",
+        "incomplete_details": null,
+        "stop_token_id": 0,
+        "stop_token": "<|endoftext|>",
+        "model": "moondream/moondream3-preview",
+        "output": [
+          {
+            "type": "reasoning",
+            "id": "reasoning_0",
+            "status": "completed",
+            "summary": [],
+            "content": [
+              {
+                "type": "reasoning_text",
+                "text": "The user is asking for the capital of France and its population. The capital is \"Paris\" and the population is 2148327. I need to return this as a JSON object matching the requested schema exactly."
+              }
+            ],
+            "encrypted_content": null
+          },
+          {
+            "type": "message",
+            "id": "msg_0",
+            "status": "completed",
+            "role": "assistant",
+            "content": [
+              {
+                "type": "output_text",
+                "text": "{\n  \"capital\": \"Paris\",\n  \"population\": 2148327\n}",
+                "annotations": [],
+                "logprobs": []
+              }
+            ]
+          }
+        ],
+        "usage": {
+          "input_tokens": 50,
+          "output_tokens": 20,
+          "total_tokens": 70,
+          "input_tokens_details": {
+            "cached_tokens": 0
+          },
+          "output_tokens_details": {
+            "reasoning_tokens": 33
+          }
+        }
+      }
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

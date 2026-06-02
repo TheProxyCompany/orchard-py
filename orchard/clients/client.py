@@ -30,10 +30,7 @@ from orchard.ipc.utils import (
     release_delta_resources,
 )
 from orchard.server.exceptions import InferenceError
-from orchard.server.models.reasoning import (
-    DEFAULT_BOOLEAN_REASONING_EFFORT,
-    DEFAULT_NATIVE_REASONING_MIN_TOKENS,
-)
+from orchard.server.models.reasoning import DEFAULT_BOOLEAN_REASONING_EFFORT
 from orchard.server.models.responses import OutputTextDeltaEvent, ResponseObject
 
 logger = logging.getLogger(__name__)
@@ -688,6 +685,7 @@ class Client:
                     async for event in iter_response_events(
                         self._async_process_raw_stream(response_queue),
                         model_id=model_id,
+                        stream_tokens=response_request.stream_tokens,
                     ):
                         yield event
                 finally:
@@ -935,9 +933,14 @@ class Client:
         for delta in deltas:
             if delta.prompt_token_count is not None:
                 usage.prompt_tokens = max(usage.prompt_tokens, delta.prompt_token_count)
+            if delta.reasoning_tokens is not None:
+                usage.reasoning_tokens = max(
+                    usage.reasoning_tokens, delta.reasoning_tokens
+                )
             if delta.generation_len is not None:
+                visible_tokens = max(delta.generation_len - usage.reasoning_tokens, 0)
                 usage.completion_tokens = max(
-                    usage.completion_tokens, delta.generation_len
+                    usage.completion_tokens, visible_tokens
                 )
         usage.total_tokens = usage.prompt_tokens + usage.completion_tokens
         return usage
@@ -1096,15 +1099,15 @@ class Client:
         max_generated_tokens = int(
             kwargs.get("max_generated_tokens", MAX_GENERATED_TOKENS)
         )
+        requested_reasoning = kwargs.get("reasoning")
         default_reasoning = (
             native_reasoning
-            and "reasoning" not in kwargs
+            and requested_reasoning is None
             and requested_reasoning_effort is None
-            and max_generated_tokens >= DEFAULT_NATIVE_REASONING_MIN_TOKENS
-            and bool(formatter.capabilities.get("thinking", {}).get("default"))
         )
         reasoning_flag = bool(
-            (kwargs.get("reasoning") or requested_reasoning_effort or default_reasoning)
+            (requested_reasoning is not False)
+            and (requested_reasoning or requested_reasoning_effort or default_reasoning)
             and native_reasoning
         )
         reasoning_effort = (
@@ -1263,6 +1266,7 @@ class Client:
             "output_frame_tokens": formatter.get_output_frame_tokens(),
             "thinking_tokens": thinking_tokens,
             "tool_choice": normalized_tool_choice,
+            "prefix_cache": bool(kwargs.get("prefix_cache", True)),
         }
         capture_payload = {
             "model_id": model_id,

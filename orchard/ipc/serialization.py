@@ -292,6 +292,7 @@ def _build_request_payload(
         thinking_tokens = {
             "start": str(thinking_tokens_raw.get("start", "")),
             "end": str(thinking_tokens_raw.get("end", "")),
+            "required": bool(thinking_tokens_raw.get("required", False)),
         }
         min_tool_calls = int(prompt.get("min_tool_calls") or 1)
         max_tool_calls = int(prompt.get("max_tool_calls") or 0)
@@ -321,6 +322,9 @@ def _build_request_payload(
             reasoning_effort_str = reasoning_effort_value
         else:
             reasoning_effort_str = _coerce_bytes(reasoning_effort_value).decode("utf-8")
+
+        prefix_cache_value = prompt.get("prefix_cache")
+        prefix_cache = True if prefix_cache_value is None else bool(prefix_cache_value)
 
         logits_params = prompt.get("logits_params", {})
 
@@ -390,6 +394,7 @@ def _build_request_payload(
                 "logit_bias": logit_bias_entries,
                 "task_name": task_name_str,
                 "reasoning_effort": reasoning_effort_str,
+                "prefix_cache": prefix_cache,
             }
         )
 

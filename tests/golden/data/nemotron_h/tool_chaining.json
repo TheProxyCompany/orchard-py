@@ -1,0 +1,4280 @@
+{
+  "turn1": [
+    {
+      "type": "response.created",
+      "sequence_number": 0,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "in_progress",
+        "incomplete_details": null,
+        "stop_token_id": null,
+        "stop_token": null,
+        "model": "nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16",
+        "output": [],
+        "usage": null
+      }
+    },
+    {
+      "type": "response.in_progress",
+      "sequence_number": 1,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "in_progress",
+        "incomplete_details": null,
+        "stop_token_id": null,
+        "stop_token": null,
+        "model": "nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16",
+        "output": [],
+        "usage": null
+      }
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 2,
+      "token_id": 1073,
+      "content": "I"
+    },
+    {
+      "type": "response.output_item.added",
+      "sequence_number": 3,
+      "output_index": 0,
+      "item": {
+        "type": "reasoning",
+        "id": "reasoning_0",
+        "status": "in_progress",
+        "summary": [],
+        "content": [],
+        "encrypted_content": null
+      }
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 4,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "I"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 5,
+      "token_id": 2534,
+      "content": " need"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 6,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " need"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 7,
+      "token_id": 1317,
+      "content": " to"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 8,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " to"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 9,
+      "token_id": 3081,
+      "content": " find"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 10,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " find"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 11,
+      "token_id": 1278,
+      "content": " the"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 12,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " the"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 13,
+      "token_id": 3844,
+      "content": " key"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 14,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " key"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 15,
+      "token_id": 1294,
+      "content": " in"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 16,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " in"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 17,
+      "token_id": 1278,
+      "content": " the"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 18,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " the"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 19,
+      "token_id": 11329,
+      "content": " library"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 20,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " library"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 21,
+      "token_id": 2158,
+      "content": " first"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 22,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " first"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 23,
+      "token_id": 1044,
+      "content": ","
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 24,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": ","
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 25,
+      "token_id": 2430,
+      "content": " then"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 26,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " then"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 27,
+      "token_id": 2210,
+      "content": " use"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 28,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " use"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 29,
+      "token_id": 1455,
+      "content": " that"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 30,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " that"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 31,
+      "token_id": 3844,
+      "content": " key"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 32,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " key"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 33,
+      "token_id": 1317,
+      "content": " to"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 34,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " to"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 35,
+      "token_id": 46049,
+      "content": " unlock"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 36,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " unlock"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 37,
+      "token_id": 1278,
+      "content": " the"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 38,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " the"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 39,
+      "token_id": 67251,
+      "content": " treasure"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 40,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " treasure"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 41,
+      "token_id": 15448,
+      "content": " chest"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 42,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " chest"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 43,
+      "token_id": 1046,
+      "content": "."
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 44,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "."
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 45,
+      "token_id": 9246,
+      "content": " Let"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 46,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " Let"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 47,
+      "token_id": 1639,
+      "content": " me"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 48,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " me"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 49,
+      "token_id": 3030,
+      "content": " start"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 50,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " start"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 51,
+      "token_id": 1536,
+      "content": " by"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 52,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " by"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 53,
+      "token_id": 14388,
+      "content": " calling"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 54,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " calling"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 55,
+      "token_id": 3081,
+      "content": " find"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 56,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " find"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 57,
+      "token_id": 13286,
+      "content": "_key"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 58,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "_key"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 59,
+      "token_id": 1454,
+      "content": " with"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 60,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " with"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 61,
+      "token_id": 5349,
+      "content": " room"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 62,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " room"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 63,
+      "token_id": 1429,
+      "content": " \""
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 64,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " \""
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 65,
+      "token_id": 40693,
+      "content": "library"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 66,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "library"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 67,
+      "token_id": 24483,
+      "content": "\".\n"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 68,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "\".\n"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 69,
+      "token_id": 13,
+      "content": "</think>"
+    },
+    {
+      "type": "response.reasoning.done",
+      "sequence_number": 70,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "text": "I need to find the key in the library first, then use that key to unlock the treasure chest. Let me start by calling find_key with room \"library\"."
+    },
+    {
+      "type": "response.output_item.done",
+      "sequence_number": 71,
+      "output_index": 0,
+      "item": {
+        "type": "reasoning",
+        "id": "reasoning_0",
+        "status": "completed",
+        "summary": [],
+        "content": [
+          {
+            "type": "reasoning_text",
+            "text": "I need to find the key in the library first, then use that key to unlock the treasure chest. Let me start by calling find_key with room \"library\"."
+          }
+        ],
+        "encrypted_content": null
+      }
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 72,
+      "token_id": 14,
+      "content": "<tool_call>"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 73,
+      "token_id": 1010,
+      "content": "\n"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 74,
+      "token_id": 1060,
+      "content": "<"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 75,
+      "token_id": 5165,
+      "content": "function"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 76,
+      "token_id": 1061,
+      "content": "="
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 77,
+      "token_id": 8697,
+      "content": "find"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 78,
+      "token_id": 13286,
+      "content": "_key"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 79,
+      "token_id": 1561,
+      "content": ">\n"
+    },
+    {
+      "type": "response.output_item.added",
+      "sequence_number": 80,
+      "output_index": 1,
+      "item": {
+        "type": "function_call",
+        "id": "fc_0",
+        "call_id": "call_0",
+        "name": "find_key",
+        "arguments": "",
+        "status": "in_progress"
+      }
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 81,
+      "token_id": 1060,
+      "content": "<"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 82,
+      "token_id": 31960,
+      "content": "parameter"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 83,
+      "token_id": 1061,
+      "content": "="
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 84,
+      "token_id": 9722,
+      "content": "room"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 85,
+      "token_id": 1561,
+      "content": ">\n"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 86,
+      "token_id": 40693,
+      "content": "library"
+    },
+    {
+      "type": "response.function_call_arguments.delta",
+      "sequence_number": 87,
+      "item_id": "fc_0",
+      "output_index": 1,
+      "delta": "library",
+      "field_path": "room"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 88,
+      "token_id": 1010,
+      "content": "\n"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 89,
+      "token_id": 1885,
+      "content": "</"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 90,
+      "token_id": 31960,
+      "content": "parameter"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 91,
+      "token_id": 1561,
+      "content": ">\n"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 92,
+      "token_id": 1885,
+      "content": "</"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 93,
+      "token_id": 5165,
+      "content": "function"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 94,
+      "token_id": 1561,
+      "content": ">\n"
+    },
+    {
+      "type": "response.function_call_arguments.delta",
+      "sequence_number": 95,
+      "item_id": "fc_0",
+      "output_index": 1,
+      "delta": "{\"room\":\"library\"}",
+      "field_path": null
+    },
+    {
+      "type": "response.function_call_arguments.done",
+      "sequence_number": 96,
+      "item_id": "fc_0",
+      "output_index": 1,
+      "arguments": "{\"room\": \"library\"}"
+    },
+    {
+      "type": "response.output_item.done",
+      "sequence_number": 97,
+      "output_index": 1,
+      "item": {
+        "type": "function_call",
+        "id": "fc_0",
+        "call_id": "call_0",
+        "name": "find_key",
+        "arguments": "{\"room\": \"library\"}",
+        "status": "completed"
+      }
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 98,
+      "token_id": 15,
+      "content": "</tool_call>"
+    },
+    {
+      "type": "response.completed",
+      "sequence_number": 99,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "completed",
+        "incomplete_details": null,
+        "stop_token_id": null,
+        "stop_token": null,
+        "model": "nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16",
+        "output": [
+          {
+            "type": "reasoning",
+            "id": "reasoning_0",
+            "status": "completed",
+            "summary": [],
+            "content": [
+              {
+                "type": "reasoning_text",
+                "text": "I need to find the key in the library first, then use that key to unlock the treasure chest. Let me start by calling find_key with room \"library\"."
+              }
+            ],
+            "encrypted_content": null
+          },
+          {
+            "type": "function_call",
+            "id": "fc_0",
+            "call_id": "call_0",
+            "name": "find_key",
+            "arguments": "{\"room\": \"library\"}",
+            "status": "completed"
+          }
+        ],
+        "usage": {
+          "input_tokens": 252,
+          "output_tokens": 22,
+          "total_tokens": 274,
+          "input_tokens_details": {
+            "cached_tokens": 0
+          },
+          "output_tokens_details": {
+            "reasoning_tokens": 34
+          }
+        }
+      }
+    },
+    {
+      "type": "done"
+    }
+  ],
+  "turn2": [
+    {
+      "type": "response.created",
+      "sequence_number": 0,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "in_progress",
+        "incomplete_details": null,
+        "stop_token_id": null,
+        "stop_token": null,
+        "model": "nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16",
+        "output": [],
+        "usage": null
+      }
+    },
+    {
+      "type": "response.in_progress",
+      "sequence_number": 1,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "in_progress",
+        "incomplete_details": null,
+        "stop_token_id": null,
+        "stop_token": null,
+        "model": "nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16",
+        "output": [],
+        "usage": null
+      }
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 2,
+      "token_id": 1784,
+      "content": "The"
+    },
+    {
+      "type": "response.output_item.added",
+      "sequence_number": 3,
+      "output_index": 0,
+      "item": {
+        "type": "reasoning",
+        "id": "reasoning_0",
+        "status": "in_progress",
+        "summary": [],
+        "content": [],
+        "encrypted_content": null
+      }
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 4,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "The"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 5,
+      "token_id": 3081,
+      "content": " find"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 6,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " find"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 7,
+      "token_id": 13286,
+      "content": "_key"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 8,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "_key"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 9,
+      "token_id": 9519,
+      "content": " tool"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 10,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " tool"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 11,
+      "token_id": 8583,
+      "content": " returned"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 12,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " returned"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 13,
+      "token_id": 1261,
+      "content": " a"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 14,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " a"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 15,
+      "token_id": 3844,
+      "content": " key"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 16,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " key"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 17,
+      "token_id": 1058,
+      "content": ":"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 18,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": ":"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 19,
+      "token_id": 1429,
+      "content": " \""
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 20,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " \""
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 21,
+      "token_id": 1075,
+      "content": "K"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 22,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "K"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 23,
+      "token_id": 1055,
+      "content": "7"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 24,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "7"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 25,
+      "token_id": 5036,
+      "content": "-M"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 26,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "-M"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 27,
+      "token_id": 6970,
+      "content": "AG"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 28,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "AG"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 29,
+      "token_id": 8911,
+      "content": "ENT"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 30,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "ENT"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 31,
+      "token_id": 1065,
+      "content": "A"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 32,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "A"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 33,
+      "token_id": 1045,
+      "content": "-"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 34,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "-"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 35,
+      "token_id": 1057,
+      "content": "9"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 36,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "9"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 37,
+      "token_id": 1057,
+      "content": "9"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 38,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "9"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 39,
+      "token_id": 1051,
+      "content": "3"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 40,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "3"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 41,
+      "token_id": 1049,
+      "content": "1"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 42,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "1"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 43,
+      "token_id": 3871,
+      "content": "\"."
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 44,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "\"."
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 45,
+      "token_id": 9032,
+      "content": " Now"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 46,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " Now"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 47,
+      "token_id": 1362,
+      "content": " I"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 48,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " I"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 49,
+      "token_id": 2534,
+      "content": " need"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 50,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " need"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 51,
+      "token_id": 1317,
+      "content": " to"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 52,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " to"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 53,
+      "token_id": 46049,
+      "content": " unlock"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 54,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " unlock"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 55,
+      "token_id": 1278,
+      "content": " the"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 56,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " the"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 57,
+      "token_id": 67251,
+      "content": " treasure"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 58,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " treasure"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 59,
+      "token_id": 15448,
+      "content": " chest"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 60,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " chest"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 61,
+      "token_id": 1454,
+      "content": " with"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 62,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " with"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 63,
+      "token_id": 1593,
+      "content": " this"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 64,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " this"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 65,
+      "token_id": 3844,
+      "content": " key"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 66,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " key"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 67,
+      "token_id": 2505,
+      "content": " using"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 68,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " using"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 69,
+      "token_id": 46049,
+      "content": " unlock"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 70,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " unlock"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 71,
+      "token_id": 17936,
+      "content": "_ch"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 72,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "_ch"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 73,
+      "token_id": 1372,
+      "content": "est"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 74,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "est"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 75,
+      "token_id": 1046,
+      "content": "."
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 76,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "."
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 77,
+      "token_id": 9246,
+      "content": " Let"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 78,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " Let"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 79,
+      "token_id": 1681,
+      "content": "'s"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 80,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "'s"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 81,
+      "token_id": 1653,
+      "content": " do"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 82,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " do"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 83,
+      "token_id": 1455,
+      "content": " that"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 84,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " that"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 85,
+      "token_id": 1626,
+      "content": ".\n"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 86,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": ".\n"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 87,
+      "token_id": 13,
+      "content": "</think>"
+    },
+    {
+      "type": "response.reasoning.done",
+      "sequence_number": 88,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "text": "The find_key tool returned a key: \"K7-MAGENTA-9931\". Now I need to unlock the treasure chest with this key using unlock_chest. Let's do that."
+    },
+    {
+      "type": "response.output_item.done",
+      "sequence_number": 89,
+      "output_index": 0,
+      "item": {
+        "type": "reasoning",
+        "id": "reasoning_0",
+        "status": "completed",
+        "summary": [],
+        "content": [
+          {
+            "type": "reasoning_text",
+            "text": "The find_key tool returned a key: \"K7-MAGENTA-9931\". Now I need to unlock the treasure chest with this key using unlock_chest. Let's do that."
+          }
+        ],
+        "encrypted_content": null
+      }
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 90,
+      "token_id": 14,
+      "content": "<tool_call>"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 91,
+      "token_id": 1010,
+      "content": "\n"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 92,
+      "token_id": 1060,
+      "content": "<"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 93,
+      "token_id": 5165,
+      "content": "function"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 94,
+      "token_id": 1061,
+      "content": "="
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 95,
+      "token_id": 1384,
+      "content": "un"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 96,
+      "token_id": 10559,
+      "content": "lock"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 97,
+      "token_id": 17936,
+      "content": "_ch"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 98,
+      "token_id": 1372,
+      "content": "est"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 99,
+      "token_id": 1561,
+      "content": ">\n"
+    },
+    {
+      "type": "response.output_item.added",
+      "sequence_number": 100,
+      "output_index": 1,
+      "item": {
+        "type": "function_call",
+        "id": "fc_0",
+        "call_id": "call_0",
+        "name": "unlock_chest",
+        "arguments": "",
+        "status": "in_progress"
+      }
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 101,
+      "token_id": 1060,
+      "content": "<"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 102,
+      "token_id": 31960,
+      "content": "parameter"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 103,
+      "token_id": 1061,
+      "content": "="
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 104,
+      "token_id": 3892,
+      "content": "key"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 105,
+      "token_id": 1561,
+      "content": ">\n"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 106,
+      "token_id": 1075,
+      "content": "K"
+    },
+    {
+      "type": "response.function_call_arguments.delta",
+      "sequence_number": 107,
+      "item_id": "fc_0",
+      "output_index": 1,
+      "delta": "K",
+      "field_path": "key"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 108,
+      "token_id": 1055,
+      "content": "7"
+    },
+    {
+      "type": "response.function_call_arguments.delta",
+      "sequence_number": 109,
+      "item_id": "fc_0",
+      "output_index": 1,
+      "delta": "7",
+      "field_path": "key"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 110,
+      "token_id": 5036,
+      "content": "-M"
+    },
+    {
+      "type": "response.function_call_arguments.delta",
+      "sequence_number": 111,
+      "item_id": "fc_0",
+      "output_index": 1,
+      "delta": "-M",
+      "field_path": "key"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 112,
+      "token_id": 6970,
+      "content": "AG"
+    },
+    {
+      "type": "response.function_call_arguments.delta",
+      "sequence_number": 113,
+      "item_id": "fc_0",
+      "output_index": 1,
+      "delta": "AG",
+      "field_path": "key"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 114,
+      "token_id": 8911,
+      "content": "ENT"
+    },
+    {
+      "type": "response.function_call_arguments.delta",
+      "sequence_number": 115,
+      "item_id": "fc_0",
+      "output_index": 1,
+      "delta": "ENT",
+      "field_path": "key"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 116,
+      "token_id": 1065,
+      "content": "A"
+    },
+    {
+      "type": "response.function_call_arguments.delta",
+      "sequence_number": 117,
+      "item_id": "fc_0",
+      "output_index": 1,
+      "delta": "A",
+      "field_path": "key"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 118,
+      "token_id": 1045,
+      "content": "-"
+    },
+    {
+      "type": "response.function_call_arguments.delta",
+      "sequence_number": 119,
+      "item_id": "fc_0",
+      "output_index": 1,
+      "delta": "-",
+      "field_path": "key"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 120,
+      "token_id": 1057,
+      "content": "9"
+    },
+    {
+      "type": "response.function_call_arguments.delta",
+      "sequence_number": 121,
+      "item_id": "fc_0",
+      "output_index": 1,
+      "delta": "9",
+      "field_path": "key"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 122,
+      "token_id": 1057,
+      "content": "9"
+    },
+    {
+      "type": "response.function_call_arguments.delta",
+      "sequence_number": 123,
+      "item_id": "fc_0",
+      "output_index": 1,
+      "delta": "9",
+      "field_path": "key"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 124,
+      "token_id": 1051,
+      "content": "3"
+    },
+    {
+      "type": "response.function_call_arguments.delta",
+      "sequence_number": 125,
+      "item_id": "fc_0",
+      "output_index": 1,
+      "delta": "3",
+      "field_path": "key"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 126,
+      "token_id": 1049,
+      "content": "1"
+    },
+    {
+      "type": "response.function_call_arguments.delta",
+      "sequence_number": 127,
+      "item_id": "fc_0",
+      "output_index": 1,
+      "delta": "1",
+      "field_path": "key"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 128,
+      "token_id": 1010,
+      "content": "\n"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 129,
+      "token_id": 1885,
+      "content": "</"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 130,
+      "token_id": 31960,
+      "content": "parameter"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 131,
+      "token_id": 1561,
+      "content": ">\n"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 132,
+      "token_id": 1885,
+      "content": "</"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 133,
+      "token_id": 5165,
+      "content": "function"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 134,
+      "token_id": 1561,
+      "content": ">\n"
+    },
+    {
+      "type": "response.function_call_arguments.delta",
+      "sequence_number": 135,
+      "item_id": "fc_0",
+      "output_index": 1,
+      "delta": "{\"key\":\"K7-MAGENTA-9931\"}",
+      "field_path": null
+    },
+    {
+      "type": "response.function_call_arguments.done",
+      "sequence_number": 136,
+      "item_id": "fc_0",
+      "output_index": 1,
+      "arguments": "{\"key\": \"K7-MAGENTA-9931\"}"
+    },
+    {
+      "type": "response.output_item.done",
+      "sequence_number": 137,
+      "output_index": 1,
+      "item": {
+        "type": "function_call",
+        "id": "fc_0",
+        "call_id": "call_0",
+        "name": "unlock_chest",
+        "arguments": "{\"key\": \"K7-MAGENTA-9931\"}",
+        "status": "completed"
+      }
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 138,
+      "token_id": 15,
+      "content": "</tool_call>"
+    },
+    {
+      "type": "response.completed",
+      "sequence_number": 139,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "completed",
+        "incomplete_details": null,
+        "stop_token_id": null,
+        "stop_token": null,
+        "model": "nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16",
+        "output": [
+          {
+            "type": "reasoning",
+            "id": "reasoning_0",
+            "status": "completed",
+            "summary": [],
+            "content": [
+              {
+                "type": "reasoning_text",
+                "text": "The find_key tool returned a key: \"K7-MAGENTA-9931\". Now I need to unlock the treasure chest with this key using unlock_chest. Let's do that."
+              }
+            ],
+            "encrypted_content": null
+          },
+          {
+            "type": "function_call",
+            "id": "fc_0",
+            "call_id": "call_0",
+            "name": "unlock_chest",
+            "arguments": "{\"key\": \"K7-MAGENTA-9931\"}",
+            "status": "completed"
+          }
+        ],
+        "usage": {
+          "input_tokens": 304,
+          "output_tokens": 34,
+          "total_tokens": 338,
+          "input_tokens_details": {
+            "cached_tokens": 0
+          },
+          "output_tokens_details": {
+            "reasoning_tokens": 43
+          }
+        }
+      }
+    },
+    {
+      "type": "done"
+    }
+  ],
+  "turn3": [
+    {
+      "type": "response.created",
+      "sequence_number": 0,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "in_progress",
+        "incomplete_details": null,
+        "stop_token_id": null,
+        "stop_token": null,
+        "model": "nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16",
+        "output": [],
+        "usage": null
+      }
+    },
+    {
+      "type": "response.in_progress",
+      "sequence_number": 1,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "in_progress",
+        "incomplete_details": null,
+        "stop_token_id": null,
+        "stop_token": null,
+        "model": "nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16",
+        "output": [],
+        "usage": null
+      }
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 2,
+      "token_id": 1784,
+      "content": "The"
+    },
+    {
+      "type": "response.output_item.added",
+      "sequence_number": 3,
+      "output_index": 0,
+      "item": {
+        "type": "reasoning",
+        "id": "reasoning_0",
+        "status": "in_progress",
+        "summary": [],
+        "content": [],
+        "encrypted_content": null
+      }
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 4,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "The"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 5,
+      "token_id": 3330,
+      "content": " user"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 6,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " user"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 7,
+      "token_id": 6136,
+      "content": " asked"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 8,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " asked"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 9,
+      "token_id": 1317,
+      "content": " to"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 10,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " to"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 11,
+      "token_id": 3081,
+      "content": " find"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 12,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " find"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 13,
+      "token_id": 1278,
+      "content": " the"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 14,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " the"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 15,
+      "token_id": 3844,
+      "content": " key"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 16,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " key"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 17,
+      "token_id": 16052,
+      "content": " hidden"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 18,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " hidden"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 19,
+      "token_id": 1294,
+      "content": " in"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 20,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " in"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 21,
+      "token_id": 1278,
+      "content": " the"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 22,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " the"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 23,
+      "token_id": 11329,
+      "content": " library"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 24,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " library"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 25,
+      "token_id": 1044,
+      "content": ","
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 26,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": ","
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 27,
+      "token_id": 2430,
+      "content": " then"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 28,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " then"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 29,
+      "token_id": 46049,
+      "content": " unlock"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 30,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " unlock"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 31,
+      "token_id": 1278,
+      "content": " the"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 32,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " the"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 33,
+      "token_id": 67251,
+      "content": " treasure"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 34,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " treasure"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 35,
+      "token_id": 15448,
+      "content": " chest"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 36,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " chest"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 37,
+      "token_id": 1454,
+      "content": " with"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 38,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " with"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 39,
+      "token_id": 1494,
+      "content": " it"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 40,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " it"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 41,
+      "token_id": 1044,
+      "content": ","
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 42,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": ","
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 43,
+      "token_id": 1321,
+      "content": " and"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 44,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " and"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 45,
+      "token_id": 5584,
+      "content": " tell"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 46,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " tell"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 47,
+      "token_id": 2549,
+      "content": " what"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 48,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " what"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 49,
+      "token_id": 1681,
+      "content": "'s"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 50,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "'s"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 51,
+      "token_id": 6625,
+      "content": " inside"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 52,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " inside"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 53,
+      "token_id": 1046,
+      "content": "."
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 54,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "."
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 55,
+      "token_id": 1362,
+      "content": " I"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 56,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " I"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 57,
+      "token_id": 2434,
+      "content": " used"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 58,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " used"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 59,
+      "token_id": 3081,
+      "content": " find"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 60,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " find"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 61,
+      "token_id": 13286,
+      "content": "_key"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 62,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "_key"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 63,
+      "token_id": 1408,
+      "content": " on"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 64,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " on"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 65,
+      "token_id": 11329,
+      "content": " library"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 66,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " library"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 67,
+      "token_id": 1044,
+      "content": ","
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 68,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": ","
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 69,
+      "token_id": 4884,
+      "content": " got"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 70,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " got"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 71,
+      "token_id": 3844,
+      "content": " key"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 72,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " key"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 73,
+      "token_id": 1429,
+      "content": " \""
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 74,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " \""
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 75,
+      "token_id": 1075,
+      "content": "K"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 76,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "K"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 77,
+      "token_id": 1055,
+      "content": "7"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 78,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "7"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 79,
+      "token_id": 5036,
+      "content": "-M"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 80,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "-M"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 81,
+      "token_id": 6970,
+      "content": "AG"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 82,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "AG"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 83,
+      "token_id": 8911,
+      "content": "ENT"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 84,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "ENT"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 85,
+      "token_id": 1065,
+      "content": "A"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 86,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "A"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 87,
+      "token_id": 1045,
+      "content": "-"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 88,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "-"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 89,
+      "token_id": 1057,
+      "content": "9"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 90,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "9"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 91,
+      "token_id": 1057,
+      "content": "9"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 92,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "9"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 93,
+      "token_id": 1051,
+      "content": "3"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 94,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "3"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 95,
+      "token_id": 1049,
+      "content": "1"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 96,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "1"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 97,
+      "token_id": 3871,
+      "content": "\"."
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 98,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "\"."
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 99,
+      "token_id": 6830,
+      "content": " Then"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 100,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " Then"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 101,
+      "token_id": 90498,
+      "content": " unlocked"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 102,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " unlocked"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 103,
+      "token_id": 15448,
+      "content": " chest"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 104,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " chest"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 105,
+      "token_id": 1454,
+      "content": " with"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 106,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " with"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 107,
+      "token_id": 1455,
+      "content": " that"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 108,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " that"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 109,
+      "token_id": 3844,
+      "content": " key"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 110,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " key"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 111,
+      "token_id": 1044,
+      "content": ","
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 112,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": ","
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 113,
+      "token_id": 4884,
+      "content": " got"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 114,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " got"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 115,
+      "token_id": 16231,
+      "content": " contents"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 116,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " contents"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 117,
+      "token_id": 1429,
+      "content": " \""
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 118,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " \""
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 119,
+      "token_id": 1097,
+      "content": "a"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 120,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "a"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 121,
+      "token_id": 1475,
+      "content": " j"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 122,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " j"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 123,
+      "token_id": 1993,
+      "content": "ade"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 124,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "ade"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 125,
+      "token_id": 40426,
+      "content": " dragon"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 126,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " dragon"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 127,
+      "token_id": 37203,
+      "content": " figur"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 128,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " figur"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 129,
+      "token_id": 1519,
+      "content": "ine"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 130,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "ine"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 131,
+      "token_id": 3871,
+      "content": "\"."
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 132,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "\"."
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 133,
+      "token_id": 9032,
+      "content": " Now"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 134,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " Now"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 135,
+      "token_id": 1362,
+      "content": " I"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 136,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " I"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 137,
+      "token_id": 2534,
+      "content": " need"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 138,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " need"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 139,
+      "token_id": 1317,
+      "content": " to"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 140,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " to"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 141,
+      "token_id": 4832,
+      "content": " answer"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 142,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " answer"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 143,
+      "token_id": 1278,
+      "content": " the"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 144,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " the"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 145,
+      "token_id": 3330,
+      "content": " user"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 146,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " user"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 147,
+      "token_id": 1454,
+      "content": " with"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 148,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " with"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 149,
+      "token_id": 1278,
+      "content": " the"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 150,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " the"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 151,
+      "token_id": 2282,
+      "content": " result"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 152,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " result"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 153,
+      "token_id": 1046,
+      "content": "."
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 154,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "."
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 155,
+      "token_id": 1531,
+      "content": " The"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 156,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " The"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 157,
+      "token_id": 4832,
+      "content": " answer"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 158,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " answer"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 159,
+      "token_id": 1395,
+      "content": " is"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 160,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " is"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 161,
+      "token_id": 1058,
+      "content": ":"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 162,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": ":"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 163,
+      "token_id": 1531,
+      "content": " The"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 164,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " The"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 165,
+      "token_id": 3844,
+      "content": " key"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 166,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " key"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 167,
+      "token_id": 2959,
+      "content": " found"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 168,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " found"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 169,
+      "token_id": 1395,
+      "content": " is"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 170,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " is"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 171,
+      "token_id": 1550,
+      "content": " K"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 172,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " K"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 173,
+      "token_id": 1055,
+      "content": "7"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 174,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "7"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 175,
+      "token_id": 5036,
+      "content": "-M"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 176,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "-M"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 177,
+      "token_id": 6970,
+      "content": "AG"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 178,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "AG"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 179,
+      "token_id": 8911,
+      "content": "ENT"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 180,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "ENT"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 181,
+      "token_id": 1065,
+      "content": "A"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 182,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "A"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 183,
+      "token_id": 1045,
+      "content": "-"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 184,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "-"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 185,
+      "token_id": 1057,
+      "content": "9"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 186,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "9"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 187,
+      "token_id": 1057,
+      "content": "9"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 188,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "9"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 189,
+      "token_id": 1051,
+      "content": "3"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 190,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "3"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 191,
+      "token_id": 1049,
+      "content": "1"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 192,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "1"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 193,
+      "token_id": 1044,
+      "content": ","
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 194,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": ","
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 195,
+      "token_id": 1321,
+      "content": " and"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 196,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " and"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 197,
+      "token_id": 1278,
+      "content": " the"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 198,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " the"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 199,
+      "token_id": 15448,
+      "content": " chest"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 200,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " chest"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 201,
+      "token_id": 8688,
+      "content": " contains"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 202,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " contains"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 203,
+      "token_id": 1261,
+      "content": " a"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 204,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " a"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 205,
+      "token_id": 1475,
+      "content": " j"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 206,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " j"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 207,
+      "token_id": 1993,
+      "content": "ade"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 208,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "ade"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 209,
+      "token_id": 40426,
+      "content": " dragon"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 210,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " dragon"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 211,
+      "token_id": 37203,
+      "content": " figur"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 212,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " figur"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 213,
+      "token_id": 1519,
+      "content": "ine"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 214,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "ine"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 215,
+      "token_id": 1046,
+      "content": "."
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 216,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "."
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 217,
+      "token_id": 1362,
+      "content": " I"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 218,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " I"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 219,
+      "token_id": 7534,
+      "content": "'ll"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 220,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "'ll"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 221,
+      "token_id": 5234,
+      "content": " provide"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 222,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " provide"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 223,
+      "token_id": 1455,
+      "content": " that"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 224,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " that"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 225,
+      "token_id": 1626,
+      "content": ".\n"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 226,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": ".\n"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 227,
+      "token_id": 13,
+      "content": "</think>"
+    },
+    {
+      "type": "response.reasoning.done",
+      "sequence_number": 228,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "text": "The user asked to find the key hidden in the library, then unlock the treasure chest with it, and tell what's inside. I used find_key on library, got key \"K7-MAGENTA-9931\". Then unlocked chest with that key, got contents \"a jade dragon figurine\". Now I need to answer the user with the result. The answer is: The key found is K7-MAGENTA-9931, and the chest contains a jade dragon figurine. I'll provide that."
+    },
+    {
+      "type": "response.output_item.done",
+      "sequence_number": 229,
+      "output_index": 0,
+      "item": {
+        "type": "reasoning",
+        "id": "reasoning_0",
+        "status": "completed",
+        "summary": [],
+        "content": [
+          {
+            "type": "reasoning_text",
+            "text": "The user asked to find the key hidden in the library, then unlock the treasure chest with it, and tell what's inside. I used find_key on library, got key \"K7-MAGENTA-9931\". Then unlocked chest with that key, got contents \"a jade dragon figurine\". Now I need to answer the user with the result. The answer is: The key found is K7-MAGENTA-9931, and the chest contains a jade dragon figurine. I'll provide that."
+          }
+        ],
+        "encrypted_content": null
+      }
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 230,
+      "token_id": 1010,
+      "content": "\n"
+    },
+    {
+      "type": "response.output_item.added",
+      "sequence_number": 231,
+      "output_index": 1,
+      "item": {
+        "type": "message",
+        "id": "msg_0",
+        "status": "in_progress",
+        "role": "assistant",
+        "content": []
+      }
+    },
+    {
+      "type": "response.content_part.added",
+      "sequence_number": 232,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "part": {
+        "type": "output_text",
+        "text": "",
+        "annotations": [],
+        "logprobs": []
+      }
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 233,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "\n",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 234,
+      "token_id": 1073,
+      "content": "I"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 235,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "I",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 236,
+      "token_id": 2959,
+      "content": " found"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 237,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": " found",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 238,
+      "token_id": 1278,
+      "content": " the"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 239,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": " the",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 240,
+      "token_id": 3844,
+      "content": " key"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 241,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": " key",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 242,
+      "token_id": 16052,
+      "content": " hidden"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 243,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": " hidden",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 244,
+      "token_id": 1294,
+      "content": " in"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 245,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": " in",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 246,
+      "token_id": 1278,
+      "content": " the"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 247,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": " the",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 248,
+      "token_id": 11329,
+      "content": " library"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 249,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": " library",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 250,
+      "token_id": 1058,
+      "content": ":"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 251,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": ":",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 252,
+      "token_id": 1603,
+      "content": " **"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 253,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": " **",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 254,
+      "token_id": 1075,
+      "content": "K"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 255,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "K",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 256,
+      "token_id": 1055,
+      "content": "7"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 257,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "7",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 258,
+      "token_id": 5036,
+      "content": "-M"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 259,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "-M",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 260,
+      "token_id": 6970,
+      "content": "AG"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 261,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "AG",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 262,
+      "token_id": 8911,
+      "content": "ENT"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 263,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "ENT",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 264,
+      "token_id": 1065,
+      "content": "A"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 265,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "A",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 266,
+      "token_id": 1045,
+      "content": "-"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 267,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "-",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 268,
+      "token_id": 1057,
+      "content": "9"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 269,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "9",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 270,
+      "token_id": 1057,
+      "content": "9"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 271,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "9",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 272,
+      "token_id": 1051,
+      "content": "3"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 273,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "3",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 274,
+      "token_id": 1049,
+      "content": "1"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 275,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "1",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 276,
+      "token_id": 12617,
+      "content": "**."
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 277,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "**.",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 278,
+      "token_id": 1032,
+      "content": " "
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 279,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": " ",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 280,
+      "token_id": 1267,
+      "content": "\n\n"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 281,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "\n\n",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 282,
+      "token_id": 23511,
+      "content": "Using"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 283,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "Using",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 284,
+      "token_id": 1593,
+      "content": " this"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 285,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": " this",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 286,
+      "token_id": 3844,
+      "content": " key"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 287,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": " key",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 288,
+      "token_id": 1044,
+      "content": ","
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 289,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": ",",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 290,
+      "token_id": 1362,
+      "content": " I"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 291,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": " I",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 292,
+      "token_id": 90498,
+      "content": " unlocked"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 293,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": " unlocked",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 294,
+      "token_id": 1278,
+      "content": " the"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 295,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": " the",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 296,
+      "token_id": 67251,
+      "content": " treasure"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 297,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": " treasure",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 298,
+      "token_id": 15448,
+      "content": " chest"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 299,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": " chest",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 300,
+      "token_id": 1044,
+      "content": ","
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 301,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": ",",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 302,
+      "token_id": 1321,
+      "content": " and"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 303,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": " and",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 304,
+      "token_id": 6625,
+      "content": " inside"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 305,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": " inside",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 306,
+      "token_id": 1395,
+      "content": " is"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 307,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": " is",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 308,
+      "token_id": 1261,
+      "content": " a"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 309,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": " a",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 310,
+      "token_id": 1603,
+      "content": " **"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 311,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": " **",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 312,
+      "token_id": 75846,
+      "content": "jade"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 313,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "jade",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 314,
+      "token_id": 40426,
+      "content": " dragon"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 315,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": " dragon",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 316,
+      "token_id": 37203,
+      "content": " figur"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 317,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": " figur",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 318,
+      "token_id": 1519,
+      "content": "ine"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 319,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "ine",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 320,
+      "token_id": 12617,
+      "content": "**."
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 321,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "**.",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_text.done",
+      "sequence_number": 322,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "text": "\nI found the key hidden in the library: **K7-MAGENTA-9931**. \n\nUsing this key, I unlocked the treasure chest, and inside is a **jade dragon figurine**.",
+      "logprobs": []
+    },
+    {
+      "type": "response.content_part.done",
+      "sequence_number": 323,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "part": {
+        "type": "output_text",
+        "text": "\nI found the key hidden in the library: **K7-MAGENTA-9931**. \n\nUsing this key, I unlocked the treasure chest, and inside is a **jade dragon figurine**.",
+        "annotations": [],
+        "logprobs": []
+      }
+    },
+    {
+      "type": "response.output_item.done",
+      "sequence_number": 324,
+      "output_index": 1,
+      "item": {
+        "type": "message",
+        "id": "msg_0",
+        "status": "completed",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "output_text",
+            "text": "\nI found the key hidden in the library: **K7-MAGENTA-9931**. \n\nUsing this key, I unlocked the treasure chest, and inside is a **jade dragon figurine**.",
+            "annotations": [],
+            "logprobs": []
+          }
+        ]
+      }
+    },
+    {
+      "type": "response.completed",
+      "sequence_number": 325,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "completed",
+        "incomplete_details": null,
+        "stop_token_id": 11,
+        "stop_token": "<|im_end|>",
+        "model": "nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16",
+        "output": [
+          {
+            "type": "reasoning",
+            "id": "reasoning_0",
+            "status": "completed",
+            "summary": [],
+            "content": [
+              {
+                "type": "reasoning_text",
+                "text": "The user asked to find the key hidden in the library, then unlock the treasure chest with it, and tell what's inside. I used find_key on library, got key \"K7-MAGENTA-9931\". Then unlocked chest with that key, got contents \"a jade dragon figurine\". Now I need to answer the user with the result. The answer is: The key found is K7-MAGENTA-9931, and the chest contains a jade dragon figurine. I'll provide that."
+              }
+            ],
+            "encrypted_content": null
+          },
+          {
+            "type": "message",
+            "id": "msg_0",
+            "status": "completed",
+            "role": "assistant",
+            "content": [
+              {
+                "type": "output_text",
+                "text": "\nI found the key hidden in the library: **K7-MAGENTA-9931**. \n\nUsing this key, I unlocked the treasure chest, and inside is a **jade dragon figurine**.",
+                "annotations": [],
+                "logprobs": []
+              }
+            ]
+          }
+        ],
+        "usage": {
+          "input_tokens": 363,
+          "output_tokens": 46,
+          "total_tokens": 409,
+          "input_tokens_details": {
+            "cached_tokens": 0
+          },
+          "output_tokens_details": {
+            "reasoning_tokens": 113
+          }
+        }
+      }
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

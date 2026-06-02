@@ -11,6 +11,7 @@ import dotenv
 import httpx
 import pytest
 import pytest_asyncio
+from models import MODELS, Model
 
 from orchard.clients.client import Client
 from orchard.engine.fetch import get_engine_path
@@ -34,25 +35,7 @@ SERVER_LOG_PATH = LOG_DIR / "python_server.test.log"
 ENGINE_LOG_PATH = LOG_DIR / "engine.test.log"
 CLIENT_LOG_PATH = LOG_DIR / "client.test.log"
 
-TEXT_MODELS = [
-    "meta-llama/Llama-3.1-8B-Instruct",
-    "google/gemma-4-E2B-it",
-    "Qwen/Qwen3.5-4B",
-    "moondream/moondream3-preview",
-    "mlx-community/Trinity-Mini-4bit",
-    "LiquidAI/LFM2.5-1.2B-Instruct",
-    "allenai/Olmo-Hybrid-Instruct-DPO-7B",
-    "nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16",
-    "mlx-community/granite-4.1-30b-4bit",
-    "mlx-community/Phi-4-reasoning-plus-4bit",
-]
-
-VISION_MODELS = [
-    "google/gemma-4-E2B-it",
-    "moondream/moondream3-preview",
-]
-
-ALL_MODELS = list(dict.fromkeys(TEXT_MODELS + VISION_MODELS))
+ALL_MODELS = [m.checkpoint for m in MODELS]
 
 SERVER_PORT = 8001
 SERVER_STARTUP_TIMEOUT_SECONDS = float(
@@ -102,14 +85,19 @@ def client(engine: InferenceEngine) -> Generator[Client, None]:
     client.close()
 
 
-@pytest.fixture(params=TEXT_MODELS, ids=lambda m: m.split("/")[-1])
+@pytest.fixture(params=MODELS, ids=lambda m: m.template_type)
+def model(request: pytest.FixtureRequest) -> Model:
+    return request.param
+
+
+@pytest.fixture(params=MODELS, ids=lambda m: m.template_type)
 def text_model_id(request: pytest.FixtureRequest) -> str:
-    return request.param
+    return request.param.checkpoint
 
 
-@pytest.fixture(params=VISION_MODELS, ids=lambda m: m.split("/")[-1])
+@pytest.fixture(params=[m for m in MODELS if m.vision], ids=lambda m: m.template_type)
 def vision_model_id(request: pytest.FixtureRequest) -> str:
-    return request.param
+    return request.param.checkpoint
 
 
 @pytest.fixture
@@ -117,9 +105,9 @@ def moondream_model_id() -> str:
     return "moondream/moondream3-preview"
 
 
-@pytest.fixture(params=ALL_MODELS, ids=lambda m: m.split("/")[-1])
+@pytest.fixture(params=MODELS, ids=lambda m: m.template_type)
 def any_model_id(request: pytest.FixtureRequest) -> str:
-    return request.param
+    return request.param.checkpoint
 
 
 @pytest_asyncio.fixture(scope="session")

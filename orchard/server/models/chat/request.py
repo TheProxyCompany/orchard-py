@@ -493,6 +493,7 @@ class ChatCompletionRequest(BaseModel):
         )
         normalized_fields["task"] = self._broadcast_list(self.task, batch_size, "task")
         reasoning_inputs = self._broadcast_list(self.reasoning, batch_size, "reasoning")
+        normalized_fields["reasoning"] = reasoning_inputs
         normalized_fields["reasoning_effort"] = [
             normalize_reasoning_value(value, field_name="reasoning")
             for value in reasoning_inputs

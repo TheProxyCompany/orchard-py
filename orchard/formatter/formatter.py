@@ -40,21 +40,17 @@ def determine_model_type(config: dict) -> str:
 
 
 def determine_template_type(config: dict) -> str:
-    """Determine the Pantheon template type from model config."""
+    """Determine the template variant within the resolved Pantheon profile."""
     template_type = config.get("template_type")
     if isinstance(template_type, str) and template_type:
         return template_type
 
-    model_type = determine_model_type(config)
-    model_name = ""
-    for key in ("_name_or_path", "model_id", "original_repo"):
-        value = config.get(key)
-        if isinstance(value, str):
-            model_name = value.lower()
-            break
-    if model_type == "phi3" and "phi-4-reasoning" in model_name:
-        return "phi4_reasoning"
+    return "default"
 
+
+def determine_pantheon_profile(config: dict) -> str:
+    """Determine the Pantheon model profile from model config."""
+    model_type = determine_model_type(config)
     if model_type == "llama" or model_type == "llama3":
         return "llama3"
 
@@ -66,6 +62,9 @@ def determine_template_type(config: dict) -> str:
 
     if model_type in ("gemma4", "gemma4_text"):
         return "gemma4"
+
+    if model_type == "lfm2_moe":
+        return "lfm2_5"
 
     return model_type
 
@@ -164,14 +163,15 @@ class ChatFormatter:
         self.tokenizer_config = tokenizer_config
         model_type = determine_model_type(tokenizer_config)
         template_type = determine_template_type(tokenizer_config)
+        pantheon_profile = determine_pantheon_profile(tokenizer_config)
         self.model_type = model_type
         self.template_type = template_type
-        profile_dir = _PROFILE_ROOT / template_type
+        profile_dir = _PROFILE_ROOT / pantheon_profile
         if not profile_dir.is_dir():
-            profile_dir = _profile_dirs().get(template_type, profile_dir)
+            profile_dir = _profile_dirs().get(pantheon_profile, profile_dir)
         if not profile_dir.is_dir():
             raise ValueError(
-                f"Profile directory for template_type '{template_type}' not found at "
+                f"Pantheon profile '{pantheon_profile}' not found at "
                 f"{profile_dir}"
             )
         self.profile_dir = profile_dir
@@ -182,11 +182,11 @@ class ChatFormatter:
         generation_path = profile_dir / "generation.yaml"
         if not caps_path.is_file():
             raise ValueError(
-                f"Profile for template_type '{template_type}' is missing capabilities.yaml"
+                f"Pantheon profile '{pantheon_profile}' is missing capabilities.yaml"
             )
         if not generation_path.is_file():
             raise ValueError(
-                f"Profile for template_type '{template_type}' is missing generation.yaml"
+                f"Pantheon profile '{pantheon_profile}' is missing generation.yaml"
             )
         self.capabilities = yaml.safe_load(caps_path.read_text()) or {}
         self.generation = yaml.safe_load(generation_path.read_text()) or {}
@@ -201,7 +201,14 @@ class ChatFormatter:
             loader=FileSystemLoader(loader_paths), trim_blocks=True, lstrip_blocks=True
         )
         self.jinja_env.filters["tojson"] = tojson
-        self.template = self.jinja_env.get_template("chat_template.jinja")
+        template_name = f"templates/{template_type}.jinja"
+        if not (profile_dir / template_name).is_file():
+            if template_type != "default":
+                raise ValueError(
+                    f"Pantheon profile '{pantheon_profile}' is missing {template_name}"
+                )
+            template_name = "chat_template.jinja"
+        self.template = self.jinja_env.get_template(template_name)
 
     def apply_template(
         self,
@@ -317,13 +324,17 @@ class ChatFormatter:
 
         return tokens
 
-    def get_thinking_tokens(self) -> dict[str, str]:
+    def get_thinking_tokens(self) -> dict[str, Any]:
         """Extract generated-output thinking delimiters from capabilities.yaml."""
-        tokens = self.capabilities.get("thinking", {}).get("tokens", {})
-        return {
+        thinking = self.capabilities.get("thinking", {})
+        tokens = thinking.get("tokens", {})
+        result: dict[str, Any] = {
             "start": str(tokens.get("start", "")),
             "end": str(tokens.get("end", "")),
         }
+        if bool(thinking.get("required", False)):
+            result["required"] = True
+        return result
 
     def get_generation_defaults(self, profile: str = "default") -> dict[str, Any]:
         """Return sampling defaults from generation.yaml."""

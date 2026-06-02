@@ -1,0 +1,562 @@
+{
+  "turn1": [
+    {
+      "type": "response.created",
+      "sequence_number": 0,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "in_progress",
+        "incomplete_details": null,
+        "stop_token_id": null,
+        "stop_token": null,
+        "model": "meta-llama/Llama-3.1-8B-Instruct",
+        "output": [],
+        "usage": null
+      }
+    },
+    {
+      "type": "response.in_progress",
+      "sequence_number": 1,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "in_progress",
+        "incomplete_details": null,
+        "stop_token_id": null,
+        "stop_token": null,
+        "model": "meta-llama/Llama-3.1-8B-Instruct",
+        "output": [],
+        "usage": null
+      }
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 2,
+      "token_id": 128010,
+      "content": "<|python_tag|>"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 3,
+      "token_id": 456,
+      "content": "get"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 4,
+      "token_id": 70464,
+      "content": "_weather"
+    },
+    {
+      "type": "response.output_item.added",
+      "sequence_number": 5,
+      "output_index": 0,
+      "item": {
+        "type": "function_call",
+        "id": "fc_0",
+        "call_id": "call_0",
+        "name": "get_weather",
+        "arguments": "",
+        "status": "in_progress"
+      }
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 6,
+      "token_id": 23509,
+      "content": "(location"
+    },
+    {
+      "type": "response.function_call_arguments.delta",
+      "sequence_number": 7,
+      "item_id": "fc_0",
+      "output_index": 0,
+      "delta": "(location",
+      "field_path": null
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 8,
+      "token_id": 429,
+      "content": "=\""
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 9,
+      "token_id": 24661,
+      "content": "San"
+    },
+    {
+      "type": "response.function_call_arguments.delta",
+      "sequence_number": 10,
+      "item_id": "fc_0",
+      "output_index": 0,
+      "delta": "San",
+      "field_path": "location"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 11,
+      "token_id": 13175,
+      "content": " Francisco"
+    },
+    {
+      "type": "response.function_call_arguments.delta",
+      "sequence_number": 12,
+      "item_id": "fc_0",
+      "output_index": 0,
+      "delta": " Francisco",
+      "field_path": "location"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 13,
+      "token_id": 909,
+      "content": "\")"
+    },
+    {
+      "type": "response.function_call_arguments.delta",
+      "sequence_number": 14,
+      "item_id": "fc_0",
+      "output_index": 0,
+      "delta": ")",
+      "field_path": null
+    },
+    {
+      "type": "response.function_call_arguments.done",
+      "sequence_number": 15,
+      "item_id": "fc_0",
+      "output_index": 0,
+      "arguments": "{\"location\": \"San Francisco\"}"
+    },
+    {
+      "type": "response.output_item.done",
+      "sequence_number": 16,
+      "output_index": 0,
+      "item": {
+        "type": "function_call",
+        "id": "fc_0",
+        "call_id": "call_0",
+        "name": "get_weather",
+        "arguments": "{\"location\": \"San Francisco\"}",
+        "status": "completed"
+      }
+    },
+    {
+      "type": "response.completed",
+      "sequence_number": 17,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "completed",
+        "incomplete_details": null,
+        "stop_token_id": 128008,
+        "stop_token": "<|eom_id|>",
+        "model": "meta-llama/Llama-3.1-8B-Instruct",
+        "output": [
+          {
+            "type": "function_call",
+            "id": "fc_0",
+            "call_id": "call_0",
+            "name": "get_weather",
+            "arguments": "{\"location\": \"San Francisco\"}",
+            "status": "completed"
+          }
+        ],
+        "usage": {
+          "input_tokens": 135,
+          "output_tokens": 9,
+          "total_tokens": 144,
+          "input_tokens_details": {
+            "cached_tokens": 0
+          },
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          }
+        }
+      }
+    },
+    {
+      "type": "done"
+    }
+  ],
+  "turn2": [
+    {
+      "type": "response.created",
+      "sequence_number": 0,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "in_progress",
+        "incomplete_details": null,
+        "stop_token_id": null,
+        "stop_token": null,
+        "model": "meta-llama/Llama-3.1-8B-Instruct",
+        "output": [],
+        "usage": null
+      }
+    },
+    {
+      "type": "response.in_progress",
+      "sequence_number": 1,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "in_progress",
+        "incomplete_details": null,
+        "stop_token_id": null,
+        "stop_token": null,
+        "model": "meta-llama/Llama-3.1-8B-Instruct",
+        "output": [],
+        "usage": null
+      }
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 2,
+      "token_id": 791,
+      "content": "The"
+    },
+    {
+      "type": "response.output_item.added",
+      "sequence_number": 3,
+      "output_index": 0,
+      "item": {
+        "type": "message",
+        "id": "msg_0",
+        "status": "in_progress",
+        "role": "assistant",
+        "content": []
+      }
+    },
+    {
+      "type": "response.content_part.added",
+      "sequence_number": 4,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "part": {
+        "type": "output_text",
+        "text": "",
+        "annotations": [],
+        "logprobs": []
+      }
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 5,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "The",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 6,
+      "token_id": 1510,
+      "content": " current"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 7,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " current",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 8,
+      "token_id": 9282,
+      "content": " weather"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 9,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " weather",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 10,
+      "token_id": 304,
+      "content": " in"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 11,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " in",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 12,
+      "token_id": 5960,
+      "content": " San"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 13,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " San",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 14,
+      "token_id": 13175,
+      "content": " Francisco"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 15,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " Francisco",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 16,
+      "token_id": 374,
+      "content": " is"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 17,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " is",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 18,
+      "token_id": 220,
+      "content": " "
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 19,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " ",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 20,
+      "token_id": 24,
+      "content": "9"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 21,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "9",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 22,
+      "token_id": 12628,
+      "content": " degrees"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 23,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " degrees",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 24,
+      "token_id": 62447,
+      "content": " Celsius"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 25,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " Celsius",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 26,
+      "token_id": 11,
+      "content": ","
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 27,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": ",",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 28,
+      "token_id": 449,
+      "content": " with"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 29,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " with",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 30,
+      "token_id": 12056,
+      "content": " snow"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 31,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " snow",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 32,
+      "token_id": 13,
+      "content": "."
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 33,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": ".",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_text.done",
+      "sequence_number": 34,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "text": "The current weather in San Francisco is 9 degrees Celsius, with snow.",
+      "logprobs": []
+    },
+    {
+      "type": "response.content_part.done",
+      "sequence_number": 35,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "part": {
+        "type": "output_text",
+        "text": "The current weather in San Francisco is 9 degrees Celsius, with snow.",
+        "annotations": [],
+        "logprobs": []
+      }
+    },
+    {
+      "type": "response.output_item.done",
+      "sequence_number": 36,
+      "output_index": 0,
+      "item": {
+        "type": "message",
+        "id": "msg_0",
+        "status": "completed",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "output_text",
+            "text": "The current weather in San Francisco is 9 degrees Celsius, with snow.",
+            "annotations": [],
+            "logprobs": []
+          }
+        ]
+      }
+    },
+    {
+      "type": "response.completed",
+      "sequence_number": 37,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "completed",
+        "incomplete_details": null,
+        "stop_token_id": 128009,
+        "stop_token": "<|eot_id|>",
+        "model": "meta-llama/Llama-3.1-8B-Instruct",
+        "output": [
+          {
+            "type": "message",
+            "id": "msg_0",
+            "status": "completed",
+            "role": "assistant",
+            "content": [
+              {
+                "type": "output_text",
+                "text": "The current weather in San Francisco is 9 degrees Celsius, with snow.",
+                "annotations": [],
+                "logprobs": []
+              }
+            ]
+          }
+        ],
+        "usage": {
+          "input_tokens": 174,
+          "output_tokens": 16,
+          "total_tokens": 190,
+          "input_tokens_details": {
+            "cached_tokens": 0
+          },
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          }
+        }
+      }
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

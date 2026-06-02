@@ -24,7 +24,6 @@ from orchard.server.dependencies import IPCStateDep, ModelRegistryDep
 from orchard.server.exceptions import InferenceError
 from orchard.server.models.reasoning import (
     DEFAULT_BOOLEAN_REASONING_EFFORT,
-    DEFAULT_NATIVE_REASONING_MIN_TOKENS,
     normalize_reasoning_value,
 )
 from orchard.server.models.responses import (
@@ -43,6 +42,7 @@ from orchard.server.models.responses import (
     OutputTextContent,
     OutputTextDeltaEvent,
     OutputTextDoneEvent,
+    OutputTokenEvent,
     OutputTokensDetails,
     ReasoningContent,
     ReasoningDeltaEvent,
@@ -140,13 +140,8 @@ async def handle_response_request(
     reasoning_effort = normalize_reasoning_value(request.reasoning)
     if (
         reasoning_effort is None
-        and "reasoning" not in request.model_fields_set
+        and request.reasoning is not False
         and formatter.supports_native_thinking()
-        and (
-            request.max_output_tokens is None
-            or request.max_output_tokens >= DEFAULT_NATIVE_REASONING_MIN_TOKENS
-        )
-        and bool(formatter.capabilities.get("thinking", {}).get("default"))
     ):
         reasoning_effort = DEFAULT_BOOLEAN_REASONING_EFFORT
     reasoning_flag = (
@@ -329,6 +324,7 @@ async def handle_response_request(
                         queue=response_queue,
                         response_id=response_id,
                         model_name=request.model,
+                        stream_tokens=request.stream_tokens,
                     ):
                         yield event
                 finally:
@@ -366,6 +362,8 @@ async def handle_response_request(
             else OutputStatus.COMPLETED,
             completed_at=aggregated.get("completed_at"),
             incomplete_details=incomplete_details,
+            stop_token_id=aggregated.get("stop_token_id"),
+            stop_token=aggregated.get("stop_token"),
             metadata=request.metadata,
             min_p=request.min_p,
             top_p=request.top_p,
@@ -430,6 +428,8 @@ async def gather_non_streaming_response(
     error_detail: str | None = None
     finish_reason: str | None = None
     completed_at: int | None = None
+    stop_token_id: int | None = None
+    stop_token: str | None = None
 
     while True:
         try:
@@ -471,6 +471,14 @@ async def gather_non_streaming_response(
                 # Track finish reason for incomplete_details
                 if fr := delta.get("finish_reason"):
                     finish_reason = str(fr).lower()
+
+                # Capture the matched stop/EOS token id + decoded text from the final delta.
+                msid = delta.get("matched_stop_token_id")
+                if msid is not None:
+                    stop_token_id = int(msid)
+                mst = delta.get("matched_stop_token")
+                if mst is not None:
+                    stop_token = str(mst)
 
                 if delta.get("is_final_delta", False):
                     completed_at = get_current_timestamp()
@@ -516,6 +524,8 @@ async def gather_non_streaming_response(
         "reasoning_tokens": usage_counts["reasoning_tokens"],
         "completed_at": completed_at,
         "incomplete_details": incomplete_details,
+        "stop_token_id": stop_token_id,
+        "stop_token": stop_token,
     }
 
 
@@ -612,6 +622,7 @@ async def stream_response_generator(
     queue: asyncio.Queue[ResponseDeltaDict],
     response_id: str,
     model_name: str,
+    stream_tokens: bool = False,
 ) -> AsyncIterable[dict[str, str]]:
     """Generate Open Responses SSE events from PIE deltas with state_events."""
     stream_state = ResponseStreamState(response_id=response_id, model=model_name)
@@ -668,6 +679,16 @@ async def stream_response_generator(
                     )
                     break
 
+                if stream_tokens:
+                    for token_id in delta.get("tokens") or []:
+                        yield _format_sse_event(
+                            OutputTokenEvent(
+                                sequence_number=stream_state.next_sequence_number(),
+                                token_id=int(token_id),
+                                content=delta.get("content"),
+                            )
+                        )
+
                 # Process state_events from PIE
                 state_events = delta.get("state_events") or []
                 for event in state_events:
@@ -714,6 +735,12 @@ async def stream_response_generator(
                 if fr := delta.get("finish_reason"):
                     finish_reason = str(fr).lower()
 
+                # Capture the matched stop/EOS token id (only the final delta
+                # carries it; absent on length-capped/error completions).
+                msid = delta.get("matched_stop_token_id")
+                if msid is not None:
+                    stream_state.stop_token_id = int(msid)
+
                 if delta.get("is_final_delta", False):
                     logger.debug(
                         "Received final delta for streaming request %d", request_id
@@ -730,6 +757,8 @@ async def stream_response_generator(
     for output_index, item in sorted(stream_state.items.items()):
         if item.status != OutputStatus.COMPLETED:
             item.status = OutputStatus.COMPLETED
+            if item.item_type == "reasoning":
+                item.accumulated_content = item.accumulated_content.strip()
             # Emit done events based on item type
             if item.item_type == "message":
                 yield _format_sse_event(
@@ -851,6 +880,17 @@ async def _process_state_event_for_streaming(
         and identifier != "arguments"
         and not identifier.startswith("tool_call:")
     ):
+        if event_type == "content_delta":
+            field_item = stream_state.get_or_create_item(output_index, item_type, identifier)
+            yield _format_sse_event(
+                FunctionCallArgumentsDeltaEvent(
+                    sequence_number=stream_state.next_sequence_number(),
+                    item_id=field_item.item_id,
+                    output_index=output_index,
+                    delta=event.get("delta", ""),
+                    field_path=identifier,
+                )
+            )
         return
 
     item = stream_state.get_or_create_item(output_index, item_type, identifier)
@@ -893,16 +933,6 @@ async def _process_state_event_for_streaming(
                     part=OutputTextContent(text=""),
                 )
             )
-        elif item_type == "reasoning":
-            yield _format_sse_event(
-                ContentPartAddedEvent(
-                    sequence_number=stream_state.next_sequence_number(),
-                    item_id=item.item_id,
-                    output_index=output_index,
-                    content_index=0,
-                    part=ReasoningContent(text=""),
-                )
-            )
         return
 
     if event_type == "content_delta":
@@ -932,6 +962,8 @@ async def _process_state_event_for_streaming(
 
     if event_type == "item_completed":
         item.status = OutputStatus.COMPLETED
+        if item_type == "reasoning":
+            item.accumulated_content = item.accumulated_content.strip()
         if item_type == "message":
             yield _format_sse_event(
                 OutputTextDoneEvent(

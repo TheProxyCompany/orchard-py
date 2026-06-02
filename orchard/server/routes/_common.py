@@ -124,6 +124,22 @@ def extract_usage(delta: ResponseDeltaDict, counts: dict[str, int]) -> None:
         except (TypeError, ValueError):
             return None
 
+    reasoning_tokens = _coerce_int(delta.get("reasoning_tokens"))
+    usage_payload = delta.get("usage")
+    usage_dict = usage_payload if isinstance(usage_payload, dict) else {}
+    if reasoning_tokens is None:
+        reasoning_tokens = _coerce_int(usage_dict.get("reasoning_tokens"))
+    if reasoning_tokens is not None:
+        counts["reasoning_tokens"] = reasoning_tokens
+
+    generation_len = _coerce_int(delta.get("generation_len"))
+    if generation_len is None:
+        generation_len = _coerce_int(usage_dict.get("generation_len"))
+    if generation_len is not None:
+        counts["completion_tokens"] = max(
+            generation_len - counts.get("reasoning_tokens", 0), 0
+        )
+
     key_map = (
         ("prompt_token_count", "prompt_tokens"),
         ("prompt_tokens", "prompt_tokens"),
@@ -131,11 +147,9 @@ def extract_usage(delta: ResponseDeltaDict, counts: dict[str, int]) -> None:
         ("completion_token_count", "completion_tokens"),
         ("completion_tokens", "completion_tokens"),
         ("output_tokens", "completion_tokens"),
-        ("generation_len", "completion_tokens"),
         ("total_token_count", "total_tokens"),
         ("total_tokens", "total_tokens"),
         ("cached_token_count", "cached_tokens"),
-        ("reasoning_tokens", "reasoning_tokens"),
     )
 
     for source_key, target_key in key_map:
@@ -144,7 +158,6 @@ def extract_usage(delta: ResponseDeltaDict, counts: dict[str, int]) -> None:
             if value is not None:
                 counts[target_key] = value
 
-    usage_payload = delta.get("usage")
     if isinstance(usage_payload, dict):
         for source_key, target_key in key_map:
             if source_key in usage_payload:

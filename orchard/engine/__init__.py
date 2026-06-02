@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class UsageStats(BaseModel):
     prompt_tokens: int = 0
     completion_tokens: int = 0
+    reasoning_tokens: int = 0
     total_tokens: int = 0
 
 
@@ -20,6 +21,7 @@ class ClientDelta(BaseModel):
     top_logprobs: list[dict[str, float]] = Field(default_factory=list)
     cumulative_logprob: float | None = None
     generation_len: int | None = None
+    reasoning_tokens: int | None = None
     content: str | None = None
     content_len: int | None = None
     inline_content_bytes: int | None = None

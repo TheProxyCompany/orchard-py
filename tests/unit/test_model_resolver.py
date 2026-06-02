@@ -113,11 +113,11 @@ def test_resolve_local_file_as_engine_inspected_source(tmp_path: Path) -> None:
 
 
 def test_hf_resolved_model_passes_repo_hint_to_formatter_config(tmp_path: Path) -> None:
-    repo_id = "microsoft/Phi-4-reasoning-plus"
+    repo_id = "meta-llama/Llama-3.1-8B-Instruct"
     model_dir = tmp_path / "downloaded"
     model_dir.mkdir()
     (model_dir / "config.json").write_text(
-        json.dumps({"model_type": "phi3"}),
+        json.dumps({"model_type": "llama"}),
         encoding="utf-8",
     )
     (model_dir / "tokenizer.json").write_text("{}", encoding="utf-8")
@@ -130,6 +130,6 @@ def test_hf_resolved_model_passes_repo_hint_to_formatter_config(tmp_path: Path) 
     )
 
     assert resolved.formatter_config is not None
-    assert resolved.formatter_config["model_type"] == "phi3"
+    assert resolved.formatter_config["model_type"] == "llama"
     assert resolved.formatter_config["_name_or_path"] == repo_id
-    assert determine_template_type(resolved.formatter_config) == "phi4_reasoning"
+    assert determine_template_type(resolved.formatter_config) == "default"

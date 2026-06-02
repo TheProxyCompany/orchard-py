@@ -191,7 +191,7 @@ class ResponseUsage(BaseModel):
         description="The number of tokens constituting the input prompt(s)."
     )
     output_tokens: int = Field(
-        description="The total number of tokens generated across all completion choices."
+        description="The total number of non-reasoning tokens generated across all completion choices."
     )
     total_tokens: int = Field(
         description="The sum of `input_tokens` and `output_tokens`."
@@ -229,6 +229,14 @@ class ResponseObject(BaseModel):
     incomplete_details: IncompleteDetails | None = Field(
         default=None,
         description="Details about why the response was incomplete, if applicable.",
+    )
+    stop_token_id: int | None = Field(
+        default=None,
+        description="The model stop/EOS token id that ended generation, if any.",
+    )
+    stop_token: str | None = Field(
+        default=None,
+        description="The decoded text of the stop/EOS token that ended generation (e.g. '<|eom_id|>').",
     )
     error: ResponseError | None = Field(
         default=None,

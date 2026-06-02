@@ -16,6 +16,7 @@ from orchard.server.models.responses.output import (
     OutputTextContent,
     ReasoningContent,
     ResponseUsage,
+    generate_function_call_id,
     generate_message_id,
     generate_response_id,
     get_current_timestamp,
@@ -138,6 +139,23 @@ class OutputTextDoneEvent(BaseModel):
     logprobs: list = Field(default_factory=list)
 
 
+class OutputTokenEvent(BaseModel):
+    """Emitted per raw generated token when stream_tokens is enabled.
+
+    A parallel channel to the semantic deltas: one event per token the model
+    produced, including tokens the grammar folds (so the count is a superset of
+    the visible text deltas). content is the engine's run-decoded text for the
+    delta (the faithful decode PIE already computed; in generation it is one
+    token per delta, so it is this token's text), or None/"" when the token
+    does not yet complete a valid UTF-8 run.
+    """
+
+    type: Literal["response.output_token"] = "response.output_token"
+    sequence_number: int
+    token_id: int
+    content: str | None = None
+
+
 # --- Function Call Argument Events ---
 
 
@@ -151,6 +169,7 @@ class FunctionCallArgumentsDeltaEvent(BaseModel):
     item_id: str
     output_index: int
     delta: str
+    field_path: str | None = None
 
 
 class FunctionCallArgumentsDoneEvent(BaseModel):
@@ -239,6 +258,8 @@ class ResponseSnapshot(BaseModel):
     completed_at: int | None = None
     status: OutputStatus = OutputStatus.IN_PROGRESS
     incomplete_details: IncompleteDetails | None = None
+    stop_token_id: int | None = None
+    stop_token: str | None = None
     model: str
     output: list[OutputMessage | OutputFunctionCall | OutputReasoning] = Field(
         default_factory=list
@@ -331,6 +352,8 @@ class ResponseStreamState:
         self.sequence_number = 0
         self.status = OutputStatus.IN_PROGRESS
         self.incomplete_details: IncompleteDetails | None = None
+        self.stop_token_id: int | None = None
+        self.stop_token: str | None = None
         self.usage: ResponseUsage | None = None
 
     def next_sequence_number(self) -> int:
@@ -347,7 +370,12 @@ class ResponseStreamState:
     ) -> StreamingOutputItem:
         """Get existing item or create new one for the given output_index."""
         if output_index not in self.items:
-            item_id = generate_message_id()
+            if item_type == "tool_call":
+                item_id = generate_function_call_id()
+            elif item_type == "reasoning":
+                item_id = generate_message_id("reasoning_")
+            else:
+                item_id = generate_message_id()
             call_id = None
             function_name = None
 
@@ -378,6 +406,8 @@ class ResponseStreamState:
             completed_at=self.completed_at,
             status=self.status,
             incomplete_details=self.incomplete_details,
+            stop_token_id=self.stop_token_id,
+            stop_token=self.stop_token,
             model=self.model,
             output=output_items,
             usage=self.usage,
@@ -397,6 +427,7 @@ StreamingEvent = (
     | ContentPartDoneEvent
     | OutputTextDeltaEvent
     | OutputTextDoneEvent
+    | OutputTokenEvent
     | FunctionCallArgumentsDeltaEvent
     | FunctionCallArgumentsDoneEvent
     | ReasoningDeltaEvent

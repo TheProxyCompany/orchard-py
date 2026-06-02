@@ -27,6 +27,7 @@ from orchard.server.models.responses import (
     OutputTextContent,
     OutputTextDeltaEvent,
     OutputTextDoneEvent,
+    OutputTokenEvent,
     OutputTokensDetails,
     ReasoningContent,
     ReasoningDeltaEvent,
@@ -113,9 +114,11 @@ class ResponsesRequest(ResponseRequest):
             "tool_choice": _tool_choice_to_payload(self.tool_choice),
             "response_format": response_format,
             "task_name": self.task,
+            "reasoning": self.reasoning if isinstance(self.reasoning, bool) else None,
             "reasoning_effort": _reasoning_effort_from_request(self),
             "min_tool_calls": self.min_tool_calls,
             "max_tool_calls": self.max_tool_calls,
+            "prefix_cache": self.prefix_cache,
         }
         return {key: value for key, value in kwargs.items() if value is not None}
 
@@ -136,7 +139,7 @@ def _reasoning_effort_from_request(request: ResponsesRequest) -> str | None:
     normalized_effort = getattr(reasoning, "normalized_effort", None)
     if normalized_effort is not None:
         return normalized_effort
-    return DEFAULT_BOOLEAN_REASONING_EFFORT if isinstance(reasoning, bool) else None
+    return DEFAULT_BOOLEAN_REASONING_EFFORT if reasoning is True else None
 
 
 def _tool_choice_to_payload(tool_choice: Any) -> str | dict[str, Any]:
@@ -263,14 +266,6 @@ def _update_usage_from_delta(
     if prompt_tokens is not None:
         usage.input_tokens = max(usage.input_tokens, prompt_tokens)
 
-    output_tokens = _coerce_int(delta.get("generation_len"))
-    if output_tokens is None:
-        output_tokens = _coerce_int(
-            usage_dict.get("output_tokens", usage_dict.get("completion_tokens"))
-        )
-    if output_tokens is not None:
-        usage.output_tokens = max(usage.output_tokens, output_tokens)
-
     cached_tokens = _coerce_int(delta.get("cached_token_count"))
     if cached_tokens is None:
         cached_tokens = _coerce_int(usage_dict.get("cached_tokens"))
@@ -284,6 +279,16 @@ def _update_usage_from_delta(
         usage.output_tokens_details = OutputTokensDetails(
             reasoning_tokens=reasoning_tokens
         )
+
+    output_tokens = _coerce_int(delta.get("generation_len"))
+    if output_tokens is not None:
+        output_tokens = max(output_tokens - (reasoning_tokens or 0), 0)
+    else:
+        output_tokens = _coerce_int(
+            usage_dict.get("output_tokens", usage_dict.get("completion_tokens"))
+        )
+    if output_tokens is not None:
+        usage.output_tokens = max(usage.output_tokens, output_tokens)
 
     usage.total_tokens = usage.input_tokens + usage.output_tokens
 
@@ -381,6 +386,8 @@ def aggregate_non_streaming_response(
     usage = ResponseUsage(input_tokens=0, output_tokens=0, total_tokens=0)
     error_detail: str | None = None
     finish_reason: str | None = None
+    stop_token_id: int | None = None
+    stop_token: str | None = None
 
     for delta in deltas:
         error = delta.get("error")
@@ -399,6 +406,11 @@ def aggregate_non_streaming_response(
 
         if finish := delta.get("finish_reason"):
             finish_reason = str(finish).lower()
+
+        if (msid := delta.get("matched_stop_token_id")) is not None:
+            stop_token_id = _coerce_int(msid)
+        if (mst := delta.get("matched_stop_token")) is not None:
+            stop_token = str(mst)
 
         if delta.get("is_final_delta", False):
             completed_at = get_current_timestamp()
@@ -429,6 +441,8 @@ def aggregate_non_streaming_response(
         if incomplete_details
         else OutputStatus.COMPLETED,
         incomplete_details=incomplete_details,
+        stop_token_id=stop_token_id,
+        stop_token=stop_token,
         metadata=request.metadata,
         parallel_tool_calls=request.parallel_tool_calls,
         temperature=request.temperature,
@@ -466,6 +480,17 @@ def _process_state_event_for_streaming(
         and identifier != "arguments"
         and not identifier.startswith("tool_call:")
     ):
+        if event_type == "content_delta":
+            field_item = stream_state.get_or_create_item(output_index, item_type, identifier)
+            mapped_events.append(
+                FunctionCallArgumentsDeltaEvent(
+                    sequence_number=stream_state.next_sequence_number(),
+                    item_id=field_item.item_id,
+                    output_index=output_index,
+                    delta=str(event.get("delta", "")),
+                    field_path=identifier,
+                )
+            )
         return mapped_events
 
     item = stream_state.get_or_create_item(output_index, item_type, identifier)
@@ -502,16 +527,6 @@ def _process_state_event_for_streaming(
                     output_index=output_index,
                     content_index=0,
                     part=OutputTextContent(text=""),
-                )
-            )
-        elif item_type == "reasoning":
-            mapped_events.append(
-                ContentPartAddedEvent(
-                    sequence_number=stream_state.next_sequence_number(),
-                    item_id=item.item_id,
-                    output_index=output_index,
-                    content_index=0,
-                    part=ReasoningContent(text=""),
                 )
             )
         return mapped_events
@@ -560,6 +575,8 @@ def _process_state_event_for_streaming(
             )
         elif "value" in event:
             item.accumulated_content = _value_to_string(event["value"])
+        if item_type == "reasoning":
+            item.accumulated_content = item.accumulated_content.strip()
 
         if item_type == "message":
             mapped_events.append(
@@ -642,6 +659,7 @@ def _emit_stream_fallback_item_done(
                 )
             )
         elif item.item_type == "reasoning":
+            item.accumulated_content = item.accumulated_content.strip()
             mapped_events.append(
                 ReasoningDoneEvent(
                     sequence_number=stream_state.next_sequence_number(),
@@ -667,6 +685,7 @@ async def iter_response_events(
     delta_iterator: AsyncIterator[ResponseDeltaDict],
     model_id: str,
     response_id: str | None = None,
+    stream_tokens: bool = False,
 ) -> AsyncIterator[ResponseEvent]:
     stream_state = ResponseStreamState(
         response_id=response_id or generate_response_id(),
@@ -691,6 +710,14 @@ async def iter_response_events(
             error_detail = str(error)
             break
 
+        if stream_tokens:
+            for token_id in delta.get("tokens") or []:
+                yield OutputTokenEvent(
+                    sequence_number=stream_state.next_sequence_number(),
+                    token_id=int(token_id),
+                    content=delta.get("content"),
+                )
+
         for event in delta.get("state_events") or []:
             if isinstance(event, dict):
                 for mapped_event in _process_state_event_for_streaming(
@@ -704,6 +731,11 @@ async def iter_response_events(
 
         if finish := delta.get("finish_reason"):
             finish_reason = str(finish).lower()
+
+        if (msid := delta.get("matched_stop_token_id")) is not None:
+            stream_state.stop_token_id = _coerce_int(msid)
+        if (mst := delta.get("matched_stop_token")) is not None:
+            stream_state.stop_token = str(mst)
 
         if delta.get("is_final_delta", False):
             break

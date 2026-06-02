@@ -34,10 +34,7 @@ from orchard.server.models.chat.output import (
     generate_chat_completion_id,
     get_current_timestamp,
 )
-from orchard.server.models.reasoning import (
-    DEFAULT_BOOLEAN_REASONING_EFFORT,
-    DEFAULT_NATIVE_REASONING_MIN_TOKENS,
-)
+from orchard.server.models.reasoning import DEFAULT_BOOLEAN_REASONING_EFFORT
 from orchard.server.routes._common import (
     _ModelNotReadyError,
     managed_stream_session,
@@ -125,6 +122,7 @@ async def handle_completion_request(
         )
 
     prompt_payloads: list[dict[str, Any]] = []
+    reasoning_inputs = request.get_normalized_field("reasoning")
     for instance in normalized_instances:
         messages_as_dicts = [
             msg.model_dump(exclude_none=True) for msg in instance.messages
@@ -137,13 +135,11 @@ async def handle_completion_request(
         tool_schemas_str = json.dumps(core_tools_payload) if core_tools_payload else ""
         max_generated_tokens = instance.max_completion_tokens or MAX_GENERATED_TOKENS
         native_reasoning = formatter.supports_native_thinking()
+        reasoning_input = reasoning_inputs[instance.prompt_index]
         default_reasoning = (
             native_reasoning
             and instance.reasoning_effort is None
-            and "reasoning" not in request_fields
-            and "reasoning_effort" not in request_fields
-            and max_generated_tokens >= DEFAULT_NATIVE_REASONING_MIN_TOKENS
-            and bool(formatter.capabilities.get("thinking", {}).get("default"))
+            and reasoning_input is not False
         )
         reasoning_effort = instance.reasoning_effort or (
             DEFAULT_BOOLEAN_REASONING_EFFORT if default_reasoning else None
@@ -294,6 +290,7 @@ async def handle_completion_request(
         usage = ChatCompletionUsage(
             input_tokens=response_data["prompt_tokens"],
             output_tokens=response_data["completion_tokens"],
+            reasoning_tokens=response_data["reasoning_tokens"],
             total_tokens=response_data["prompt_tokens"]
             + response_data["completion_tokens"],
         )
@@ -351,6 +348,7 @@ async def gather_non_streaming_batch_response(
                 "error_message": None,
                 "cumulative_logprob": None,
                 "generation_len": 0,
+                "reasoning_tokens": 0,
             }
             for _ in range(candidate_count)
         ]
@@ -526,6 +524,23 @@ async def gather_non_streaming_batch_response(
                                 candidate_index,
                                 generation_len_val,
                             )
+                    reasoning_tokens_val = delta.get("reasoning_tokens")
+                    if reasoning_tokens_val is not None:
+                        try:
+                            state["reasoning_tokens"] = int(reasoning_tokens_val)
+                        except (TypeError, ValueError):
+                            logger.debug(
+                                "Failed to parse reasoning_tokens for request %d prompt %d candidate %d: %s",
+                                request_id,
+                                prompt_index,
+                                candidate_index,
+                                reasoning_tokens_val,
+                            )
+                    if state["generation_len"] > 0:
+                        state["completion_tokens"] = max(
+                            state["generation_len"] - state["reasoning_tokens"],
+                            0,
+                        )
                     remaining_sequences -= 1
                     logger.debug(
                         "Sequence %s for request %d (prompt %d, candidate %d) completed with reason %s",
@@ -543,6 +558,11 @@ async def gather_non_streaming_batch_response(
 
     total_completion_tokens = sum(
         candidate_state["completion_tokens"]
+        for prompt_state in prompt_states
+        for candidate_state in prompt_state
+    )
+    total_reasoning_tokens = sum(
+        candidate_state["reasoning_tokens"]
         for prompt_state in prompt_states
         for candidate_state in prompt_state
     )
@@ -628,6 +648,7 @@ async def gather_non_streaming_batch_response(
         "choices": choices,
         "prompt_tokens": total_prompt_tokens,
         "completion_tokens": total_completion_tokens,
+        "reasoning_tokens": total_reasoning_tokens,
     }
 
 

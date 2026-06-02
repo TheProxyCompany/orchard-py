@@ -1,0 +1,47 @@
+import httpx
+import pytest
+
+pytestmark = pytest.mark.asyncio
+
+async def test_chat_completion_respects_stop_sequence(live_server, text_model_id):
+    server_url = live_server
+    payload = {
+        "model": text_model_id,
+        "messages": [
+            {
+                "role": "user",
+                "content": "Reply with exactly: red, white, blue",
+            }
+        ],
+        "temperature": 0.0,
+        "reasoning": False,
+        "stream": False,
+        "max_completion_tokens": 32,
+        "stop": ["blue"],
+        "logprobs": True,
+        "top_logprobs": 10,
+    }
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        response = await client.post(
+            f"{server_url}/v1/chat/completions",
+            json=payload,
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "choices" in data
+    assert data["choices"]
+
+    choice = data["choices"][0]
+    content = choice["message"]["content"] or ""
+
+    normalized = content.lower()
+    assert "red" in normalized
+    assert "white" in normalized
+    assert "blue" in normalized
+
+    assert normalized.endswith("blue")
+
+    assert choice.get("finish_reason", "").lower() == "stop"
+    print(content)

@@ -1,0 +1,1710 @@
+{
+  "turn1": [
+    {
+      "type": "response.created",
+      "sequence_number": 0,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "in_progress",
+        "incomplete_details": null,
+        "stop_token_id": null,
+        "stop_token": null,
+        "model": "openai/gpt-oss-20b",
+        "output": [],
+        "usage": null
+      }
+    },
+    {
+      "type": "response.in_progress",
+      "sequence_number": 1,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "in_progress",
+        "incomplete_details": null,
+        "stop_token_id": null,
+        "stop_token": null,
+        "model": "openai/gpt-oss-20b",
+        "output": [],
+        "usage": null
+      }
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 2,
+      "token_id": 200005,
+      "content": "<|channel|>"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 3,
+      "token_id": 12606,
+      "content": "comment"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 4,
+      "token_id": 815,
+      "content": "ary"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 5,
+      "token_id": 316,
+      "content": " to"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 6,
+      "token_id": 28,
+      "content": "="
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 7,
+      "token_id": 44580,
+      "content": "functions"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 8,
+      "token_id": 775,
+      "content": ".get"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 9,
+      "token_id": 170154,
+      "content": "_weather"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 10,
+      "token_id": 220,
+      "content": " "
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 11,
+      "token_id": 200003,
+      "content": "<|constrain|>"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 12,
+      "token_id": 4108,
+      "content": "json"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 13,
+      "token_id": 200008,
+      "content": "<|message|>"
+    },
+    {
+      "type": "response.output_item.added",
+      "sequence_number": 14,
+      "output_index": 0,
+      "item": {
+        "type": "function_call",
+        "id": "fc_0",
+        "call_id": "call_0",
+        "name": "get_weather",
+        "arguments": "",
+        "status": "in_progress"
+      }
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 15,
+      "token_id": 10848,
+      "content": "{\""
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 16,
+      "token_id": 7693,
+      "content": "location"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 17,
+      "token_id": 7534,
+      "content": "\":\""
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 18,
+      "token_id": 28499,
+      "content": "San"
+    },
+    {
+      "type": "response.function_call_arguments.delta",
+      "sequence_number": 19,
+      "item_id": "fc_0",
+      "output_index": 0,
+      "delta": "San",
+      "field_path": "location"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 20,
+      "token_id": 18826,
+      "content": " Francisco"
+    },
+    {
+      "type": "response.function_call_arguments.delta",
+      "sequence_number": 21,
+      "item_id": "fc_0",
+      "output_index": 0,
+      "delta": " Francisco",
+      "field_path": "location"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 22,
+      "token_id": 18583,
+      "content": "\"}"
+    },
+    {
+      "type": "response.function_call_arguments.delta",
+      "sequence_number": 23,
+      "item_id": "fc_0",
+      "output_index": 0,
+      "delta": "{\"location\":\"San Francisco\"}",
+      "field_path": null
+    },
+    {
+      "type": "response.function_call_arguments.done",
+      "sequence_number": 24,
+      "item_id": "fc_0",
+      "output_index": 0,
+      "arguments": "{\"location\": \"San Francisco\"}"
+    },
+    {
+      "type": "response.output_item.done",
+      "sequence_number": 25,
+      "output_index": 0,
+      "item": {
+        "type": "function_call",
+        "id": "fc_0",
+        "call_id": "call_0",
+        "name": "get_weather",
+        "arguments": "{\"location\": \"San Francisco\"}",
+        "status": "completed"
+      }
+    },
+    {
+      "type": "response.completed",
+      "sequence_number": 26,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "completed",
+        "incomplete_details": null,
+        "stop_token_id": 200012,
+        "stop_token": "<|call|>",
+        "model": "openai/gpt-oss-20b",
+        "output": [
+          {
+            "type": "function_call",
+            "id": "fc_0",
+            "call_id": "call_0",
+            "name": "get_weather",
+            "arguments": "{\"location\": \"San Francisco\"}",
+            "status": "completed"
+          }
+        ],
+        "usage": {
+          "input_tokens": 196,
+          "output_tokens": 19,
+          "total_tokens": 215,
+          "input_tokens_details": {
+            "cached_tokens": 0
+          },
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          }
+        }
+      }
+    },
+    {
+      "type": "done"
+    }
+  ],
+  "turn2": [
+    {
+      "type": "response.created",
+      "sequence_number": 0,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "in_progress",
+        "incomplete_details": null,
+        "stop_token_id": null,
+        "stop_token": null,
+        "model": "openai/gpt-oss-20b",
+        "output": [],
+        "usage": null
+      }
+    },
+    {
+      "type": "response.in_progress",
+      "sequence_number": 1,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "in_progress",
+        "incomplete_details": null,
+        "stop_token_id": null,
+        "stop_token": null,
+        "model": "openai/gpt-oss-20b",
+        "output": [],
+        "usage": null
+      }
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 2,
+      "token_id": 200005,
+      "content": "<|channel|>"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 3,
+      "token_id": 12606,
+      "content": "comment"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 4,
+      "token_id": 815,
+      "content": "ary"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 5,
+      "token_id": 316,
+      "content": " to"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 6,
+      "token_id": 28,
+      "content": "="
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 7,
+      "token_id": 44580,
+      "content": "functions"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 8,
+      "token_id": 775,
+      "content": ".get"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 9,
+      "token_id": 6425,
+      "content": "_time"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 10,
+      "token_id": 220,
+      "content": " "
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 11,
+      "token_id": 200003,
+      "content": "<|constrain|>"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 12,
+      "token_id": 4108,
+      "content": "json"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 13,
+      "token_id": 200008,
+      "content": "<|message|>"
+    },
+    {
+      "type": "response.output_item.added",
+      "sequence_number": 14,
+      "output_index": 0,
+      "item": {
+        "type": "function_call",
+        "id": "fc_0",
+        "call_id": "call_0",
+        "name": "get_time",
+        "arguments": "",
+        "status": "in_progress"
+      }
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 15,
+      "token_id": 10848,
+      "content": "{\""
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 16,
+      "token_id": 106775,
+      "content": "timezone"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 17,
+      "token_id": 7534,
+      "content": "\":\""
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 18,
+      "token_id": 66462,
+      "content": "Asia"
+    },
+    {
+      "type": "response.function_call_arguments.delta",
+      "sequence_number": 19,
+      "item_id": "fc_0",
+      "output_index": 0,
+      "delta": "Asia",
+      "field_path": "timezone"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 20,
+      "token_id": 26742,
+      "content": "/T"
+    },
+    {
+      "type": "response.function_call_arguments.delta",
+      "sequence_number": 21,
+      "item_id": "fc_0",
+      "output_index": 0,
+      "delta": "/T",
+      "field_path": "timezone"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 22,
+      "token_id": 525,
+      "content": "ok"
+    },
+    {
+      "type": "response.function_call_arguments.delta",
+      "sequence_number": 23,
+      "item_id": "fc_0",
+      "output_index": 0,
+      "delta": "ok",
+      "field_path": "timezone"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 24,
+      "token_id": 4925,
+      "content": "yo"
+    },
+    {
+      "type": "response.function_call_arguments.delta",
+      "sequence_number": 25,
+      "item_id": "fc_0",
+      "output_index": 0,
+      "delta": "yo",
+      "field_path": "timezone"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 26,
+      "token_id": 18583,
+      "content": "\"}"
+    },
+    {
+      "type": "response.function_call_arguments.delta",
+      "sequence_number": 27,
+      "item_id": "fc_0",
+      "output_index": 0,
+      "delta": "{\"timezone\":\"Asia/Tokyo\"}",
+      "field_path": null
+    },
+    {
+      "type": "response.function_call_arguments.done",
+      "sequence_number": 28,
+      "item_id": "fc_0",
+      "output_index": 0,
+      "arguments": "{\"timezone\": \"Asia/Tokyo\"}"
+    },
+    {
+      "type": "response.output_item.done",
+      "sequence_number": 29,
+      "output_index": 0,
+      "item": {
+        "type": "function_call",
+        "id": "fc_0",
+        "call_id": "call_0",
+        "name": "get_time",
+        "arguments": "{\"timezone\": \"Asia/Tokyo\"}",
+        "status": "completed"
+      }
+    },
+    {
+      "type": "response.completed",
+      "sequence_number": 30,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "completed",
+        "incomplete_details": null,
+        "stop_token_id": 200012,
+        "stop_token": "<|call|>",
+        "model": "openai/gpt-oss-20b",
+        "output": [
+          {
+            "type": "function_call",
+            "id": "fc_0",
+            "call_id": "call_0",
+            "name": "get_time",
+            "arguments": "{\"timezone\": \"Asia/Tokyo\"}",
+            "status": "completed"
+          }
+        ],
+        "usage": {
+          "input_tokens": 250,
+          "output_tokens": 21,
+          "total_tokens": 271,
+          "input_tokens_details": {
+            "cached_tokens": 0
+          },
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          }
+        }
+      }
+    },
+    {
+      "type": "done"
+    }
+  ],
+  "turn3": [
+    {
+      "type": "response.created",
+      "sequence_number": 0,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "in_progress",
+        "incomplete_details": null,
+        "stop_token_id": null,
+        "stop_token": null,
+        "model": "openai/gpt-oss-20b",
+        "output": [],
+        "usage": null
+      }
+    },
+    {
+      "type": "response.in_progress",
+      "sequence_number": 1,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "in_progress",
+        "incomplete_details": null,
+        "stop_token_id": null,
+        "stop_token": null,
+        "model": "openai/gpt-oss-20b",
+        "output": [],
+        "usage": null
+      }
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 2,
+      "token_id": 200005,
+      "content": "<|channel|>"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 3,
+      "token_id": 17196,
+      "content": "final"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 4,
+      "token_id": 200008,
+      "content": "<|message|>"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 5,
+      "token_id": 410,
+      "content": "**"
+    },
+    {
+      "type": "response.output_item.added",
+      "sequence_number": 6,
+      "output_index": 0,
+      "item": {
+        "type": "message",
+        "id": "msg_0",
+        "status": "in_progress",
+        "role": "assistant",
+        "content": []
+      }
+    },
+    {
+      "type": "response.content_part.added",
+      "sequence_number": 7,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "part": {
+        "type": "output_text",
+        "text": "",
+        "annotations": [],
+        "logprobs": []
+      }
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 8,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "**",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 9,
+      "token_id": 28499,
+      "content": "San"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 10,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "San",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 11,
+      "token_id": 35971,
+      "content": " "
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 12,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " ",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 13,
+      "token_id": 106672,
+      "content": "Franc"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 14,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "Franc",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 15,
+      "token_id": 13009,
+      "content": "isco"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 16,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "isco",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 17,
+      "token_id": 410,
+      "content": "**"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 18,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "**",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 19,
+      "token_id": 1127,
+      "content": " –"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 20,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " –",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 21,
+      "token_id": 1225,
+      "content": " It"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 22,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " It",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 23,
+      "token_id": 802,
+      "content": "’s"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 24,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "’s",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 25,
+      "token_id": 6821,
+      "content": " currently"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 26,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " currently",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 27,
+      "token_id": 1078,
+      "content": " about"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 28,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " about",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 29,
+      "token_id": 6240,
+      "content": " **"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 30,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " **",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 31,
+      "token_id": 3898,
+      "content": "65"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 32,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "65",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 33,
+      "token_id": 35971,
+      "content": " "
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 34,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " ",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 35,
+      "token_id": 68854,
+      "content": "°F"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 36,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "°F",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 37,
+      "token_id": 350,
+      "content": " ("
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 38,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " (",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 39,
+      "token_id": 171441,
+      "content": "≈"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 40,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "≈",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 41,
+      "token_id": 1157,
+      "content": "18"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 42,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "18",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 43,
+      "token_id": 35971,
+      "content": " "
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 44,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " ",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 45,
+      "token_id": 26557,
+      "content": "°C"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 46,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "°C",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 47,
+      "token_id": 80066,
+      "content": ")**"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 48,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": ")**",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 49,
+      "token_id": 326,
+      "content": " and"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 50,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " and",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 51,
+      "token_id": 290,
+      "content": " the"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 52,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " the",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 53,
+      "token_id": 17307,
+      "content": " sky"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 54,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " sky",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 55,
+      "token_id": 382,
+      "content": " is"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 56,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " is",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 57,
+      "token_id": 6240,
+      "content": " **"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 58,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " **",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 59,
+      "token_id": 180062,
+      "content": "fog"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 60,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "fog",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 61,
+      "token_id": 4544,
+      "content": "gy"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 62,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "gy",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 63,
+      "token_id": 410,
+      "content": "**"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 64,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "**",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 65,
+      "token_id": 364,
+      "content": ".\n\n"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 66,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": ".\n\n",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 67,
+      "token_id": 410,
+      "content": "**"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 68,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "**",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 69,
+      "token_id": 173844,
+      "content": "Tokyo"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 70,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "Tokyo",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 71,
+      "token_id": 410,
+      "content": "**"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 72,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "**",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 73,
+      "token_id": 1127,
+      "content": " –"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 74,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " –",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 75,
+      "token_id": 623,
+      "content": " The"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 76,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " The",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 77,
+      "token_id": 2698,
+      "content": " local"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 78,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " local",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 79,
+      "token_id": 1058,
+      "content": " time"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 80,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " time",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 81,
+      "token_id": 382,
+      "content": " is"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 82,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " is",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 83,
+      "token_id": 6240,
+      "content": " **"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 84,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " **",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 85,
+      "token_id": 1860,
+      "content": "23"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 86,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "23",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 87,
+      "token_id": 25,
+      "content": ":"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 88,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": ":",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 89,
+      "token_id": 504,
+      "content": "00"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 90,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "00",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 91,
+      "token_id": 410,
+      "content": "**"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 92,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "**",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 93,
+      "token_id": 350,
+      "content": " ("
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 94,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " (",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 95,
+      "token_id": 994,
+      "content": "11"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 96,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "11",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 97,
+      "token_id": 35971,
+      "content": " "
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 98,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " ",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 99,
+      "token_id": 79,
+      "content": "p"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 100,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "p",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 101,
+      "token_id": 1021,
+      "content": ".m"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 102,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": ".m",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 103,
+      "token_id": 8476,
+      "content": ".)"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 104,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": ".)",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 105,
+      "token_id": 306,
+      "content": " in"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 106,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " in",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 107,
+      "token_id": 290,
+      "content": " the"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 108,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " the",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 109,
+      "token_id": 6240,
+      "content": " **"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 110,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " **",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 111,
+      "token_id": 66462,
+      "content": "Asia"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 112,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "Asia",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 113,
+      "token_id": 26742,
+      "content": "/T"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 114,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "/T",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 115,
+      "token_id": 525,
+      "content": "ok"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 116,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "ok",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 117,
+      "token_id": 4925,
+      "content": "yo"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 118,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "yo",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 119,
+      "token_id": 410,
+      "content": "**"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 120,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "**",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 121,
+      "token_id": 1058,
+      "content": " time"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 122,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " time",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 123,
+      "token_id": 15070,
+      "content": " zone"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 124,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " zone",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 125,
+      "token_id": 11,
+      "content": ","
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 126,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": ",",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 127,
+      "token_id": 1118,
+      "content": " which"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 128,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " which",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 129,
+      "token_id": 382,
+      "content": " is"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 130,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " is",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 131,
+      "token_id": 6240,
+      "content": " **"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 132,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " **",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 133,
+      "token_id": 32674,
+      "content": "UTC"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 134,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "UTC",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 135,
+      "token_id": 35971,
+      "content": " "
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 136,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " ",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 137,
+      "token_id": 10,
+      "content": "+"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 138,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "+",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 139,
+      "token_id": 24,
+      "content": "9"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 140,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "9",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 141,
+      "token_id": 410,
+      "content": "**"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 142,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "**",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 143,
+      "token_id": 13,
+      "content": "."
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 144,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": ".",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_text.done",
+      "sequence_number": 145,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "text": "**San Francisco** – It’s currently about **65 °F (≈18 °C)** and the sky is **foggy**.\n\n**Tokyo** – The local time is **23:00** (11 p.m.) in the **Asia/Tokyo** time zone, which is **UTC +9**.",
+      "logprobs": []
+    },
+    {
+      "type": "response.content_part.done",
+      "sequence_number": 146,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "part": {
+        "type": "output_text",
+        "text": "**San Francisco** – It’s currently about **65 °F (≈18 °C)** and the sky is **foggy**.\n\n**Tokyo** – The local time is **23:00** (11 p.m.) in the **Asia/Tokyo** time zone, which is **UTC +9**.",
+        "annotations": [],
+        "logprobs": []
+      }
+    },
+    {
+      "type": "response.output_item.done",
+      "sequence_number": 147,
+      "output_index": 0,
+      "item": {
+        "type": "message",
+        "id": "msg_0",
+        "status": "completed",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "output_text",
+            "text": "**San Francisco** – It’s currently about **65 °F (≈18 °C)** and the sky is **foggy**.\n\n**Tokyo** – The local time is **23:00** (11 p.m.) in the **Asia/Tokyo** time zone, which is **UTC +9**.",
+            "annotations": [],
+            "logprobs": []
+          }
+        ]
+      }
+    },
+    {
+      "type": "response.completed",
+      "sequence_number": 148,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "completed",
+        "incomplete_details": null,
+        "stop_token_id": 200002,
+        "stop_token": "<|return|>",
+        "model": "openai/gpt-oss-20b",
+        "output": [
+          {
+            "type": "message",
+            "id": "msg_0",
+            "status": "completed",
+            "role": "assistant",
+            "content": [
+              {
+                "type": "output_text",
+                "text": "**San Francisco** – It’s currently about **65 °F (≈18 °C)** and the sky is **foggy**.\n\n**Tokyo** – The local time is **23:00** (11 p.m.) in the **Asia/Tokyo** time zone, which is **UTC +9**.",
+                "annotations": [],
+                "logprobs": []
+              }
+            ]
+          }
+        ],
+        "usage": {
+          "input_tokens": 309,
+          "output_tokens": 73,
+          "total_tokens": 382,
+          "input_tokens_details": {
+            "cached_tokens": 0
+          },
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          }
+        }
+      }
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

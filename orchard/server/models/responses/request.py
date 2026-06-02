@@ -207,6 +207,14 @@ class ResponseRequest(BaseModel):
         default=False,
         description="Use deterministic kernels for this request.",
     )
+    prefix_cache: bool | None = Field(
+        default=None,
+        description="Whether this request may read from and write to the shared prefix cache. Default True.",
+    )
+    stream_tokens: bool = Field(
+        default=False,
+        description="Emit response.output_token events carrying raw token ids alongside the semantic deltas. Client-side only; not sent to the engine.",
+    )
     top_logprobs: int | None = Field(
         default=None,
         ge=0,
@@ -269,7 +277,7 @@ class ResponseRequest(BaseModel):
         if value is None:
             return None
         if value is False:
-            return None
+            return False
         if value is True:
             return {"effort": DEFAULT_BOOLEAN_REASONING_EFFORT}
         return value
