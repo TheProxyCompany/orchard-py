@@ -12,7 +12,8 @@ _IMAGE_SPAN_STRUCT = struct.Struct("<Q")
 # Segment type codes matching C++ SerializedSegmentType
 _SEGMENT_TYPE_TEXT = 0
 _SEGMENT_TYPE_IMAGE = 1
-_SEGMENT_TYPE_CAPABILITY = 2
+_SEGMENT_TYPE_AUDIO = 2
+_SEGMENT_TYPE_CAPABILITY = 3
 
 _REQUEST_TYPE_CODES = {
     "generation": 0,
@@ -49,7 +50,7 @@ def _coerce_bytes(value: Any) -> bytes:
     return str(value).encode("utf-8")
 
 
-def _encode_image_buffers(buffers: Sequence[bytes]) -> tuple[bytes, int, bytes]:
+def _encode_media_buffers(buffers: Sequence[bytes]) -> tuple[bytes, int, bytes]:
     if not buffers:
         return b"", 0, b""
     span_buffer = bytearray(len(buffers) * _IMAGE_SPAN_STRUCT.size)
@@ -96,15 +97,20 @@ def _encode_capabilities(
 
 
 def _encode_layout(
-    layout: Sequence[Mapping[str, Any]], text_len: int, image_buffers: Sequence[bytes]
+    layout: Sequence[Mapping[str, Any]],
+    text_len: int,
+    image_buffers: Sequence[bytes],
+    audio_buffers: Sequence[bytes],
 ) -> tuple[bytes, int]:
-    """Encode layout segments including text, image, and capability types."""
+    """Encode layout segments including text, image, audio, and capability types."""
     segments: list[tuple[int, int]] = []
     if not layout:
         if text_len:
             segments.append((_SEGMENT_TYPE_TEXT, text_len))
         for image in image_buffers:
             segments.append((_SEGMENT_TYPE_IMAGE, len(image)))
+        for audio in audio_buffers:
+            segments.append((_SEGMENT_TYPE_AUDIO, len(audio)))
     else:
         for segment in layout:
             seg_type = str(segment.get("type", "text")).lower()
@@ -113,6 +119,8 @@ def _encode_layout(
                 segments.append((_SEGMENT_TYPE_TEXT, length))
             elif seg_type == "image":
                 segments.append((_SEGMENT_TYPE_IMAGE, length))
+            elif seg_type == "audio":
+                segments.append((_SEGMENT_TYPE_AUDIO, length))
             elif seg_type == "capability":
                 # Capability segments use length=0 in binary layout (actual data is in JSON)
                 segments.append((_SEGMENT_TYPE_CAPABILITY, 0))
@@ -128,7 +136,11 @@ def _encode_layout(
     layout_image_bytes = sum(
         length for seg_type, length in segments if seg_type == _SEGMENT_TYPE_IMAGE
     )
+    layout_audio_bytes = sum(
+        length for seg_type, length in segments if seg_type == _SEGMENT_TYPE_AUDIO
+    )
     total_image_bytes = sum(len(image) for image in image_buffers)
+    total_audio_bytes = sum(len(audio) for audio in audio_buffers)
 
     if layout_text_bytes != text_len:
         raise ValueError(
@@ -138,6 +150,11 @@ def _encode_layout(
         raise ValueError(
             "Layout image length mismatch "
             f"(expected {total_image_bytes}, got {layout_image_bytes})."
+        )
+    if layout_audio_bytes != total_audio_bytes:
+        raise ValueError(
+            "Layout audio length mismatch "
+            f"(expected {total_audio_bytes}, got {layout_audio_bytes})."
         )
 
     buffer = bytearray(len(segments) * _LAYOUT_SEGMENT_STRUCT.size)
@@ -200,8 +217,14 @@ def _build_request_payload(
         image_buffers_raw = [
             _coerce_bytes(buffer) for buffer in prompt.get("image_buffers", [])
         ]
-        image_span_bytes, image_count, image_data_bytes = _encode_image_buffers(
+        image_span_bytes, image_count, image_data_bytes = _encode_media_buffers(
             image_buffers_raw
+        )
+        audio_buffers_raw = [
+            _coerce_bytes(buffer) for buffer in prompt.get("audio_buffers", [])
+        ]
+        audio_span_bytes, audio_count, audio_data_bytes = _encode_media_buffers(
+            audio_buffers_raw
         )
 
         # Encode capability entries
@@ -210,7 +233,10 @@ def _build_request_payload(
         )
 
         layout_bytes, layout_count = _encode_layout(
-            prompt.get("layout", []), len(text_buffer), image_buffers_raw
+            prompt.get("layout", []),
+            len(text_buffer),
+            image_buffers_raw,
+            audio_buffers_raw,
         )
 
         def reserve_blob(data: bytes) -> tuple[int, int]:
@@ -226,6 +252,8 @@ def _build_request_payload(
         text_offset, text_size = reserve_blob(text_buffer)
         image_sizes_offset, _ = reserve_blob(image_span_bytes)
         image_data_offset, image_data_size = reserve_blob(image_data_bytes)
+        audio_sizes_offset, _ = reserve_blob(audio_span_bytes)
+        audio_data_offset, audio_data_size = reserve_blob(audio_data_bytes)
         capability_data_offset, capability_data_size = reserve_blob(
             capability_data_bytes
         )
@@ -365,6 +393,10 @@ def _build_request_payload(
                 "image_data_size": image_data_size,
                 "image_sizes_offset": image_sizes_offset,
                 "image_count": image_count,
+                "audio_data_offset": audio_data_offset,
+                "audio_data_size": audio_data_size,
+                "audio_sizes_offset": audio_sizes_offset,
+                "audio_count": audio_count,
                 "capability_data_offset": capability_data_offset,
                 "capability_data_size": capability_data_size,
                 "capabilities": capability_metadata,

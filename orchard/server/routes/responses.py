@@ -94,7 +94,7 @@ async def handle_response_request(
     formatter = model_info.formatter
 
     try:
-        messages_for_template, image_buffers, capabilities, content_order = (
+        messages_for_template, image_buffers, audio_buffers, capabilities, content_order = (
             build_multimodal_messages(
                 formatter=formatter,
                 items=request.get_message_items(),
@@ -166,10 +166,13 @@ async def handle_response_request(
         layout_segments = build_multimodal_layout(
             prompt_text,
             image_buffers,
+            audio_buffers,
             capabilities,
             content_order,
             formatter.image_placeholder,
             formatter.should_clip_image_placeholder,
+            audio_placeholder=formatter.get_audio_placeholder(),
+            coord_placeholder=formatter.get_coord_placeholder(),
         )
     except ValueError as exc:
         logger.error("Failed to build multimodal layout: %s", exc)
@@ -177,8 +180,7 @@ async def handle_response_request(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
         ) from exc
 
-    if formatter.should_clip_image_placeholder:
-        prompt_text = prompt_text.replace(formatter.image_placeholder, "")
+    prompt_text = formatter.strip_template_placeholders(prompt_text)
 
     logger.info("Prompt text: %s", prompt_text)
 
@@ -253,6 +255,7 @@ async def handle_response_request(
         prompt_payload = {
             "prompt_bytes": prompt_bytes,
             "image_buffers": image_buffers,
+            "audio_buffers": audio_buffers,
             "capabilities": capabilities_payload,
             "layout": layout_segments,
             "sampling_params": {

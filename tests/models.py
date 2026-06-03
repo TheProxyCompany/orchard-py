@@ -23,7 +23,6 @@ MODELS = [
     Model("qwen3_5",        "Qwen/Qwen3.5-4B",                         thinking=True,       vision=False, tools=True),
     Model("moondream3",     "moondream/moondream3-preview",            thinking=True,       vision=True,  tools=False),
     Model("afmoe",          "mlx-community/Trinity-Mini-4bit",         thinking=True,       vision=False, tools=True),
-    Model("lfm2",           "LiquidAI/LFM2.5-1.2B-Instruct",           thinking=False,      vision=False, tools=True),
     Model("lfm2_5",         "LiquidAI/LFM2.5-8B-A1B",                  thinking="required", vision=False, tools=True),
     Model("olmo_hybrid",    "allenai/Olmo-Hybrid-Instruct-DPO-7B",     thinking=False,      vision=False, tools=True),
     Model("nemotron_h",     "nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16",   thinking=True,       vision=False, tools=True),

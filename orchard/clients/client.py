@@ -1121,7 +1121,7 @@ class Client:
             else {"start": "", "end": ""}
         )
         try:
-            messages_for_template, image_buffers, capabilities, content_order = (
+            messages_for_template, image_buffers, audio_buffers, capabilities, content_order = (
                 build_multimodal_messages(
                     formatter=formatter,
                     items=messages,
@@ -1157,21 +1157,18 @@ class Client:
             layout_segments = build_multimodal_layout(
                 prompt_text,
                 image_buffers,
+                audio_buffers,
                 capabilities,
                 content_order,
                 formatter.image_placeholder,
                 formatter.should_clip_image_placeholder,
+                audio_placeholder=formatter.get_audio_placeholder(),
                 coord_placeholder=formatter.get_coord_placeholder(),
             )
         except ValueError as exc:
             raise ValueError(f"Invalid multimodal layout: {exc}") from exc
 
-        if formatter.should_clip_image_placeholder:
-            prompt_text = prompt_text.replace(formatter.image_placeholder, "")
-
-        coord_placeholder = formatter.get_coord_placeholder()
-        if coord_placeholder:
-            prompt_text = prompt_text.replace(coord_placeholder, "")
+        prompt_text = formatter.strip_template_placeholders(prompt_text)
 
         prompt_bytes = prompt_text.encode("utf-8")
         generation_defaults = self._formatter_generation_defaults(formatter)
@@ -1232,6 +1229,7 @@ class Client:
         prompt_payload = {
             "prompt_bytes": prompt_bytes,
             "image_buffers": image_buffers,
+            "audio_buffers": audio_buffers,
             "capabilities": capabilities_payload,
             "layout": layout_segments,
             "sampling_params": {

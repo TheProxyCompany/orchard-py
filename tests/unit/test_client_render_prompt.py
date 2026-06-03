@@ -74,6 +74,15 @@ class _FakeFormatter:
     def get_coord_placeholder(self) -> str:
         return "<|coord|>"
 
+    def get_audio_placeholder(self) -> str | None:
+        return None
+
+    def get_capability_placeholder(self) -> str:
+        return "<|coord|>"
+
+    def strip_template_placeholders(self, prompt: str) -> str:
+        return prompt.replace(self.image_placeholder, "").replace("<|coord|>", "")
+
     def get_tool_calling_tokens(self) -> dict[str, Any]:
         return {
             "formats": [],
@@ -151,6 +160,9 @@ def _make_client(formatter: Any | None = None) -> Client:
         ("moondream3", "moondream3"),
         ("gemma4", "gemma4"),
         ("gemma4_text", "gemma4"),
+        ("gemma4u", "gemma4u"),
+        ("gemma4_unified", "gemma4u"),
+        ("gemma4_unified_text", "gemma4u"),
         ("qwen3_5", "qwen3_5"),
         ("qwen3_5_text", "qwen3_5"),
         ("qwen3_5_moe", "qwen3_5"),
@@ -176,6 +188,17 @@ def test_determine_template_type_prefers_explicit_template_type() -> None:
     assert determine_model_type(config) == "qwen3_5"
     assert determine_template_type(config) == "custom"
     assert determine_pantheon_profile(config) == "qwen3_5"
+
+
+def test_gemma4u_profile_loads_audio_placeholder() -> None:
+    formatter = ChatFormatter.from_config(
+        "/tmp/gemma4u", {"model_type": "gemma4_unified"}
+    )
+
+    assert formatter.profile_dir.name == "gemma4u"
+    assert formatter.get_audio_placeholder() == "<|audio|>"
+    assert formatter.get_capability_placeholder() is None
+    assert formatter.strip_template_placeholders("a<|audio|>b") == "ab"
 
 
 def test_determine_model_type_requires_model_type() -> None:

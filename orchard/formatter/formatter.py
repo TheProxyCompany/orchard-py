@@ -63,6 +63,9 @@ def determine_pantheon_profile(config: dict) -> str:
     if model_type in ("gemma4", "gemma4_text"):
         return "gemma4"
 
+    if model_type in ("gemma4u", "gemma4_unified", "gemma4_unified_text"):
+        return "gemma4u"
+
     if model_type == "lfm2_moe":
         return "lfm2_5"
 
@@ -261,6 +264,53 @@ class ChatFormatter:
             if placeholder:
                 return placeholder
         return None
+
+    def get_audio_placeholder(self) -> str | None:
+        """Extract the audio placeholder from capabilities.yaml."""
+        audio = self.capabilities.get("audio", {})
+        placeholder = audio.get("placeholders", {}).get("audio")
+        if placeholder:
+            return placeholder
+        return audio.get("tokens", {}).get("placeholder")
+
+    def capability_placeholders(self) -> list[str]:
+        """Extract inline capability placeholders from capabilities.yaml."""
+        placeholders: list[str] = []
+        for cap in self.capabilities.values():
+            if not isinstance(cap, dict):
+                continue
+            placeholder_map = cap.get("placeholders")
+            if not isinstance(placeholder_map, dict):
+                continue
+            for placeholder in placeholder_map.values():
+                if (
+                    isinstance(placeholder, str)
+                    and placeholder
+                    and placeholder not in placeholders
+                ):
+                    placeholders.append(placeholder)
+        return placeholders
+
+    def get_capability_placeholder(self) -> str | None:
+        """Return the first non-image capability placeholder used for layout."""
+        image_placeholder = self.image_placeholder
+        audio_placeholder = self.get_audio_placeholder()
+        for placeholder in self.capability_placeholders():
+            if placeholder not in {image_placeholder, audio_placeholder}:
+                return placeholder
+        return None
+
+    def strip_template_placeholders(self, prompt: str) -> str:
+        """Remove synthetic multimodal placeholders from rendered prompt text."""
+        stripped = prompt
+        if self.should_clip_image_placeholder:
+            stripped = stripped.replace(self.image_placeholder, "")
+        image_placeholder = self.image_placeholder
+        for placeholder in self.capability_placeholders():
+            if placeholder == image_placeholder:
+                continue
+            stripped = stripped.replace(placeholder, "")
+        return stripped
 
     def get_tool_calling_tokens(self) -> dict[str, Any]:
         """Extract tool calling delimiter tokens from capabilities.yaml."""

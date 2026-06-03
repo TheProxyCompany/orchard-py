@@ -64,6 +64,21 @@ class _RenderableImage:
         return ""
 
 
+class _RenderableAudio:
+    """Placeholder wrapper that renders as empty text and reports `type=audio`."""
+
+    __slots__ = ()
+    _TYPE = "audio"
+
+    def __getitem__(self, key: str) -> str:
+        if key == "type":
+            return self._TYPE
+        raise KeyError(key)
+
+    def __str__(self) -> str:
+        return ""
+
+
 class _RenderableCapability:
     """Placeholder wrapper for capability inputs (coord, size). Renders as empty."""
 
@@ -132,12 +147,16 @@ def build_multimodal_messages(
     items: Iterable[Any],
     instructions: str | None = None,
 ) -> tuple[
-    list[dict[str, Any]], list[bytes], list[CapabilityInput], list[tuple[str, int]]
+    list[dict[str, Any]],
+    list[bytes],
+    list[bytes],
+    list[CapabilityInput],
+    list[tuple[str, int]],
 ]:
     """Build multimodal messages for template rendering.
 
     Returns:
-        Tuple of (messages, image_buffers, capabilities, content_order).
+        Tuple of (messages, image_buffers, audio_buffers, capabilities, content_order).
         content_order is a list of (type, index) tuples indicating the order of
         multimodal content parts (e.g., [("image", 0), ("text", 0)]).
     """
@@ -146,6 +165,7 @@ def build_multimodal_messages(
 
     messages: list[dict[str, Any]] = []
     image_buffers: list[bytes] = []
+    audio_buffers: list[bytes] = []
     capabilities: list[CapabilityInput] = []
     content_order: list[tuple[str, int]] = []
 
@@ -182,7 +202,9 @@ def build_multimodal_messages(
                 "Message content must be a string or list of content parts."
             )
 
-        parts: list[_RenderableText | _RenderableImage | _RenderableCapability] = []
+        parts: list[
+            _RenderableText | _RenderableImage | _RenderableAudio | _RenderableCapability
+        ] = []
         for part_index, content_part in enumerate(content):
             part_type = _get_field(content_part, "type")
             if not isinstance(part_type, str):
@@ -211,6 +233,18 @@ def build_multimodal_messages(
                 content_order.append(("image", len(image_buffers)))
                 image_buffers.append(decoded_bytes)
                 parts.append(_RenderableImage())
+            elif normalized_type in {"input_audio", "audio"}:
+                data = _get_field(content_part, "data")
+                if isinstance(data, dict):
+                    data = data.get("samples") or data.get("data")
+                if not data or not isinstance(data, list | tuple):
+                    raise ValueError(
+                        f"Audio content part {part_index} in message {message_index} missing float32 'data' array."
+                    )
+                payload = struct.pack("<" + "f" * len(data), *data)
+                content_order.append(("audio", len(audio_buffers)))
+                audio_buffers.append(payload)
+                parts.append(_RenderableAudio())
             elif normalized_type == "capability":
                 name = _get_field(content_part, "name")
                 data = _get_field(content_part, "data")
@@ -241,7 +275,7 @@ def build_multimodal_messages(
             msg["tool_calls"] = tool_calls
         messages.append(msg)
 
-    return messages, image_buffers, capabilities, content_order
+    return messages, image_buffers, audio_buffers, capabilities, content_order
 
 
 DEFAULT_COORD_PLACEHOLDER = "<|coord|>"
@@ -250,22 +284,26 @@ DEFAULT_COORD_PLACEHOLDER = "<|coord|>"
 def build_multimodal_layout(
     prompt_text: str,
     image_buffers: list[bytes],
+    audio_buffers: list[bytes],
     capabilities: list[CapabilityInput],
     content_order: list[tuple[str, int]],
     placeholder_token: str,
     exclude_image_placeholder: bool,
+    audio_placeholder: str | None = None,
     coord_placeholder: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Build the multimodal layout with images and capabilities at correct positions.
+    """Build the multimodal layout with media and capabilities at correct positions.
 
     Args:
-        prompt_text: The rendered prompt text with image placeholders.
+        prompt_text: The rendered prompt text with media placeholders.
         image_buffers: List of image byte buffers.
+        audio_buffers: List of audio byte buffers.
         capabilities: List of capability inputs.
         content_order: Order of multimodal content parts from build_multimodal_messages.
         placeholder_token: The image placeholder token (e.g., "<|image|>").
         exclude_image_placeholder: Whether to exclude the placeholder from text segments.
-        coord_placeholder: Optional coordinate placeholder token (e.g., "<|coord|>").
+        audio_placeholder: Optional audio placeholder token (e.g., "<|audio|>").
+        coord_placeholder: Optional capability placeholder token (e.g., "<|coord|>").
             If provided and found in prompt_text, capabilities will be placed at
             placeholder positions instead of using content_order.
 
@@ -274,7 +312,7 @@ def build_multimodal_layout(
     """
     layout: list[dict[str, Any]] = []
 
-    if not image_buffers and not capabilities:
+    if not image_buffers and not audio_buffers and not capabilities:
         # Text-only case
         text_bytes = prompt_text.encode("utf-8")
         if not text_bytes:
@@ -300,35 +338,50 @@ def build_multimodal_layout(
             "Mismatch between image placeholders and supplied image parts."
         )
 
-    # Find coord placeholder positions if coord_placeholder is provided
-    coord_placeholder_token = coord_placeholder or DEFAULT_COORD_PLACEHOLDER
-    coord_matches = list(re.finditer(re.escape(coord_placeholder_token), prompt_text))
-    use_coord_placeholders = len(coord_matches) > 0
+    audio_matches = (
+        list(re.finditer(re.escape(audio_placeholder), prompt_text))
+        if audio_buffers and audio_placeholder
+        else []
+    )
+    if len(audio_matches) != len(audio_buffers):
+        logger.error(
+            "Mismatch between rendered audio placeholders (%d) and supplied audio segments (%d).",
+            len(audio_matches),
+            len(audio_buffers),
+        )
+        raise ValueError(
+            "Mismatch between audio placeholders and supplied audio parts."
+        )
 
-    if use_coord_placeholders:
-        # Validate: coord placeholders should match coord capabilities
-        coord_capabilities = [c for c in capabilities if c.name == "coord"]
-        if len(coord_matches) != len(coord_capabilities):
+    capability_placeholder_token = coord_placeholder or DEFAULT_COORD_PLACEHOLDER
+    capability_matches = (
+        list(re.finditer(re.escape(capability_placeholder_token), prompt_text))
+        if capabilities
+        else []
+    )
+    use_placeholder_positions = bool(audio_matches or capability_matches)
+
+    if use_placeholder_positions:
+        if len(capability_matches) != len(capabilities):
             logger.error(
-                "Mismatch between coord placeholders (%d) and coord capabilities (%d).",
-                len(coord_matches),
-                len(coord_capabilities),
+                "Mismatch between capability placeholders (%d) and capability parts (%d).",
+                len(capability_matches),
+                len(capabilities),
             )
             raise ValueError(
-                "Mismatch between coord placeholders and coord capability parts."
+                "Mismatch between capability placeholders and capability parts."
             )
 
-        # Build combined list of all placeholders with their positions
-        # Each entry: (position, type, index) where type is "image" or "coord"
-        all_placeholders: list[
-            tuple[int, int, str, int]
-        ] = []  # (start, end, type, idx)
+        all_placeholders: list[tuple[int, int, str, int]] = []
 
         for idx, match in enumerate(image_matches):
             all_placeholders.append((match.start(), match.end(), "image", idx))
 
-        for idx, match in enumerate(coord_matches):
-            all_placeholders.append((match.start(), match.end(), "coord", idx))
+        for idx, match in enumerate(audio_matches):
+            all_placeholders.append((match.start(), match.end(), "audio", idx))
+
+        for idx, match in enumerate(capability_matches):
+            all_placeholders.append((match.start(), match.end(), "capability", idx))
 
         # Sort by position
         all_placeholders.sort(key=lambda x: x[0])
@@ -343,7 +396,7 @@ def build_multimodal_layout(
                 text_segment = prompt_text[
                     cursor : start if exclude_image_placeholder else end
                 ]
-            else:  # coord placeholder - always exclude from text
+            else:
                 text_segment = prompt_text[cursor:start]
 
             segment_bytes = text_segment.encode("utf-8")
@@ -353,8 +406,10 @@ def build_multimodal_layout(
             # Add the placeholder content
             if ptype == "image":
                 layout.append({"type": "image", "length": len(image_buffers[idx])})
-            else:  # coord
-                cap = coord_capabilities[coord_cap_idx]
+            elif ptype == "audio":
+                layout.append({"type": "audio", "length": len(audio_buffers[idx])})
+            else:
+                cap = capabilities[coord_cap_idx]
                 layout.append(
                     {"type": "capability", "name": cap.name, "length": len(cap.payload)}
                 )
@@ -372,6 +427,7 @@ def build_multimodal_layout(
         # Images are at placeholder positions; capabilities go right after the preceding image
         cursor = 0
         image_idx = 0
+        audio_idx = 0
         cap_idx = 0
 
         for content_type, _ in content_order:
@@ -390,6 +446,11 @@ def build_multimodal_layout(
                 )
                 cursor = match.end()
                 image_idx += 1
+            elif content_type == "audio":
+                layout.append(
+                    {"type": "audio", "length": len(audio_buffers[audio_idx])}
+                )
+                audio_idx += 1
             elif content_type == "capability":
                 # Add capability segment (capabilities don't consume text)
                 cap = capabilities[cap_idx]
