@@ -475,7 +475,10 @@ async def test_streaming_tool_call_done_uses_structured_completion_value() -> No
         for event in events
         if event.type == "response.function_call_arguments.delta"
     ]
-    assert [event.delta for event in delta_events] == ['location="Tokyo", verbose=True']
+    assert [(event.delta, event.field_path) for event in delta_events] == [
+        ("Tokyo", "location"),
+        ('location="Tokyo", verbose=True', None),
+    ]
 
     done_events = [
         event
