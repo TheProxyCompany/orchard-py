@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  full-suite:
+    runs-on: [self-hosted, terminal-0]
+    timeout-minutes: 60
+    env:
+      PATH: /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+
+    steps:
+      - name: Checkout orchard-py
+        uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.GH_PAT }}
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install build tools
+        run: |
+          export HOMEBREW_NO_AUTO_UPDATE=1
+          brew list cmake || brew install cmake
+          brew list ccache || brew install ccache
+          brew list rust || brew install rust
+
+      - name: Clone and build PIE
+        run: |
+          rm -rf ../proxy-inference-engine
+          git clone --depth 1 --recurse-submodules "https://${{ secrets.GH_PAT }}@github.com/TheProxyCompany/proxy-inference-engine.git" ../proxy-inference-engine
+          cd ../proxy-inference-engine
+          ./scripts/build.sh -t Release
+
+      - name: Set up orchard-py
+        run: |
+          if command -v uv >/dev/null 2>&1; then
+            uv --no-config venv .venv
+            source .venv/bin/activate
+            uv --no-config pip install -e ".[dev]"
+          else
+            python3 -m venv .venv
+            source .venv/bin/activate
+            python -m pip install --upgrade pip
+            python -m pip install -e ".[dev]"
+          fi
+
+      - name: Run full Orchard PY suite
+        run: |
+          source .venv/bin/activate
+          PIE_LOCAL_BUILD="$PWD/../proxy-inference-engine/release" python -m pytest tests/functional tests/golden tests/unit -v --tb=short -x

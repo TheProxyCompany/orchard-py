@@ -30,6 +30,19 @@ jobs:
           source .venv/bin/activate
           uv pip install build twine tomli tomli-w
 
+      - name: Clone and build PIE
+        run: |
+          rm -rf ../proxy-inference-engine
+          git clone --depth 1 --recurse-submodules "https://${{ secrets.GH_PAT }}@github.com/TheProxyCompany/proxy-inference-engine.git" ../proxy-inference-engine
+          cd ../proxy-inference-engine
+          ./scripts/build.sh -t Release
+
+      - name: Run full Orchard PY suite
+        run: |
+          source .venv/bin/activate
+          uv pip install -e ".[dev]"
+          PIE_LOCAL_BUILD="$PWD/../proxy-inference-engine/release" python -m pytest tests/functional tests/golden tests/unit -v --tb=short -x
+
       - name: Bump version
         id: version
         run: |
