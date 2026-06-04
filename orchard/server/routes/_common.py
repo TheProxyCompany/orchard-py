@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from collections.abc import Callable
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -87,6 +88,9 @@ async def managed_stream_session(
     ipc_state: Any,
     request_id: int,
     queue: asyncio.Queue[ResponseDeltaDict],
+    *,
+    cancel_on_exit: bool = False,
+    completed: Callable[[], bool] | None = None,
 ):
     """Context manager for streaming session lifecycle.
 
@@ -100,6 +104,15 @@ async def managed_stream_session(
     try:
         yield queue
     finally:
+        if cancel_on_exit and not (completed and completed()):
+            try:
+                await ipc_state.cancel_request(request_id)
+            except Exception:
+                logger.debug(
+                    "Failed to cancel interrupted PIE request %d.",
+                    request_id,
+                    exc_info=True,
+                )
         ipc_state.active_request_queues.pop(request_id, None)
         try:
             while True:

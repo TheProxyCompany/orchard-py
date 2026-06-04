@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import AsyncIterator
 from typing import Any, ClassVar
 
 import pytest
@@ -136,10 +137,15 @@ class _DummyIPCState:
         self.active_request_queues: dict[int, Any] = {}
         self.request_socket = _DummySocket()
         self._next_request_id = 0
+        self.cancelled_requests: list[int] = []
 
     async def get_next_request_id(self) -> int:
         self._next_request_id += 1
         return self._next_request_id
+
+    async def cancel_request(self, request_id: int) -> dict[str, Any]:
+        self.cancelled_requests.append(request_id)
+        return {"status": "accepted"}
 
 
 def _make_client(formatter: Any | None = None) -> Client:
@@ -178,7 +184,9 @@ def _make_client(formatter: Any | None = None) -> Client:
         ("openai_privacy_filter", "openai_privacy_filter"),
     ],
 )
-def test_determine_pantheon_profile_maps_known_profiles(source_type: str, profile_type: str) -> None:
+def test_determine_pantheon_profile_maps_known_profiles(
+    source_type: str, profile_type: str
+) -> None:
     assert determine_pantheon_profile({"model_type": source_type}) == profile_type
 
 
@@ -207,13 +215,13 @@ def test_determine_model_type_requires_model_type() -> None:
 
 
 @pytest.mark.parametrize(
-        ("source_type", "profile_type", "expected_prefix"),
-        [
-            ("lfm2", "default", "<|im_start|>assistant\n"),
-            ("lfm2_moe", "default", "<|im_start|>assistant\n"),
-            ("olmo_hybrid", "default", "<|im_start|>assistant\n"),
-            ("nemotron_h", "default", "<|im_start|>assistant\n<think>\n"),
-            ("granite", "default", "<|start_of_role|>assistant<|end_of_role|>"),
+    ("source_type", "profile_type", "expected_prefix"),
+    [
+        ("lfm2", "default", "<|im_start|>assistant\n"),
+        ("lfm2_moe", "default", "<|im_start|>assistant\n"),
+        ("olmo_hybrid", "default", "<|im_start|>assistant\n"),
+        ("nemotron_h", "default", "<|im_start|>assistant\n<think>\n"),
+        ("granite", "default", "<|start_of_role|>assistant<|end_of_role|>"),
         ("granite_switch", "default", "<|start_of_role|>assistant<|end_of_role|>"),
     ],
 )
@@ -334,9 +342,7 @@ def test_granite_switch_profile_inserts_adapter_tokens(tmp_path) -> None:
         [{"role": "user", "content": "rewrite this"}],
         task="query_rewrite",
     )
-    assert alora.endswith(
-        "<|query_rewrite|><|start_of_role|>assistant<|end_of_role|>"
-    )
+    assert alora.endswith("<|query_rewrite|><|start_of_role|>assistant<|end_of_role|>")
 
 
 @pytest.mark.asyncio
@@ -524,6 +530,48 @@ def test_chat_aggregate_keeps_raw_content_without_state_events() -> None:
     ]
 
     assert client._aggregate_response(deltas).text == "hello world"  # noqa: SLF001
+
+
+@pytest.mark.asyncio
+async def test_chat_stream_close_cancels_request(monkeypatch) -> None:
+    client = _make_client()
+
+    async def fake_submit_request_batch(
+        request_id: int,
+        model_id: str,
+        conversations: list[list[dict[str, Any]]],
+        **kwargs: Any,
+    ) -> None:
+        del model_id, conversations, kwargs
+        queue = client._ipc_state.active_request_queues[request_id].queue  # noqa: SLF001
+        await queue.put(
+            {
+                "request_id": request_id,
+                "content": "partial",
+                "tokens": [1],
+                "is_final_delta": False,
+            }
+        )
+
+    monkeypatch.setattr(
+        client,
+        "_asubmit_request_batch",
+        fake_submit_request_batch,
+    )
+
+    stream = await client.achat(
+        "test-model",
+        [{"role": "user", "content": "hello"}],
+        stream=True,
+    )
+    assert isinstance(stream, AsyncIterator)
+
+    first = await stream.__anext__()
+    assert first.content == "partial"
+
+    await stream.aclose()
+
+    assert client._ipc_state.cancelled_requests == [1]  # noqa: SLF001
 
 
 def test_chat_aggregate_exposes_tool_calls_from_state_events() -> None:

@@ -144,10 +144,7 @@ async def handle_completion_request(
         reasoning_effort = instance.reasoning_effort or (
             DEFAULT_BOOLEAN_REASONING_EFFORT if default_reasoning else None
         )
-        reasoning_flag = (
-            reasoning_effort is not None
-            and native_reasoning
-        )
+        reasoning_flag = reasoning_effort is not None and native_reasoning
         prompt_text = formatter.apply_template(
             messages_as_dicts,
             reasoning=reasoning_flag,
@@ -238,9 +235,16 @@ async def handle_completion_request(
     response_channel_id = ipc_state.response_channel_id or current_request_id
 
     response_queue = asyncio.Queue[ResponseDeltaDict]()
+    request_completed = False
     exit_stack = AsyncExitStack()
     await exit_stack.enter_async_context(
-        managed_stream_session(ipc_state, current_request_id, response_queue)
+        managed_stream_session(
+            ipc_state,
+            current_request_id,
+            response_queue,
+            cancel_on_exit=True,
+            completed=lambda: request_completed,
+        )
     )
 
     try:
@@ -263,6 +267,7 @@ async def handle_completion_request(
             logger.debug("Handling streaming for request %d", current_request_id)
 
             async def event_stream() -> AsyncIterable[dict[str, str]]:
+                nonlocal request_completed
                 try:
                     async for chunk in stream_response_generator(
                         current_request_id,
@@ -272,6 +277,7 @@ async def handle_completion_request(
                         total_expected_sequences,
                     ):
                         yield chunk
+                    request_completed = True
                 finally:
                     await exit_stack.aclose()
 
@@ -302,6 +308,7 @@ async def handle_completion_request(
             usage=usage,
         )
         logger.info("Non-streaming request %d successful.", current_request_id)
+        request_completed = True
         await exit_stack.aclose()
         return final_response
     except HTTPException:

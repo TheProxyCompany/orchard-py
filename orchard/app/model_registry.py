@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import time
+from contextlib import suppress
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from pathlib import Path
@@ -22,6 +23,7 @@ if TYPE_CHECKING:
     from orchard.app.ipc_dispatch import IPCState
 
 logger = logging.getLogger(__name__)
+MODEL_LOAD_CANCELLED = "Cancelled"
 
 
 class ModelLoadState(Enum):
@@ -125,6 +127,14 @@ class ModelRegistry:
                 waiter=waiter,
                 timeout=timeout,
             )
+        except asyncio.CancelledError:
+            with suppress(Exception):
+                await self.cancel_activation(canonical_id)
+            raise
+        except TimeoutError:
+            with suppress(Exception):
+                await self.cancel_activation(canonical_id)
+            raise
         except Exception as exc:
             async with self._lock:
                 entry = self._entries.get(canonical_id)
@@ -145,11 +155,19 @@ class ModelRegistry:
     ) -> tuple[ModelLoadState, str]:
         """Ensure a model is loading or ready and return the canonical identifier."""
 
-        if not force_reload and (canonical_id := self._canonicalize(requested_model_id)):
+        if not force_reload and (
+            canonical_id := self._canonicalize(requested_model_id)
+        ):
             async with self._lock:
                 entry = self._entries.get(canonical_id)
                 if entry and entry.state != ModelLoadState.IDLE:
-                    return entry.state, canonical_id
+                    if (
+                        entry.state == ModelLoadState.FAILED
+                        and entry.error == MODEL_LOAD_CANCELLED
+                    ):
+                        pass
+                    else:
+                        return entry.state, canonical_id
 
         resolved = self._resolver.resolve(requested_model_id)
         if resolved.source == "local_source":
@@ -180,7 +198,11 @@ class ModelRegistry:
             ):
                 return entry.state, canonical_id
 
-            if entry.state == ModelLoadState.FAILED and not force_reload:
+            if (
+                entry.state == ModelLoadState.FAILED
+                and entry.error != MODEL_LOAD_CANCELLED
+                and not force_reload
+            ):
                 return ModelLoadState.FAILED, canonical_id
 
             entry.error = None
@@ -344,6 +366,37 @@ class ModelRegistry:
             return entry.error
         return None
 
+    async def cancel_activation(self, model_id: str) -> dict | None:
+        canonical_id = self._canonicalize(model_id) or model_id
+
+        async with self._lock:
+            entry = self._entries.get(canonical_id)
+            state = entry.state if entry else None
+
+        if entry is None or state in {
+            ModelLoadState.IDLE,
+            ModelLoadState.READY,
+            ModelLoadState.FAILED,
+        }:
+            return None
+
+        if state == ModelLoadState.DOWNLOADING:
+            task = entry.task
+            if task and not task.done():
+                task.cancel()
+            await self._mark_activation_failed(canonical_id, MODEL_LOAD_CANCELLED)
+            return None
+
+        try:
+            response = await self._ipc_state.cancel_model_load(
+                model_id,
+                canonical_id=canonical_id,
+            )
+        finally:
+            await self._mark_activation_failed(canonical_id, MODEL_LOAD_CANCELLED)
+
+        return response
+
     def list_models(self) -> list[dict[str, str]]:
         """List all currently loaded models."""
         catalog = []
@@ -366,7 +419,9 @@ class ModelRegistry:
         self, requested_model_id: str, resolved: ResolvedModel, *, refresh: bool = False
     ) -> ResolvedModel:
         cache_key = self._local_source_cache_key(resolved.model_path)
-        if not refresh and (cached := self._local_source_inspection_cache.get(cache_key)):
+        if not refresh and (
+            cached := self._local_source_inspection_cache.get(cache_key)
+        ):
             return cached
 
         ipc_state = self._ipc_state
@@ -389,13 +444,19 @@ class ModelRegistry:
         response = json.loads(reply_bytes.decode("utf-8"))
         if response.get("status") != "ok":
             message = response.get("message", "unknown error")
-            raise ModelResolutionError(f"Engine rejected inspect_model_source: {message}")
+            raise ModelResolutionError(
+                f"Engine rejected inspect_model_source: {message}"
+            )
 
         data = response.get("data") or {}
         source = data.get("inspect_model_source") or {}
         formatter_config = source.get("formatter_config") or {}
-        if not isinstance(formatter_config, dict) or not formatter_config.get("model_type"):
-            raise ModelResolutionError("Engine inspect_model_source did not return formatter_config.model_type")
+        if not isinstance(formatter_config, dict) or not formatter_config.get(
+            "model_type"
+        ):
+            raise ModelResolutionError(
+                "Engine inspect_model_source did not return formatter_config.model_type"
+            )
         metadata = dict(resolved.metadata)
         for key in ("source_format", "architecture", "model_type"):
             value = source.get(key)
@@ -605,9 +666,7 @@ class ModelRegistry:
         canonical_id = self._canonicalize(model_id) or model_id
         entry = self._entries.get(canonical_id)
         if not entry:
-            logger.debug(
-                "Received model_load_failed for unknown model '%s'.", model_id
-            )
+            logger.debug("Received model_load_failed for unknown model '%s'.", model_id)
             return
 
         if entry.state != ModelLoadState.ACTIVATING:
@@ -696,9 +755,7 @@ class ModelRegistry:
                     if value is not None:
                         return int(value)
         except Exception:
-            logger.exception(
-                "Failed to parse minimum memory from management response."
-            )
+            logger.exception("Failed to parse minimum memory from management response.")
         return None
 
     async def _complete_activation(
@@ -732,6 +789,7 @@ class ModelRegistry:
     def _set_activation_failed(entry: ModelEntry, reason: str) -> None:
         entry.error = reason
         entry.state = ModelLoadState.FAILED
+        entry.event.set()
         if entry.activation_future and not entry.activation_future.done():
             if entry.activation_loop:
                 entry.activation_loop.call_soon_threadsafe(

@@ -8,6 +8,7 @@ import weakref
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import pynng
 
@@ -88,6 +89,76 @@ class IPCState:
             if self.request_id_counter >= 2**63:
                 self.request_id_counter = 1
             return self.request_id_counter
+
+    async def send_management_command(
+        self,
+        command: dict[str, Any],
+        *,
+        timeout: float | None = 2.0,
+    ) -> dict[str, Any]:
+        socket = self.management_socket
+        if socket is None:
+            raise RuntimeError("Management socket is not initialized.")
+
+        payload = json.dumps(command).encode("utf-8")
+        async with self.management_lock:
+            await socket.asend(payload)
+            if timeout is None:
+                reply_bytes = await socket.arecv()
+            else:
+                reply_bytes = await asyncio.wait_for(socket.arecv(), timeout)
+
+        try:
+            response = json.loads(reply_bytes.decode("utf-8"))
+        except Exception as exc:
+            raise RuntimeError(
+                "Engine returned malformed management response."
+            ) from exc
+
+        if not isinstance(response, dict):
+            raise RuntimeError("Engine returned malformed management response.")
+        return response
+
+    async def cancel_request(
+        self,
+        request_id: int,
+        *,
+        timeout: float | None = 2.0,
+    ) -> dict[str, Any]:
+        response = await self.send_management_command(
+            {"type": "cancel_request", "request_id": request_id},
+            timeout=timeout,
+        )
+        status = str(response.get("status") or "").lower()
+        if status not in {"ok", "accepted"}:
+            message = response.get("message", "unknown error")
+            raise RuntimeError(
+                f"Engine rejected cancel_request for '{request_id}': {message}"
+            )
+        return response
+
+    async def cancel_model_load(
+        self,
+        requested_id: str,
+        *,
+        canonical_id: str | None = None,
+        timeout: float | None = 2.0,
+    ) -> dict[str, Any]:
+        command = {
+            "type": "cancel_model_load",
+            "requested_id": requested_id,
+        }
+        if canonical_id:
+            command["canonical_id"] = canonical_id
+
+        response = await self.send_management_command(command, timeout=timeout)
+        status = str(response.get("status") or "").lower()
+        if status not in {"ok", "accepted"}:
+            message = response.get("message", "unknown error")
+            raise RuntimeError(
+                f"Engine rejected cancel_model_load for '{requested_id}': {message}"
+            )
+        return response
 
     def handle_response_delta(self, msg_bytes: bytes) -> None:
         """Dispatches a response delta to the registered client queue."""
@@ -222,9 +293,7 @@ class IPCState:
             last_engine_check = 0.0
             while True:
                 if ipc_state.shutdown_requested:
-                    logger.info(
-                        "Dispatcher shutdown requested; exiting IPC listener."
-                    )
+                    logger.info("Dispatcher shutdown requested; exiting IPC listener.")
                     break
 
                 now = time.monotonic()

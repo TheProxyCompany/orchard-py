@@ -1,9 +1,12 @@
 import asyncio
+import json
 
 import pytest
 
+import orchard.app.model_registry as model_registry_module
 from orchard.app.ipc_dispatch import IPCState
 from orchard.app.model_registry import (
+    MODEL_LOAD_CANCELLED,
     ModelEntry,
     ModelInfo,
     ModelLoadState,
@@ -11,6 +14,18 @@ from orchard.app.model_registry import (
 )
 from orchard.app.model_resolver import ResolvedModel
 from orchard.engine.global_context import GlobalContext
+
+
+class _FakeManagementSocket:
+    def __init__(self, response: dict) -> None:
+        self.response = response
+        self.sent: list[dict] = []
+
+    async def asend(self, payload: bytes) -> None:
+        self.sent.append(json.loads(payload.decode("utf-8")))
+
+    async def arecv(self) -> bytes:
+        return json.dumps(self.response).encode("utf-8")
 
 
 @pytest.mark.asyncio
@@ -169,3 +184,78 @@ async def test_get_info_uses_lowercase_alias_lookup(tmp_path):
     )
 
     assert await registry.get_info(requested_id) is info
+
+
+@pytest.mark.asyncio
+async def test_cancel_activation_sends_cancel_model_load_and_fails_waiter():
+    ctx = GlobalContext()
+    ipc_state = IPCState(ctx)
+    ipc_state.management_socket = _FakeManagementSocket({"status": "accepted"})
+    registry = ModelRegistry(ipc_state)
+    requested_id = "gemma4"
+    canonical_id = "google/gemma-4-26B-A4B-it"
+    loop = asyncio.get_running_loop()
+    waiter = loop.create_future()
+
+    registry._alias_cache[requested_id] = canonical_id
+    registry._entries[canonical_id] = ModelEntry(
+        state=ModelLoadState.ACTIVATING,
+        info=ModelInfo(
+            model_id=canonical_id,
+            model_path="/tmp/gemma",
+            formatter=object(),
+        ),
+        activation_future=waiter,
+        activation_loop=loop,
+    )
+
+    response = await registry.cancel_activation(requested_id)
+    await asyncio.sleep(0)
+
+    assert response == {"status": "accepted"}
+    assert ipc_state.management_socket.sent == [
+        {
+            "type": "cancel_model_load",
+            "requested_id": requested_id,
+            "canonical_id": canonical_id,
+        }
+    ]
+    with pytest.raises(RuntimeError, match=MODEL_LOAD_CANCELLED):
+        await waiter
+
+    state, error, _ = registry.get_status(canonical_id)
+    assert state == ModelLoadState.FAILED
+    assert error == MODEL_LOAD_CANCELLED
+
+
+@pytest.mark.asyncio
+async def test_cancelled_activation_is_retryable(monkeypatch, tmp_path):
+    ctx = GlobalContext()
+    ipc_state = IPCState(ctx)
+    registry = ModelRegistry(ipc_state)
+    requested_id = "gemma4"
+    canonical_id = "google/gemma-4-26B-A4B-it"
+    model_path = tmp_path / "gemma"
+    model_path.mkdir()
+
+    registry._alias_cache[requested_id] = canonical_id
+    registry._entries[canonical_id] = ModelEntry(
+        state=ModelLoadState.FAILED,
+        error=MODEL_LOAD_CANCELLED,
+    )
+    monkeypatch.setattr(
+        registry._resolver,
+        "resolve",
+        lambda _: ResolvedModel(
+            canonical_id=canonical_id,
+            model_path=model_path,
+            source="local",
+        ),
+    )
+    monkeypatch.setattr(model_registry_module, "ChatFormatter", lambda _: object())
+
+    state, resolved_id = await registry.schedule_model(requested_id)
+
+    assert state == ModelLoadState.LOADING
+    assert resolved_id == canonical_id
+    assert registry._entries[canonical_id].error is None

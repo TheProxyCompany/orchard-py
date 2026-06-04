@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import random
 import threading
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from typing import Any, Literal, TypeVar, overload
 
 from orchard.app.ipc_dispatch import IPCState, QueueRegistration
@@ -67,13 +68,65 @@ class Client:
                 raise TypeError(f"Unsupported capability token format for '{name}'.")
         return resolved
 
+    async def acancel_request(self, request_id: int) -> dict[str, Any]:
+        """Cancel an in-flight PIE request by request id."""
+        return await self._ipc_state.cancel_request(request_id)
+
+    def cancel_request(self, request_id: int) -> dict[str, Any]:
+        """Synchronous wrapper for canceling an in-flight PIE request."""
+        if (
+            not self._sync_loop
+            or not self._sync_thread
+            or not self._sync_thread.is_alive()
+        ):
+            self._start_sync_event_loop()
+
+        assert self._sync_loop, "Sync loop not initialized"
+        future = asyncio.run_coroutine_threadsafe(
+            self.acancel_request(request_id),
+            self._sync_loop,
+        )
+        return future.result()
+
+    async def acancel_model_load(self, model_id: str) -> dict | None:
+        """Cancel an in-progress PIE model load or activation."""
+        return await self._model_registry.cancel_activation(model_id)
+
+    def cancel_model_load(self, model_id: str) -> dict | None:
+        """Synchronous wrapper for canceling an in-progress model load."""
+        if (
+            not self._sync_loop
+            or not self._sync_thread
+            or not self._sync_thread.is_alive()
+        ):
+            self._start_sync_event_loop()
+
+        assert self._sync_loop, "Sync loop not initialized"
+        future = asyncio.run_coroutine_threadsafe(
+            self.acancel_model_load(model_id),
+            self._sync_loop,
+        )
+        return future.result()
+
+    async def _cancel_request_for_cleanup(self, request_id: int) -> None:
+        try:
+            await self.acancel_request(request_id)
+        except Exception:
+            logger.debug(
+                "Failed to cancel interrupted PIE request %d.",
+                request_id,
+                exc_info=True,
+            )
+
     async def _async_process_stream(
         self,
         response_queue: asyncio.Queue[ResponseDeltaDict],
         expected_final_prompt_count: int = 1,
+        on_cancel: Callable[[], Awaitable[None]] | None = None,
     ) -> AsyncIterator[ClientDelta]:
         """The core async stream processor."""
         completed_prompt_indexes: set[int] = set()
+        completed = False
         try:
             while True:
                 delta = await response_queue.get()
@@ -100,6 +153,9 @@ class Client:
                             len(completed_prompt_indexes) >= expected_final_prompt_count
                         )
 
+                if should_stop:
+                    completed = True
+
                 try:
                     yield client_delta
                 finally:
@@ -110,6 +166,8 @@ class Client:
                 if should_stop:
                     break
         finally:
+            if not completed and on_cancel:
+                await on_cancel()
             # Clean up any remaining items if the generator is exited early
             while not response_queue.empty():
                 try:
@@ -121,15 +179,19 @@ class Client:
     async def _async_process_raw_stream(
         self,
         response_queue: asyncio.Queue[ResponseDeltaDict],
+        on_cancel: Callable[[], Awaitable[None]] | None = None,
     ) -> AsyncIterator[ResponseDeltaDict]:
         """Yield raw response deltas for Responses API event mapping."""
         # Intentionally mirrors _async_process_stream, but yields raw payloads
         # (including state_events) instead of ClientDelta objects.
+        completed = False
         try:
             while True:
                 delta = await response_queue.get()
                 normalise_delta_payload(delta)
                 should_stop = bool(delta.get("is_final_delta"))
+                if should_stop:
+                    completed = True
 
                 try:
                     yield delta
@@ -139,6 +201,8 @@ class Client:
                 if should_stop:
                     break
         finally:
+            if not completed and on_cancel:
+                await on_cancel()
             while not response_queue.empty():
                 try:
                     leftover = response_queue.get_nowait()
@@ -207,17 +271,28 @@ class Client:
             await self._asubmit_prefill_task(request_id, model_id, [text], task_name)
 
             async def _stream_generator() -> AsyncIterator[ClientDelta]:
+                stream_processor = self._async_process_stream(
+                    response_queue,
+                    on_cancel=lambda: self._cancel_request_for_cleanup(request_id),
+                )
                 try:
-                    async for delta in self._async_process_stream(response_queue):
+                    async for delta in stream_processor:
                         yield delta
                 finally:
+                    await stream_processor.aclose()
                     _cleanup_queue()
 
             if stream:
                 stream_managed_cleanup = True
                 return _stream_generator()
 
-            deltas = [delta async for delta in self._async_process_stream(response_queue)]
+            deltas = [
+                delta
+                async for delta in self._async_process_stream(
+                    response_queue,
+                    on_cancel=lambda: self._cancel_request_for_cleanup(request_id),
+                )
+            ]
             _cleanup_queue()
             return deltas
         finally:
@@ -274,6 +349,7 @@ class Client:
                 async for delta in self._async_process_stream(
                     response_queue,
                     expected_final_prompt_count=len(texts),
+                    on_cancel=lambda: self._cancel_request_for_cleanup(request_id),
                 )
             ]
         finally:
@@ -522,10 +598,15 @@ class Client:
             )
 
             async def _stream_generator() -> AsyncIterator[ClientDelta]:
+                stream_processor = self._async_process_stream(
+                    response_queue,
+                    on_cancel=lambda: self._cancel_request_for_cleanup(request_id),
+                )
                 try:
-                    async for delta in self._async_process_stream(response_queue):
+                    async for delta in stream_processor:
                         yield delta
                 finally:
+                    await stream_processor.aclose()
                     _cleanup_queue()
 
             if stream:
@@ -537,6 +618,7 @@ class Client:
                     async for delta in self._async_process_stream(
                         response_queue,
                         batch_size if is_batched else 1,
+                        on_cancel=lambda: self._cancel_request_for_cleanup(request_id),
                     )
                 ]
                 _cleanup_queue()
@@ -681,14 +763,22 @@ class Client:
             )
 
             async def _response_stream() -> AsyncIterator[ResponseEvent]:
+                raw_stream = self._async_process_raw_stream(
+                    response_queue,
+                    on_cancel=lambda: self._cancel_request_for_cleanup(request_id),
+                )
+                event_stream = iter_response_events(
+                    raw_stream,
+                    model_id=model_id,
+                    stream_tokens=response_request.stream_tokens,
+                )
                 try:
-                    async for event in iter_response_events(
-                        self._async_process_raw_stream(response_queue),
-                        model_id=model_id,
-                        stream_tokens=response_request.stream_tokens,
-                    ):
+                    async for event in event_stream:
                         yield event
                 finally:
+                    with contextlib.suppress(Exception):
+                        await event_stream.aclose()
+                    await raw_stream.aclose()
                     _cleanup_queue()
 
             if response_request.stream:
@@ -696,7 +786,11 @@ class Client:
                 return _response_stream()
 
             deltas = [
-                delta async for delta in self._async_process_raw_stream(response_queue)
+                delta
+                async for delta in self._async_process_raw_stream(
+                    response_queue,
+                    on_cancel=lambda: self._cancel_request_for_cleanup(request_id),
+                )
             ]
             _cleanup_queue()
             return aggregate_non_streaming_response(deltas, model_id, response_request)
@@ -836,24 +930,31 @@ class Client:
         async def _next_delta() -> T:
             return await async_iterator.__anext__()
 
-        while True:
-            if self._ipc_state.engine_dead:
-                raise RuntimeError(
-                    "Engine process is dead; cannot receive further deltas."
+        try:
+            while True:
+                if self._ipc_state.engine_dead:
+                    raise RuntimeError(
+                        "Engine process is dead; cannot receive further deltas."
+                    )
+                future = asyncio.run_coroutine_threadsafe(
+                    _next_delta(),
+                    self._sync_loop or asyncio.new_event_loop(),
                 )
-            future = asyncio.run_coroutine_threadsafe(
-                _next_delta(),
-                self._sync_loop or asyncio.new_event_loop(),
-            )
-            try:
-                yield future.result(timeout=DELTA_TIMEOUT_S)
-            except TimeoutError as exc:
-                raise RuntimeError(
-                    f"Timed out waiting for inference delta after {DELTA_TIMEOUT_S}s. "
-                    "Engine may have crashed."
-                ) from exc
-            except StopAsyncIteration:
-                break
+                try:
+                    yield future.result(timeout=DELTA_TIMEOUT_S)
+                except TimeoutError as exc:
+                    raise RuntimeError(
+                        f"Timed out waiting for inference delta after {DELTA_TIMEOUT_S}s. "
+                        "Engine may have crashed."
+                    ) from exc
+                except StopAsyncIteration:
+                    break
+        finally:
+            aclose = getattr(async_iterator, "aclose", None)
+            if aclose and self._sync_loop and self._sync_loop.is_running():
+                future = asyncio.run_coroutine_threadsafe(aclose(), self._sync_loop)
+                with contextlib.suppress(Exception):
+                    future.result(timeout=5)
 
     def close(self):
         """Stops the background event loop thread if it was started."""
@@ -939,9 +1040,7 @@ class Client:
                 )
             if delta.generation_len is not None:
                 visible_tokens = max(delta.generation_len - usage.reasoning_tokens, 0)
-                usage.completion_tokens = max(
-                    usage.completion_tokens, visible_tokens
-                )
+                usage.completion_tokens = max(usage.completion_tokens, visible_tokens)
         usage.total_tokens = usage.prompt_tokens + usage.completion_tokens
         return usage
 
@@ -1121,12 +1220,16 @@ class Client:
             else {"start": "", "end": ""}
         )
         try:
-            messages_for_template, image_buffers, audio_buffers, capabilities, content_order = (
-                build_multimodal_messages(
-                    formatter=formatter,
-                    items=messages,
-                    instructions=kwargs.get("instructions"),
-                )
+            (
+                messages_for_template,
+                image_buffers,
+                audio_buffers,
+                capabilities,
+                content_order,
+            ) = build_multimodal_messages(
+                formatter=formatter,
+                items=messages,
+                instructions=kwargs.get("instructions"),
             )
         except (ValueError, TypeError) as exc:
             raise ValueError(f"Invalid chat message payload: {exc}") from exc

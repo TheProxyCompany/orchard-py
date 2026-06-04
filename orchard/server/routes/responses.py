@@ -94,12 +94,16 @@ async def handle_response_request(
     formatter = model_info.formatter
 
     try:
-        messages_for_template, image_buffers, audio_buffers, capabilities, content_order = (
-            build_multimodal_messages(
-                formatter=formatter,
-                items=request.get_message_items(),
-                instructions=request.instructions,
-            )
+        (
+            messages_for_template,
+            image_buffers,
+            audio_buffers,
+            capabilities,
+            content_order,
+        ) = build_multimodal_messages(
+            formatter=formatter,
+            items=request.get_message_items(),
+            instructions=request.instructions,
         )
     except (ValueError, TypeError) as exc:
         logger.error("Invalid multimodal payload for request: %s", exc)
@@ -241,9 +245,16 @@ async def handle_response_request(
     )
 
     response_queue: asyncio.Queue[ResponseDeltaDict] = asyncio.Queue()
+    request_completed = False
     exit_stack = AsyncExitStack()
     await exit_stack.enter_async_context(
-        managed_stream_session(ipc_state, current_request_id, response_queue)
+        managed_stream_session(
+            ipc_state,
+            current_request_id,
+            response_queue,
+            cancel_on_exit=True,
+            completed=lambda: request_completed,
+        )
     )
 
     try:
@@ -321,6 +332,7 @@ async def handle_response_request(
             response_id = generate_response_id()
 
             async def event_stream() -> AsyncIterable[dict[str, str]]:
+                nonlocal request_completed
                 try:
                     async for event in stream_response_generator(
                         request_id=current_request_id,
@@ -330,6 +342,7 @@ async def handle_response_request(
                         stream_tokens=request.stream_tokens,
                     ):
                         yield event
+                    request_completed = True
                 finally:
                     await exit_stack.aclose()
 
@@ -384,6 +397,7 @@ async def handle_response_request(
         )
 
         logger.info("Response request %d completed successfully.", current_request_id)
+        request_completed = True
         await exit_stack.aclose()
         return response
     except HTTPException:
@@ -884,7 +898,9 @@ async def _process_state_event_for_streaming(
         and not identifier.startswith("tool_call:")
     ):
         if event_type == "content_delta":
-            field_item = stream_state.get_or_create_item(output_index, item_type, identifier)
+            field_item = stream_state.get_or_create_item(
+                output_index, item_type, identifier
+            )
             yield _format_sse_event(
                 FunctionCallArgumentsDeltaEvent(
                     sequence_number=stream_state.next_sequence_number(),
