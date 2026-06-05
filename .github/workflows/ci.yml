@@ -16,6 +16,7 @@ jobs:
     timeout-minutes: 60
     env:
       PATH: /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+      ORCHARD_CACHE_ROOT: ${{ runner.temp }}/orchard-cache-${{ github.repository_id }}-${{ github.run_id }}-${{ github.run_attempt }}
 
     steps:
       - name: Checkout orchard-py
