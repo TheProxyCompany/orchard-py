@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   full-suite:
-    runs-on: [self-hosted, terminal-0]
+    runs-on: [self-hosted, terminal-1]
     timeout-minutes: 60
     env:
       PATH: /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
