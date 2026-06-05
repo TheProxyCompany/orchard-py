@@ -9,7 +9,7 @@ jobs:
     timeout-minutes: 15
     env:
       PATH: /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
-      ORCHARD_CACHE_ROOT: ${{ runner.temp }}/orchard-cache-${{ github.repository_id }}-${{ github.run_id }}-${{ github.run_attempt }}
+      ORCHARD_CACHE_ROOT: /tmp/orchard-cache-${{ github.repository_id }}-${{ github.run_id }}-${{ github.run_attempt }}
 
     steps:
       - name: Checkout
