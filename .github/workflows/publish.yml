@@ -9,7 +9,6 @@ jobs:
     timeout-minutes: 15
     env:
       PATH: /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
-      ORCHARD_CACHE_ROOT: /tmp/orchard-cache-${{ github.repository_id }}-${{ github.run_id }}-${{ github.run_attempt }}
 
     steps:
       - name: Checkout
@@ -39,6 +38,8 @@ jobs:
           ./scripts/build.sh -t Release
 
       - name: Run full Orchard PY suite
+        env:
+          ORCHARD_CACHE_ROOT: /tmp/orchard-cache-${{ github.repository_id }}-${{ github.run_id }}-${{ github.run_attempt }}
         run: |
           source .venv/bin/activate
           uv pip install -e ".[dev]"
