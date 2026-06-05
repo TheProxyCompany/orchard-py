@@ -2546,8 +2546,8 @@
     {
       "type": "response.output_token",
       "sequence_number": 360,
-      "token_id": 2148,
-      "content": " next"
+      "token_id": 2744,
+      "content": " input"
     },
     {
       "type": "response.reasoning.delta",
@@ -2555,13 +2555,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " next"
+      "delta": " input"
     },
     {
       "type": "response.output_token",
       "sequence_number": 362,
-      "token_id": 236761,
-      "content": "."
+      "token_id": 529,
+      "content": " of"
     },
     {
       "type": "response.reasoning.delta",
@@ -2569,13 +2569,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "."
+      "delta": " of"
     },
     {
       "type": "response.output_token",
       "sequence_number": 364,
-      "token_id": 108,
-      "content": "\n\n"
+      "token_id": 506,
+      "content": " the"
     },
     {
       "type": "response.reasoning.delta",
@@ -2583,13 +2583,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "\n\n"
+      "delta": " the"
     },
     {
       "type": "response.output_token",
       "sequence_number": 366,
-      "token_id": 1018,
-      "content": "**"
+      "token_id": 2148,
+      "content": " next"
     },
     {
       "type": "response.reasoning.delta",
@@ -2597,13 +2597,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "**"
+      "delta": " next"
     },
     {
       "type": "response.output_token",
       "sequence_number": 368,
-      "token_id": 21817,
-      "content": "Plan"
+      "token_id": 236761,
+      "content": "."
     },
     {
       "type": "response.reasoning.delta",
@@ -2611,13 +2611,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "Plan"
+      "delta": "."
     },
     {
       "type": "response.output_token",
       "sequence_number": 370,
-      "token_id": 53121,
-      "content": ":**"
+      "token_id": 108,
+      "content": "\n\n"
     },
     {
       "type": "response.reasoning.delta",
@@ -2625,13 +2625,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": ":**"
+      "delta": "\n\n"
     },
     {
       "type": "response.output_token",
       "sequence_number": 372,
-      "token_id": 107,
-      "content": "\n"
+      "token_id": 1018,
+      "content": "**"
     },
     {
       "type": "response.reasoning.delta",
@@ -2639,13 +2639,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "\n"
+      "delta": "**"
     },
     {
       "type": "response.output_token",
       "sequence_number": 374,
-      "token_id": 236770,
-      "content": "1"
+      "token_id": 21817,
+      "content": "Plan"
     },
     {
       "type": "response.reasoning.delta",
@@ -2653,13 +2653,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "1"
+      "delta": "Plan"
     },
     {
       "type": "response.output_token",
       "sequence_number": 376,
-      "token_id": 236761,
-      "content": "."
+      "token_id": 53121,
+      "content": ":**"
     },
     {
       "type": "response.reasoning.delta",
@@ -2667,13 +2667,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "."
+      "delta": ":**"
     },
     {
       "type": "response.output_token",
       "sequence_number": 378,
-      "token_id": 9861,
-      "content": " Call"
+      "token_id": 107,
+      "content": "\n"
     },
     {
       "type": "response.reasoning.delta",
@@ -2681,13 +2681,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " Call"
+      "delta": "\n"
     },
     {
       "type": "response.output_token",
       "sequence_number": 380,
-      "token_id": 2165,
-      "content": " `"
+      "token_id": 236770,
+      "content": "1"
     },
     {
       "type": "response.reasoning.delta",
@@ -2695,13 +2695,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " `"
+      "delta": "1"
     },
     {
       "type": "response.output_token",
       "sequence_number": 382,
-      "token_id": 4114,
-      "content": "find"
+      "token_id": 236761,
+      "content": "."
     },
     {
       "type": "response.reasoning.delta",
@@ -2709,13 +2709,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "find"
+      "delta": "."
     },
     {
       "type": "response.output_token",
       "sequence_number": 384,
-      "token_id": 236779,
-      "content": "_"
+      "token_id": 9861,
+      "content": " Call"
     },
     {
       "type": "response.reasoning.delta",
@@ -2723,13 +2723,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "_"
+      "delta": " Call"
     },
     {
       "type": "response.output_token",
       "sequence_number": 386,
-      "token_id": 2478,
-      "content": "key"
+      "token_id": 2165,
+      "content": " `"
     },
     {
       "type": "response.reasoning.delta",
@@ -2737,13 +2737,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "key"
+      "delta": " `"
     },
     {
       "type": "response.output_token",
       "sequence_number": 388,
-      "token_id": 236929,
-      "content": "`"
+      "token_id": 4114,
+      "content": "find"
     },
     {
       "type": "response.reasoning.delta",
@@ -2751,13 +2751,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "`"
+      "delta": "find"
     },
     {
       "type": "response.output_token",
       "sequence_number": 390,
-      "token_id": 607,
-      "content": " with"
+      "token_id": 236779,
+      "content": "_"
     },
     {
       "type": "response.reasoning.delta",
@@ -2765,13 +2765,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " with"
+      "delta": "_"
     },
     {
       "type": "response.output_token",
       "sequence_number": 392,
-      "token_id": 623,
-      "content": " \""
+      "token_id": 2478,
+      "content": "key"
     },
     {
       "type": "response.reasoning.delta",
@@ -2779,13 +2779,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " \""
+      "delta": "key"
     },
     {
       "type": "response.output_token",
       "sequence_number": 394,
-      "token_id": 12195,
-      "content": "library"
+      "token_id": 236929,
+      "content": "`"
     },
     {
       "type": "response.reasoning.delta",
@@ -2793,13 +2793,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "library"
+      "delta": "`"
     },
     {
       "type": "response.output_token",
       "sequence_number": 396,
-      "token_id": 3056,
-      "content": "\"."
+      "token_id": 607,
+      "content": " with"
     },
     {
       "type": "response.reasoning.delta",
@@ -2807,13 +2807,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "\"."
+      "delta": " with"
     },
     {
       "type": "response.output_token",
       "sequence_number": 398,
-      "token_id": 107,
-      "content": "\n"
+      "token_id": 2165,
+      "content": " `"
     },
     {
       "type": "response.reasoning.delta",
@@ -2821,13 +2821,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "\n"
+      "delta": " `"
     },
     {
       "type": "response.output_token",
       "sequence_number": 400,
-      "token_id": 236778,
-      "content": "2"
+      "token_id": 3352,
+      "content": "room"
     },
     {
       "type": "response.reasoning.delta",
@@ -2835,13 +2835,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "2"
+      "delta": "room"
     },
     {
       "type": "response.output_token",
       "sequence_number": 402,
-      "token_id": 236761,
-      "content": "."
+      "token_id": 718,
+      "content": "=\""
     },
     {
       "type": "response.reasoning.delta",
@@ -2849,13 +2849,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "."
+      "delta": "=\""
     },
     {
       "type": "response.output_token",
       "sequence_number": 404,
-      "token_id": 29202,
-      "content": " Wait"
+      "token_id": 12195,
+      "content": "library"
     },
     {
       "type": "response.reasoning.delta",
@@ -2863,13 +2863,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " Wait"
+      "delta": "library"
     },
     {
       "type": "response.output_token",
       "sequence_number": 406,
-      "token_id": 573,
-      "content": " for"
+      "token_id": 236775,
+      "content": "\""
     },
     {
       "type": "response.reasoning.delta",
@@ -2877,13 +2877,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " for"
+      "delta": "\""
     },
     {
       "type": "response.output_token",
       "sequence_number": 408,
-      "token_id": 506,
-      "content": " the"
+      "token_id": 21233,
+      "content": "`."
     },
     {
       "type": "response.reasoning.delta",
@@ -2891,13 +2891,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " the"
+      "delta": "`."
     },
     {
       "type": "response.output_token",
       "sequence_number": 410,
-      "token_id": 1354,
-      "content": " result"
+      "token_id": 107,
+      "content": "\n"
     },
     {
       "type": "response.reasoning.delta",
@@ -2905,13 +2905,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " result"
+      "delta": "\n"
     },
     {
       "type": "response.output_token",
       "sequence_number": 412,
-      "token_id": 236761,
-      "content": "."
+      "token_id": 236778,
+      "content": "2"
     },
     {
       "type": "response.reasoning.delta",
@@ -2919,13 +2919,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "."
+      "delta": "2"
     },
     {
       "type": "response.output_token",
       "sequence_number": 414,
-      "token_id": 107,
-      "content": "\n"
+      "token_id": 236761,
+      "content": "."
     },
     {
       "type": "response.reasoning.delta",
@@ -2933,13 +2933,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "\n"
+      "delta": "."
     },
     {
       "type": "response.output_token",
       "sequence_number": 416,
-      "token_id": 236800,
-      "content": "3"
+      "token_id": 29202,
+      "content": " Wait"
     },
     {
       "type": "response.reasoning.delta",
@@ -2947,13 +2947,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "3"
+      "delta": " Wait"
     },
     {
       "type": "response.output_token",
       "sequence_number": 418,
-      "token_id": 236761,
-      "content": "."
+      "token_id": 573,
+      "content": " for"
     },
     {
       "type": "response.reasoning.delta",
@@ -2961,13 +2961,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "."
+      "delta": " for"
     },
     {
       "type": "response.output_token",
       "sequence_number": 420,
-      "token_id": 9861,
-      "content": " Call"
+      "token_id": 506,
+      "content": " the"
     },
     {
       "type": "response.reasoning.delta",
@@ -2975,13 +2975,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " Call"
+      "delta": " the"
     },
     {
       "type": "response.output_token",
       "sequence_number": 422,
-      "token_id": 2165,
-      "content": " `"
+      "token_id": 1354,
+      "content": " result"
     },
     {
       "type": "response.reasoning.delta",
@@ -2989,13 +2989,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " `"
+      "delta": " result"
     },
     {
       "type": "response.output_token",
       "sequence_number": 424,
-      "token_id": 51252,
-      "content": "unlock"
+      "token_id": 236761,
+      "content": "."
     },
     {
       "type": "response.reasoning.delta",
@@ -3003,13 +3003,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "unlock"
+      "delta": "."
     },
     {
       "type": "response.output_token",
       "sequence_number": 426,
-      "token_id": 236779,
-      "content": "_"
+      "token_id": 107,
+      "content": "\n"
     },
     {
       "type": "response.reasoning.delta",
@@ -3017,13 +3017,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "_"
+      "delta": "\n"
     },
     {
       "type": "response.output_token",
       "sequence_number": 428,
-      "token_id": 129486,
-      "content": "chest"
+      "token_id": 236800,
+      "content": "3"
     },
     {
       "type": "response.reasoning.delta",
@@ -3031,13 +3031,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "chest"
+      "delta": "3"
     },
     {
       "type": "response.output_token",
       "sequence_number": 430,
-      "token_id": 236929,
-      "content": "`"
+      "token_id": 236761,
+      "content": "."
     },
     {
       "type": "response.reasoning.delta",
@@ -3045,13 +3045,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "`"
+      "delta": "."
     },
     {
       "type": "response.output_token",
       "sequence_number": 432,
-      "token_id": 607,
-      "content": " with"
+      "token_id": 9861,
+      "content": " Call"
     },
     {
       "type": "response.reasoning.delta",
@@ -3059,13 +3059,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " with"
+      "delta": " Call"
     },
     {
       "type": "response.output_token",
       "sequence_number": 434,
-      "token_id": 506,
-      "content": " the"
+      "token_id": 2165,
+      "content": " `"
     },
     {
       "type": "response.reasoning.delta",
@@ -3073,13 +3073,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " the"
+      "delta": " `"
     },
     {
       "type": "response.output_token",
       "sequence_number": 436,
-      "token_id": 2307,
-      "content": " key"
+      "token_id": 51252,
+      "content": "unlock"
     },
     {
       "type": "response.reasoning.delta",
@@ -3087,13 +3087,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " key"
+      "delta": "unlock"
     },
     {
       "type": "response.output_token",
       "sequence_number": 438,
-      "token_id": 4597,
-      "content": " obtained"
+      "token_id": 236779,
+      "content": "_"
     },
     {
       "type": "response.reasoning.delta",
@@ -3101,13 +3101,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " obtained"
+      "delta": "_"
     },
     {
       "type": "response.output_token",
       "sequence_number": 440,
-      "token_id": 699,
-      "content": " from"
+      "token_id": 129486,
+      "content": "chest"
     },
     {
       "type": "response.reasoning.delta",
@@ -3115,13 +3115,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " from"
+      "delta": "chest"
     },
     {
       "type": "response.output_token",
       "sequence_number": 442,
-      "token_id": 2918,
-      "content": " step"
+      "token_id": 236929,
+      "content": "`"
     },
     {
       "type": "response.reasoning.delta",
@@ -3129,13 +3129,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " step"
+      "delta": "`"
     },
     {
       "type": "response.output_token",
       "sequence_number": 444,
-      "token_id": 236743,
-      "content": " "
+      "token_id": 607,
+      "content": " with"
     },
     {
       "type": "response.reasoning.delta",
@@ -3143,13 +3143,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " "
+      "delta": " with"
     },
     {
       "type": "response.output_token",
       "sequence_number": 446,
-      "token_id": 236770,
-      "content": "1"
+      "token_id": 506,
+      "content": " the"
     },
     {
       "type": "response.reasoning.delta",
@@ -3157,13 +3157,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "1"
+      "delta": " the"
     },
     {
       "type": "response.output_token",
       "sequence_number": 448,
-      "token_id": 236761,
-      "content": "."
+      "token_id": 2307,
+      "content": " key"
     },
     {
       "type": "response.reasoning.delta",
@@ -3171,13 +3171,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "."
+      "delta": " key"
     },
     {
       "type": "response.output_token",
       "sequence_number": 450,
-      "token_id": 107,
-      "content": "\n"
+      "token_id": 4597,
+      "content": " obtained"
     },
     {
       "type": "response.reasoning.delta",
@@ -3185,13 +3185,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "\n"
+      "delta": " obtained"
     },
     {
       "type": "response.output_token",
       "sequence_number": 452,
-      "token_id": 236812,
-      "content": "4"
+      "token_id": 699,
+      "content": " from"
     },
     {
       "type": "response.reasoning.delta",
@@ -3199,13 +3199,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "4"
+      "delta": " from"
     },
     {
       "type": "response.output_token",
       "sequence_number": 454,
-      "token_id": 236761,
-      "content": "."
+      "token_id": 2918,
+      "content": " step"
     },
     {
       "type": "response.reasoning.delta",
@@ -3213,13 +3213,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "."
+      "delta": " step"
     },
     {
       "type": "response.output_token",
       "sequence_number": 456,
-      "token_id": 29202,
-      "content": " Wait"
+      "token_id": 236743,
+      "content": " "
     },
     {
       "type": "response.reasoning.delta",
@@ -3227,13 +3227,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " Wait"
+      "delta": " "
     },
     {
       "type": "response.output_token",
       "sequence_number": 458,
-      "token_id": 573,
-      "content": " for"
+      "token_id": 236770,
+      "content": "1"
     },
     {
       "type": "response.reasoning.delta",
@@ -3241,13 +3241,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " for"
+      "delta": "1"
     },
     {
       "type": "response.output_token",
       "sequence_number": 460,
-      "token_id": 506,
-      "content": " the"
+      "token_id": 236761,
+      "content": "."
     },
     {
       "type": "response.reasoning.delta",
@@ -3255,13 +3255,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " the"
+      "delta": "."
     },
     {
       "type": "response.output_token",
       "sequence_number": 462,
-      "token_id": 1354,
-      "content": " result"
+      "token_id": 107,
+      "content": "\n"
     },
     {
       "type": "response.reasoning.delta",
@@ -3269,13 +3269,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " result"
+      "delta": "\n"
     },
     {
       "type": "response.output_token",
       "sequence_number": 464,
-      "token_id": 532,
-      "content": " and"
+      "token_id": 236812,
+      "content": "4"
     },
     {
       "type": "response.reasoning.delta",
@@ -3283,13 +3283,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " and"
+      "delta": "4"
     },
     {
       "type": "response.output_token",
       "sequence_number": 466,
-      "token_id": 1861,
-      "content": " present"
+      "token_id": 236761,
+      "content": "."
     },
     {
       "type": "response.reasoning.delta",
@@ -3297,13 +3297,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " present"
+      "delta": "."
     },
     {
       "type": "response.output_token",
       "sequence_number": 468,
-      "token_id": 506,
-      "content": " the"
+      "token_id": 29202,
+      "content": " Wait"
     },
     {
       "type": "response.reasoning.delta",
@@ -3311,13 +3311,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " the"
+      "delta": " Wait"
     },
     {
       "type": "response.output_token",
       "sequence_number": 470,
-      "token_id": 1626,
-      "content": " final"
+      "token_id": 573,
+      "content": " for"
     },
     {
       "type": "response.reasoning.delta",
@@ -3325,13 +3325,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " final"
+      "delta": " for"
     },
     {
       "type": "response.output_token",
       "sequence_number": 472,
-      "token_id": 3890,
-      "content": " answer"
+      "token_id": 506,
+      "content": " the"
     },
     {
       "type": "response.reasoning.delta",
@@ -3339,13 +3339,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " answer"
+      "delta": " the"
     },
     {
       "type": "response.output_token",
       "sequence_number": 474,
-      "token_id": 531,
-      "content": " to"
+      "token_id": 1354,
+      "content": " result"
     },
     {
       "type": "response.reasoning.delta",
@@ -3353,13 +3353,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " to"
+      "delta": " result"
     },
     {
       "type": "response.output_token",
       "sequence_number": 476,
-      "token_id": 506,
-      "content": " the"
+      "token_id": 532,
+      "content": " and"
     },
     {
       "type": "response.reasoning.delta",
@@ -3367,13 +3367,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " the"
+      "delta": " and"
     },
     {
       "type": "response.output_token",
       "sequence_number": 478,
-      "token_id": 2430,
-      "content": " user"
+      "token_id": 1861,
+      "content": " present"
     },
     {
       "type": "response.reasoning.delta",
@@ -3381,13 +3381,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " user"
+      "delta": " present"
     },
     {
       "type": "response.output_token",
       "sequence_number": 480,
-      "token_id": 236761,
-      "content": "."
+      "token_id": 506,
+      "content": " the"
     },
     {
       "type": "response.reasoning.delta",
@@ -3395,25 +3395,109 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "."
+      "delta": " the"
     },
     {
       "type": "response.output_token",
       "sequence_number": 482,
+      "token_id": 1626,
+      "content": " final"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 483,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " final"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 484,
+      "token_id": 3890,
+      "content": " answer"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 485,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " answer"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 486,
+      "token_id": 531,
+      "content": " to"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 487,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " to"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 488,
+      "token_id": 506,
+      "content": " the"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 489,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " the"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 490,
+      "token_id": 2430,
+      "content": " user"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 491,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " user"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 492,
+      "token_id": 236761,
+      "content": "."
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 493,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "."
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 494,
       "token_id": 101,
       "content": "<channel|>"
     },
     {
       "type": "response.reasoning.done",
-      "sequence_number": 483,
+      "sequence_number": 495,
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "text": "The user wants to perform a sequence of actions:\n1. Find a key hidden in the \"library\".\n2. Use that key to unlock a \"treasure chest\".\n3. Report the contents of the chest.\n\nI need to use the available tools to achieve this.\n\n**Step 1: Find the key.**\nThe `find_key` tool seems appropriate for this. It requires a `room` argument.\n*   Tool call: `find_key(room=\"library\")`\n\n**Step 2: Unlock the chest.**\nThe `unlock_chest` tool requires a `key`. I will get this key from the result of Step 1.\n\n**Step 3: Get the contents.**\nThe `unlock_chest` tool returns the contents.\n\nI must execute these steps sequentially, passing the output of one to the next.\n\n**Plan:**\n1. Call `find_key` with \"library\".\n2. Wait for the result.\n3. Call `unlock_chest` with the key obtained from step 1.\n4. Wait for the result and present the final answer to the user."
+      "text": "The user wants to perform a sequence of actions:\n1. Find a key hidden in the \"library\".\n2. Use that key to unlock a \"treasure chest\".\n3. Report the contents of the chest.\n\nI need to use the available tools to achieve this.\n\n**Step 1: Find the key.**\nThe `find_key` tool seems appropriate for this. It requires a `room` argument.\n*   Tool call: `find_key(room=\"library\")`\n\n**Step 2: Unlock the chest.**\nThe `unlock_chest` tool requires a `key`. I will get this key from the result of Step 1.\n\n**Step 3: Get the contents.**\nThe `unlock_chest` tool returns the contents.\n\nI must execute these steps sequentially, passing the output of one to the input of the next.\n\n**Plan:**\n1. Call `find_key` with `room=\"library\"`.\n2. Wait for the result.\n3. Call `unlock_chest` with the key obtained from step 1.\n4. Wait for the result and present the final answer to the user."
     },
     {
       "type": "response.output_item.done",
-      "sequence_number": 484,
+      "sequence_number": 496,
       "output_index": 0,
       "item": {
         "type": "reasoning",
@@ -3423,7 +3507,7 @@
         "content": [
           {
             "type": "reasoning_text",
-            "text": "The user wants to perform a sequence of actions:\n1. Find a key hidden in the \"library\".\n2. Use that key to unlock a \"treasure chest\".\n3. Report the contents of the chest.\n\nI need to use the available tools to achieve this.\n\n**Step 1: Find the key.**\nThe `find_key` tool seems appropriate for this. It requires a `room` argument.\n*   Tool call: `find_key(room=\"library\")`\n\n**Step 2: Unlock the chest.**\nThe `unlock_chest` tool requires a `key`. I will get this key from the result of Step 1.\n\n**Step 3: Get the contents.**\nThe `unlock_chest` tool returns the contents.\n\nI must execute these steps sequentially, passing the output of one to the next.\n\n**Plan:**\n1. Call `find_key` with \"library\".\n2. Wait for the result.\n3. Call `unlock_chest` with the key obtained from step 1.\n4. Wait for the result and present the final answer to the user."
+            "text": "The user wants to perform a sequence of actions:\n1. Find a key hidden in the \"library\".\n2. Use that key to unlock a \"treasure chest\".\n3. Report the contents of the chest.\n\nI need to use the available tools to achieve this.\n\n**Step 1: Find the key.**\nThe `find_key` tool seems appropriate for this. It requires a `room` argument.\n*   Tool call: `find_key(room=\"library\")`\n\n**Step 2: Unlock the chest.**\nThe `unlock_chest` tool requires a `key`. I will get this key from the result of Step 1.\n\n**Step 3: Get the contents.**\nThe `unlock_chest` tool returns the contents.\n\nI must execute these steps sequentially, passing the output of one to the input of the next.\n\n**Plan:**\n1. Call `find_key` with `room=\"library\"`.\n2. Wait for the result.\n3. Call `unlock_chest` with the key obtained from step 1.\n4. Wait for the result and present the final answer to the user."
           }
         ],
         "encrypted_content": null
@@ -3431,43 +3515,43 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 485,
+      "sequence_number": 497,
       "token_id": 48,
       "content": "<|tool_call>"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 486,
+      "sequence_number": 498,
       "token_id": 6639,
       "content": "call"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 487,
+      "sequence_number": 499,
       "token_id": 236787,
       "content": ":"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 488,
+      "sequence_number": 500,
       "token_id": 4114,
       "content": "find"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 489,
+      "sequence_number": 501,
       "token_id": 236779,
       "content": "_"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 490,
+      "sequence_number": 502,
       "token_id": 2478,
       "content": "key"
     },
     {
       "type": "response.output_item.added",
-      "sequence_number": 491,
+      "sequence_number": 503,
       "output_index": 1,
       "item": {
         "type": "function_call",
@@ -3480,37 +3564,37 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 492,
+      "sequence_number": 504,
       "token_id": 236782,
       "content": "{"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 493,
+      "sequence_number": 505,
       "token_id": 3352,
       "content": "room"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 494,
+      "sequence_number": 506,
       "token_id": 236787,
       "content": ":"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 495,
+      "sequence_number": 507,
       "token_id": 52,
       "content": "<|\"|>"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 496,
+      "sequence_number": 508,
       "token_id": 12195,
       "content": "library"
     },
     {
       "type": "response.function_call_arguments.delta",
-      "sequence_number": 497,
+      "sequence_number": 509,
       "item_id": "fc_0",
       "output_index": 1,
       "delta": "library",
@@ -3518,19 +3602,19 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 498,
+      "sequence_number": 510,
       "token_id": 52,
       "content": "<|\"|>"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 499,
+      "sequence_number": 511,
       "token_id": 236783,
       "content": "}"
     },
     {
       "type": "response.function_call_arguments.delta",
-      "sequence_number": 500,
+      "sequence_number": 512,
       "item_id": "fc_0",
       "output_index": 1,
       "delta": "{\"room\":\"library\"}",
@@ -3538,14 +3622,14 @@
     },
     {
       "type": "response.function_call_arguments.done",
-      "sequence_number": 501,
+      "sequence_number": 513,
       "item_id": "fc_0",
       "output_index": 1,
       "arguments": "{\"room\": \"library\"}"
     },
     {
       "type": "response.output_item.done",
-      "sequence_number": 502,
+      "sequence_number": 514,
       "output_index": 1,
       "item": {
         "type": "function_call",
@@ -3558,13 +3642,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 503,
+      "sequence_number": 515,
       "token_id": 49,
       "content": "<tool_call|>"
     },
     {
       "type": "response.completed",
-      "sequence_number": 504,
+      "sequence_number": 516,
       "response": {
         "id": "resp_0",
         "object": "response",
@@ -3584,7 +3668,7 @@
             "content": [
               {
                 "type": "reasoning_text",
-                "text": "The user wants to perform a sequence of actions:\n1. Find a key hidden in the \"library\".\n2. Use that key to unlock a \"treasure chest\".\n3. Report the contents of the chest.\n\nI need to use the available tools to achieve this.\n\n**Step 1: Find the key.**\nThe `find_key` tool seems appropriate for this. It requires a `room` argument.\n*   Tool call: `find_key(room=\"library\")`\n\n**Step 2: Unlock the chest.**\nThe `unlock_chest` tool requires a `key`. I will get this key from the result of Step 1.\n\n**Step 3: Get the contents.**\nThe `unlock_chest` tool returns the contents.\n\nI must execute these steps sequentially, passing the output of one to the next.\n\n**Plan:**\n1. Call `find_key` with \"library\".\n2. Wait for the result.\n3. Call `unlock_chest` with the key obtained from step 1.\n4. Wait for the result and present the final answer to the user."
+                "text": "The user wants to perform a sequence of actions:\n1. Find a key hidden in the \"library\".\n2. Use that key to unlock a \"treasure chest\".\n3. Report the contents of the chest.\n\nI need to use the available tools to achieve this.\n\n**Step 1: Find the key.**\nThe `find_key` tool seems appropriate for this. It requires a `room` argument.\n*   Tool call: `find_key(room=\"library\")`\n\n**Step 2: Unlock the chest.**\nThe `unlock_chest` tool requires a `key`. I will get this key from the result of Step 1.\n\n**Step 3: Get the contents.**\nThe `unlock_chest` tool returns the contents.\n\nI must execute these steps sequentially, passing the output of one to the input of the next.\n\n**Plan:**\n1. Call `find_key` with `room=\"library\"`.\n2. Wait for the result.\n3. Call `unlock_chest` with the key obtained from step 1.\n4. Wait for the result and present the final answer to the user."
               }
             ],
             "encrypted_content": null
@@ -3606,7 +3690,7 @@
             "cached_tokens": 0
           },
           "output_tokens_details": {
-            "reasoning_tokens": 239
+            "reasoning_tokens": 245
           }
         }
       }
