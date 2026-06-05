@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   full-suite:
-    runs-on: [self-hosted, terminal-1]
+    runs-on: [self-hosted, terminal-0]
     timeout-minutes: 60
     env:
       PATH: /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
@@ -53,8 +53,6 @@ jobs:
           fi
 
       - name: Run full Orchard PY suite
-        env:
-          ORCHARD_CACHE_ROOT: /tmp/orchard-cache-${{ github.repository_id }}-${{ github.run_id }}-${{ github.run_attempt }}
         run: |
           source .venv/bin/activate
           PIE_LOCAL_BUILD="$PWD/../proxy-inference-engine/release" python -m pytest tests/functional tests/golden tests/unit -v --tb=short -x
