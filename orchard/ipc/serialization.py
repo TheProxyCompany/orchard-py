@@ -24,6 +24,9 @@ _REQUEST_TYPE_CODES = {
     "agent": 5,
     "omni": 6,
     "prefill_task": 7,
+    "audio": 8,
+    "image": 9,
+    "image_generation": 9,
 }
 
 __all__ = ["_build_request_payload"]
@@ -313,8 +316,7 @@ def _build_request_payload(
         output_frame_tokens: dict[str, str] = {}
         if isinstance(output_frame_tokens_raw, dict):
             output_frame_tokens = {
-                str(name): str(token)
-                for name, token in output_frame_tokens_raw.items()
+                str(name): str(token) for name, token in output_frame_tokens_raw.items()
             }
         thinking_tokens_raw = prompt.get("thinking_tokens") or {}
         thinking_tokens = {
@@ -338,6 +340,11 @@ def _build_request_payload(
             response_format_str = response_format_value
         else:
             response_format_str = _coerce_bytes(response_format_value).decode("utf-8")
+        modal_options_value = prompt.get("modal_options_json", "")
+        if isinstance(modal_options_value, str):
+            modal_options_str = modal_options_value
+        else:
+            modal_options_str = _coerce_bytes(modal_options_value).decode("utf-8")
 
         task_name_value = prompt.get("task_name")
         if isinstance(task_name_value, str) or task_name_value is None:
@@ -423,6 +430,7 @@ def _build_request_payload(
                 "min_tool_calls": min_tool_calls,
                 "max_tool_calls": max_tool_calls,
                 "response_format_json": response_format_str,
+                "modal_options_json": modal_options_str,
                 "logit_bias": logit_bias_entries,
                 "task_name": task_name_str,
                 "reasoning_effort": reasoning_effort_str,

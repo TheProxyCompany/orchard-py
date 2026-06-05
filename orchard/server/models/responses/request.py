@@ -80,7 +80,7 @@ class InputFunctionCallOutput(BaseModel):
     call_id: str = Field(
         description="The call_id of the function call this is responding to."
     )
-    output: str = Field(description="The output of the function call.")
+    output: str | list[ContentPart] = Field(description="The output of the function call.")
 
 
 class InputReasoning(BaseModel):

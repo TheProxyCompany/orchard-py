@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import contextlib
 import json
 import logging
 import random
+import sys
 import threading
+from array import array
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
-from typing import Any, Literal, TypeVar, overload
+from dataclasses import dataclass
+from typing import Any, Iterable, Literal, TypeVar, overload
 
 from orchard.app.ipc_dispatch import IPCState, QueueRegistration
 from orchard.app.model_registry import ModelRegistry
@@ -38,6 +42,169 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 
+@dataclass(frozen=True)
+class ModalArtifact:
+    type: str
+    event: str
+    mime_type: str
+    decoder_id: str
+    data: bytes
+    metadata: dict[str, Any] | None
+    deltas: list[ClientDelta]
+
+
+class AudioClient:
+    def __init__(self, client: Client):
+        self._client = client
+
+    async def agenerate(
+        self,
+        model_id: str,
+        text: str,
+        *,
+        reference_audio: bytes | bytearray | memoryview | None = None,
+        language: str | None = None,
+        speaker: str | None = None,
+        sample_rate: int = 24000,
+        max_output_tokens: int = 8192,
+        stream: bool = False,
+        **options: Any,
+    ) -> list[ModalArtifact] | AsyncIterator[ClientDelta]:
+        modal_options = {
+            "language": language,
+            "speaker": speaker,
+            "sample_rate": sample_rate,
+            **options,
+        }
+        audio_buffers = [bytes(reference_audio)] if reference_audio is not None else []
+        return await self._client._amodal_artifacts(
+            request_type="audio",
+            model_id=model_id,
+            prompt=text,
+            task_name="text_to_speech",
+            modal_options=modal_options,
+            audio_buffers=audio_buffers,
+            max_generated_tokens=max_output_tokens,
+            stream=stream,
+        )
+
+    def generate(
+        self,
+        model_id: str,
+        text: str,
+        *,
+        reference_audio: bytes | bytearray | memoryview | None = None,
+        language: str | None = None,
+        speaker: str | None = None,
+        sample_rate: int = 24000,
+        max_output_tokens: int = 8192,
+        stream: bool = False,
+        **options: Any,
+    ) -> list[ModalArtifact] | Iterator[ClientDelta]:
+        result = self._client._sync_submit(
+            self.agenerate(
+                model_id,
+                text,
+                reference_audio=reference_audio,
+                language=language,
+                speaker=speaker,
+                sample_rate=sample_rate,
+                max_output_tokens=max_output_tokens,
+                stream=stream,
+                **options,
+            )
+        )
+        if isinstance(result, AsyncIterator):
+            return self._client._sync_iterator_bridge(result)
+        return result
+
+    async def asynthesize(
+        self, *args: Any, **kwargs: Any
+    ) -> list[ModalArtifact] | AsyncIterator[ClientDelta]:
+        return await self.agenerate(*args, **kwargs)
+
+    def synthesize(
+        self, *args: Any, **kwargs: Any
+    ) -> list[ModalArtifact] | Iterator[ClientDelta]:
+        return self.generate(*args, **kwargs)
+
+    async def atranscribe(
+        self,
+        model_id: str,
+        pcm: Iterable[float],
+    ) -> str:
+        return await self._client._atranscribe_audio(model_id, pcm)
+
+    def transcribe(self, model_id: str, pcm: Iterable[float]) -> str:
+        return self._client._sync_submit(self.atranscribe(model_id, pcm))
+
+
+class ImagesClient:
+    def __init__(self, client: Client):
+        self._client = client
+
+    async def agenerate(
+        self,
+        model_id: str,
+        prompt: str,
+        *,
+        height: int = 1024,
+        width: int = 1024,
+        num_steps: int = 48,
+        guidance_scale: float = 7.0,
+        seed: int | None = None,
+        stream: bool = False,
+        **options: Any,
+    ) -> list[ModalArtifact] | AsyncIterator[ClientDelta]:
+        modal_options = {
+            "height": height,
+            "width": width,
+            "num_steps": num_steps,
+            "guidance_scale": guidance_scale,
+            "seed": seed,
+            **options,
+        }
+        return await self._client._amodal_artifacts(
+            request_type="image",
+            model_id=model_id,
+            prompt=prompt,
+            task_name="text_to_image",
+            modal_options=modal_options,
+            max_generated_tokens=0,
+            stream=stream,
+        )
+
+    def generate(
+        self,
+        model_id: str,
+        prompt: str,
+        *,
+        height: int = 1024,
+        width: int = 1024,
+        num_steps: int = 48,
+        guidance_scale: float = 7.0,
+        seed: int | None = None,
+        stream: bool = False,
+        **options: Any,
+    ) -> list[ModalArtifact] | Iterator[ClientDelta]:
+        result = self._client._sync_submit(
+            self.agenerate(
+                model_id,
+                prompt,
+                height=height,
+                width=width,
+                num_steps=num_steps,
+                guidance_scale=guidance_scale,
+                seed=seed,
+                stream=stream,
+                **options,
+            )
+        )
+        if isinstance(result, AsyncIterator):
+            return self._client._sync_iterator_bridge(result)
+        return result
+
+
 class Client:
     """
     A high-level Python client for the Proxy Inference Engine (PIE).
@@ -49,6 +216,8 @@ class Client:
     def __init__(self, ipc_state: IPCState, model_registry: ModelRegistry):
         self._ipc_state = ipc_state
         self._model_registry = model_registry
+        self.audio = AudioClient(self)
+        self.images = ImagesClient(self)
 
         # For the synchronous wrapper
         self._sync_loop: asyncio.AbstractEventLoop | None = None
@@ -117,6 +286,246 @@ class Client:
                 request_id,
                 exc_info=True,
             )
+
+    def _sync_submit(self, coro: Any) -> Any:
+        if (
+            not self._sync_loop
+            or not self._sync_thread
+            or not self._sync_thread.is_alive()
+        ):
+            self._start_sync_event_loop()
+
+        assert self._sync_loop, "Sync loop not initialized"
+        future = asyncio.run_coroutine_threadsafe(coro, self._sync_loop)
+        return future.result()
+
+    async def _amodal_artifacts(
+        self,
+        *,
+        request_type: str,
+        model_id: str,
+        prompt: str,
+        task_name: str,
+        modal_options: dict[str, Any],
+        max_generated_tokens: int,
+        stream: bool,
+        image_buffers: list[bytes] | None = None,
+        audio_buffers: list[bytes] | None = None,
+    ) -> list[ModalArtifact] | AsyncIterator[ClientDelta]:
+        if self._ipc_state.engine_dead:
+            raise RuntimeError("Engine process is dead; cannot submit new requests.")
+
+        request_id = await self._ipc_state.get_next_request_id()
+        response_queue: asyncio.Queue[ResponseDeltaDict] = asyncio.Queue()
+        owner_loop = asyncio.get_running_loop()
+        self._ipc_state.active_request_queues[request_id] = QueueRegistration(
+            loop=owner_loop, queue=response_queue
+        )
+        queue_cleared = False
+        stream_managed_cleanup = False
+
+        def _cleanup_queue() -> None:
+            nonlocal queue_cleared
+            if queue_cleared:
+                return
+            queue_cleared = True
+            self._ipc_state.active_request_queues.pop(request_id, None)
+
+        try:
+            info = await self._model_registry.get_info(model_id)
+            response_channel_id = self._ipc_state.response_channel_id or request_id
+            prompt_bytes = prompt.encode("utf-8")
+            image_buffers = image_buffers or []
+            audio_buffers = audio_buffers or []
+            layout: list[dict[str, int | str]] = []
+            if prompt_bytes or (not image_buffers and not audio_buffers):
+                layout.append({"type": "text", "length": len(prompt_bytes)})
+            layout.extend(
+                {"type": "image", "length": len(buffer)} for buffer in image_buffers
+            )
+            layout.extend(
+                {"type": "audio", "length": len(buffer)} for buffer in audio_buffers
+            )
+            clean_options = {
+                key: value for key, value in modal_options.items() if value is not None
+            }
+            modal_options_json = json.dumps(
+                clean_options,
+                separators=(",", ":"),
+                ensure_ascii=False,
+                sort_keys=True,
+            )
+            request_bytes = _build_request_payload(
+                request_id=request_id,
+                model_id=info.model_id,
+                model_path=info.model_path,
+                request_type=request_type,
+                response_channel_id=response_channel_id,
+                prompts=[
+                    {
+                        "prompt_bytes": prompt_bytes,
+                        "image_buffers": image_buffers,
+                        "audio_buffers": audio_buffers,
+                        "layout": layout,
+                        "max_generated_tokens": max_generated_tokens,
+                        "task_name": task_name,
+                        "modal_options_json": modal_options_json,
+                        "sampling_params": {
+                            "temperature": float(clean_options.get("temperature", 1.0)),
+                            "top_p": float(clean_options.get("top_p", 1.0)),
+                            "top_k": int(clean_options.get("top_k", -1)),
+                            "min_p": float(clean_options.get("min_p", 0.0)),
+                            "rng_seed": int(clean_options.get("seed", 0)),
+                            "deterministic": bool(
+                                clean_options.get("deterministic", False)
+                            ),
+                        },
+                    }
+                ],
+            )
+            socket = self._ipc_state.request_socket
+            if socket is None:
+                raise RuntimeError("Request socket is not initialized.")
+            await socket.asend(request_bytes)
+
+            async def _stream_generator() -> AsyncIterator[ClientDelta]:
+                stream_processor = self._async_process_stream(
+                    response_queue,
+                    on_cancel=lambda: self._cancel_request_for_cleanup(request_id),
+                )
+                try:
+                    async for delta in stream_processor:
+                        yield delta
+                finally:
+                    await stream_processor.aclose()
+                    _cleanup_queue()
+
+            if stream:
+                stream_managed_cleanup = True
+                return _stream_generator()
+
+            deltas = [
+                delta
+                async for delta in self._async_process_stream(
+                    response_queue,
+                    on_cancel=lambda: self._cancel_request_for_cleanup(request_id),
+                )
+            ]
+            _cleanup_queue()
+            return self._modal_artifacts_from_deltas(deltas)
+        finally:
+            if not stream or not stream_managed_cleanup:
+                _cleanup_queue()
+
+    @staticmethod
+    def _modal_artifacts_from_deltas(deltas: list[ClientDelta]) -> list[ModalArtifact]:
+        error_message = next(
+            (
+                delta.error_message or delta.content or "Modal artifact request failed."
+                for delta in deltas
+                if delta.error_message or (delta.finish_reason or "").lower() == "error"
+            ),
+            None,
+        )
+        if error_message is not None:
+            raise InferenceError(error_message)
+
+        artifacts: list[ModalArtifact] = []
+        for delta in deltas:
+            if not delta.modal_bytes_b64:
+                continue
+            metadata = None
+            if delta.modal_metadata_json:
+                metadata = json.loads(delta.modal_metadata_json)
+            artifacts.append(
+                ModalArtifact(
+                    type=delta.modal_type or "",
+                    event=delta.modal_event or "",
+                    mime_type=delta.modal_mime_type or "",
+                    decoder_id=delta.modal_decoder_id or "",
+                    data=base64.b64decode(delta.modal_bytes_b64),
+                    metadata=metadata,
+                    deltas=deltas,
+                )
+            )
+        return artifacts
+
+    async def _atranscribe_audio(self, model_id: str, pcm: Iterable[float]) -> str:
+        pcm_bytes = self._encode_float32_pcm_bytes(pcm)
+        if not pcm_bytes:
+            return ""
+        if self._ipc_state.engine_dead:
+            raise RuntimeError("Engine process is dead; cannot submit new requests.")
+
+        request_id = await self._ipc_state.get_next_request_id()
+        response_queue: asyncio.Queue[ResponseDeltaDict] = asyncio.Queue()
+        owner_loop = asyncio.get_running_loop()
+        self._ipc_state.active_request_queues[request_id] = QueueRegistration(
+            loop=owner_loop, queue=response_queue
+        )
+        queue_cleared = False
+
+        def _cleanup_queue() -> None:
+            nonlocal queue_cleared
+            if queue_cleared:
+                return
+            queue_cleared = True
+            self._ipc_state.active_request_queues.pop(request_id, None)
+
+        try:
+            info = await self._model_registry.get_info(model_id)
+            response_channel_id = self._ipc_state.response_channel_id or request_id
+            request_bytes = _build_request_payload(
+                request_id=request_id,
+                model_id=info.model_id,
+                model_path=info.model_path,
+                request_type="omni",
+                response_channel_id=response_channel_id,
+                prompts=[
+                    {
+                        "prompt_bytes": b"",
+                        "audio_buffers": [pcm_bytes],
+                        "layout": [
+                            {"type": "text", "length": 0},
+                            {"type": "audio", "length": len(pcm_bytes)},
+                        ],
+                        "max_generated_tokens": 0,
+                    }
+                ],
+            )
+            socket = self._ipc_state.request_socket
+            if socket is None:
+                raise RuntimeError("Request socket is not initialized.")
+            await socket.asend(request_bytes)
+            deltas = [
+                delta
+                async for delta in self._async_process_stream(
+                    response_queue,
+                    on_cancel=lambda: self._cancel_request_for_cleanup(request_id),
+                )
+            ]
+            error_message = next(
+                (
+                    delta.error_message or delta.content or "Transcription request failed."
+                    for delta in deltas
+                    if delta.error_message or (delta.finish_reason or "").lower() == "error"
+                ),
+                None,
+            )
+            if error_message is not None:
+                raise InferenceError(error_message)
+            return "".join(delta.content or "" for delta in deltas)
+        finally:
+            _cleanup_queue()
+
+    @staticmethod
+    def _encode_float32_pcm_bytes(pcm: Iterable[float]) -> bytes:
+        values = array("f", (float(sample) for sample in pcm))
+        if values.itemsize != 4:
+            raise RuntimeError("Platform float array is not 32-bit.")
+        if sys.byteorder != "little":
+            values.byteswap()
+        return values.tobytes()
 
     async def _async_process_stream(
         self,

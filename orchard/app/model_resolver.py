@@ -101,7 +101,7 @@ class ModelResolver:
         # Check absolute path
         if path.is_absolute():
             if path.exists() and path.is_dir():
-                if (path / "config.json").exists():
+                if (path / "config.json").exists() or (path / "model_index.json").exists():
                     return self._build_resolved_model(path, source="local")
                 return self._build_local_source_model(path)
             if path.exists() and path.is_file():
@@ -111,7 +111,10 @@ class ModelResolver:
         # Check relative path (relative to CWD)
         if path.exists():
             resolved_path = path.resolve()
-            if resolved_path.is_dir() and (resolved_path / "config.json").exists():
+            if resolved_path.is_dir() and (
+                (resolved_path / "config.json").exists()
+                or (resolved_path / "model_index.json").exists()
+            ):
                 return self._build_resolved_model(resolved_path, source="local")
             if resolved_path.is_dir() or resolved_path.is_file():
                 return self._build_local_source_model(resolved_path)
@@ -128,6 +131,7 @@ class ModelResolver:
         allow_patterns = [
             "*.json",
             "model*.safetensors",
+            "*.safetensors",
             "*.py",
             "tokenizer.model",
             "*.tiktoken",
@@ -219,26 +223,29 @@ class ModelResolver:
 
     @staticmethod
     def _ensure_hf_weights_complete(model_dir: Path) -> None:
-        index_file = model_dir / "model.safetensors.index.json"
-        if index_file.exists():
-            with index_file.open("r", encoding="utf-8") as f:
-                index_payload = json.load(f)
-            weight_map = index_payload.get("weight_map", {})
-            shard_names = sorted(set(weight_map.values()))
-            if not shard_names:
-                raise IncompleteSnapshotError(
-                    f"Cached HuggingFace snapshot '{model_dir}' has no declared weight shards."
-                )
-            missing_shards = [
-                shard_name
-                for shard_name in shard_names
-                if not ModelResolver._is_materialized_weight_file(model_dir / shard_name)
-            ]
-            if missing_shards:
-                raise IncompleteSnapshotError(
-                    f"Cached HuggingFace snapshot '{model_dir}' is missing weight shard(s): "
-                    + ", ".join(missing_shards)
-                )
+        index_files = sorted(model_dir.rglob("*.safetensors.index.json"))
+        if index_files:
+            for index_file in index_files:
+                with index_file.open("r", encoding="utf-8") as f:
+                    index_payload = json.load(f)
+                weight_map = index_payload.get("weight_map", {})
+                shard_names = sorted(set(weight_map.values()))
+                if not shard_names:
+                    raise IncompleteSnapshotError(
+                        f"Cached HuggingFace snapshot '{model_dir}' has no declared weight shards."
+                    )
+                missing_shards = [
+                    shard_name
+                    for shard_name in shard_names
+                    if not ModelResolver._is_materialized_weight_file(
+                        index_file.parent / shard_name
+                    )
+                ]
+                if missing_shards:
+                    raise IncompleteSnapshotError(
+                        f"Cached HuggingFace snapshot '{model_dir}' is missing weight shard(s): "
+                        + ", ".join(str(index_file.parent / shard) for shard in missing_shards)
+                    )
             return
 
         single_file = model_dir / "model.safetensors"
@@ -246,6 +253,20 @@ class ModelResolver:
             if not ModelResolver._is_materialized_weight_file(single_file):
                 raise IncompleteSnapshotError(
                     f"Cached HuggingFace snapshot '{model_dir}' has an incomplete model.safetensors."
+                )
+            return
+
+        safetensors = sorted(model_dir.rglob("*.safetensors"))
+        if safetensors:
+            incomplete = [
+                path
+                for path in safetensors
+                if not ModelResolver._is_materialized_weight_file(path)
+            ]
+            if incomplete:
+                raise IncompleteSnapshotError(
+                    f"Cached HuggingFace snapshot '{model_dir}' has incomplete safetensors: "
+                    + ", ".join(str(path) for path in incomplete)
                 )
             return
 
@@ -276,7 +297,7 @@ class ModelResolver:
 
         This method ensures all required assets are present and returns the config.
         """
-        config = self._load_config(model_dir)
+        config = self._normalize_config(self._load_config(model_dir))
 
         # Config completeness: augment from Python if using auto_map
         if "auto_map" in config:
@@ -293,11 +314,39 @@ class ModelResolver:
         """Load config.json from a model directory."""
         config_file = model_dir / "config.json"
         if not config_file.exists():
+            model_index_file = model_dir / "model_index.json"
+            if model_index_file.exists():
+                with model_index_file.open(encoding="utf-8") as f:
+                    model_index = json.load(f)
+                if model_index.get("_class_name") == "Ideogram4Pipeline":
+                    config = dict(model_index)
+                    config.setdefault("model_type", "ideogram4")
+                    config.setdefault("source_format", "diffusers_directory")
+                    return config
             raise ModelResolutionError(
                 f"Model directory '{model_dir}' is missing config.json."
             )
         with config_file.open("r", encoding="utf-8") as f:
             return json.load(f)
+
+    @staticmethod
+    def _normalize_config(config: dict) -> dict:
+        """Normalize known non-HF model config shapes into Orchard model types."""
+        if ModelResolver._is_parakeet_tdt_config(config):
+            config = dict(config)
+            config["model_type"] = "parakeet_tdt"
+        return config
+
+    @staticmethod
+    def _is_parakeet_tdt_config(config: dict) -> bool:
+        target = config.get("target")
+        defaults = config.get("model_defaults")
+        return (
+            isinstance(target, str)
+            and target.endswith("EncDecRNNTBPEModel")
+            and isinstance(defaults, dict)
+            and isinstance(defaults.get("tdt_durations"), list)
+        )
 
     def _ensure_config_complete(self, model_dir: Path, config: dict) -> None:
         """Augment config.json with Python-defined config if needed."""
@@ -347,7 +396,10 @@ class ModelResolver:
         """Check if model directory has tokenizer files."""
         return (model_dir / "tokenizer.json").exists() or (
             model_dir / "tokenizer.model"
-        ).exists()
+        ).exists() or (
+            (model_dir / "vocab.json").exists()
+            and (model_dir / "merges.txt").exists()
+        )
 
     def _ensure_tokenizer_complete(self, model_dir: Path) -> None:
         """Find and fetch tokenizer from external source if referenced."""
@@ -383,6 +435,8 @@ class ModelResolver:
             "tokenizer.model",
             "tokenizer_config.json",
             "special_tokens_map.json",
+            "vocab.json",
+            "merges.txt",
         ]
 
         try:

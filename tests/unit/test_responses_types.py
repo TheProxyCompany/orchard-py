@@ -81,6 +81,32 @@ def test_to_messages_with_function_call_and_output() -> None:
     assert tool_message["content"] == '{"temperature":65}'
 
 
+def test_to_messages_with_multimodal_function_call_output() -> None:
+    image_part = {
+        "type": "input_image",
+        "image_url": "data:image/png;base64,AA==",
+        "detail": "auto",
+    }
+    request = ResponsesRequest(
+        input=[
+            InputFunctionCallOutput(
+                call_id="call_image",
+                output=[image_part],
+            ),
+        ]
+    )
+
+    messages = request.to_messages()
+
+    assert messages == [
+        {
+            "role": "tool",
+            "content": [image_part],
+            "tool_call_id": "call_image",
+        }
+    ]
+
+
 def test_to_messages_with_mixed_items_skips_reasoning() -> None:
     request = ResponsesRequest(
         input=[

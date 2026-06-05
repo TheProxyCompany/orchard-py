@@ -67,9 +67,15 @@ class ResponsesRequest(ResponseRequest):
     def to_messages(self) -> list[dict[str, Any]]:
         messages: list[dict[str, Any]] = []
         for item in self.get_message_items():
+            content = item.content
+            if isinstance(content, list):
+                content = [
+                    part.model_dump(mode="json") if hasattr(part, "model_dump") else part
+                    for part in content
+                ]
             message: dict[str, Any] = {
                 "role": item.role,
-                "content": item.content,
+                "content": content,
             }
             if item.tool_calls:
                 message["tool_calls"] = [

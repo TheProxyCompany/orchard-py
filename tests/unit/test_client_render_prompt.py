@@ -1091,6 +1091,68 @@ async def test_gemma4_tool_turn_preserves_assistant_reasoning_history(
 
 
 @pytest.mark.asyncio
+async def test_gemma4_tool_result_image_renders_multimodal_layout(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    model_path = tmp_path / "gemma4-moe"
+    model_path.mkdir()
+    (model_path / "config.json").write_text(
+        json.dumps(
+            {
+                "model_type": "gemma4",
+                "text_config": {"hidden_size": 2816, "num_experts": 128},
+            }
+        )
+    )
+    formatter = ChatFormatter(str(model_path))
+    client = _make_client(formatter)
+    messages = [
+        {"role": "user", "content": "Create an image of an apple."},
+        {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [
+                {
+                    "id": "call_image",
+                    "type": "function",
+                    "function": {
+                        "name": "generate_image",
+                        "arguments": {"prompt": "a red apple"},
+                    },
+                }
+            ],
+        },
+        {
+            "role": "tool",
+            "tool_call_id": "call_image",
+            "content": [{"type": "input_image", "image_url": DATA_URL}],
+        },
+    ]
+
+    captured: dict[str, Any] = {}
+
+    def _capture_request_payload(**payload_kwargs: Any) -> bytes:
+        captured["prompt_payload"] = payload_kwargs["prompts"][0]
+        return b"captured"
+
+    monkeypatch.setattr(
+        client_module, "_build_request_payload", _capture_request_payload
+    )
+
+    rendered = await client.arender_prompt("test-model", messages, rng_seed=1234)
+    await client._asubmit_request(1, "test-model", messages, rng_seed=1234)  # noqa: SLF001
+
+    prompt = rendered["rendered_prompt_text"]
+    assert "<|image|>" not in prompt
+    assert "<|tool_response>response:generate_image" in prompt
+    assert captured["prompt_payload"]["image_buffers"] == [b"\x00"]
+    assert any(
+        segment["type"] == "image" for segment in captured["prompt_payload"]["layout"]
+    )
+
+
+@pytest.mark.asyncio
 async def test_non_native_thinking_profile_drops_reasoning_payload(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path,

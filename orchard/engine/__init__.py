@@ -26,6 +26,10 @@ class ClientDelta(BaseModel):
     content_len: int | None = None
     inline_content_bytes: int | None = None
     modal_decoder_id: str | None = None
+    modal_type: str | None = None
+    modal_event: str | None = None
+    modal_mime_type: str | None = None
+    modal_metadata_json: str | None = None
     modal_bytes_b64: str | None = None
     error_message: str | None = None
     state_events: list[dict] = Field(default_factory=list)
