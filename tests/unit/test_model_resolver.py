@@ -171,6 +171,20 @@ def test_load_config_accepts_qwen_image_edit_model_index(tmp_path: Path) -> None
     assert config["source_format"] == "diffusers_directory"
 
 
+def test_load_config_accepts_flux2_model_index(tmp_path: Path) -> None:
+    model_dir = tmp_path / "flux2-klein"
+    model_dir.mkdir()
+    (model_dir / "model_index.json").write_text(
+        json.dumps({"_class_name": "Flux2KleinPipeline"}),
+        encoding="utf-8",
+    )
+
+    config = ModelResolver._load_config(model_dir)  # noqa: SLF001
+
+    assert config["model_type"] == "flux"
+    assert config["source_format"] == "diffusers_directory"
+
+
 def test_resolve_local_file_as_engine_inspected_source(tmp_path: Path) -> None:
     model_file = tmp_path / "model.gguf"
     model_file.write_bytes(b"GGUF")

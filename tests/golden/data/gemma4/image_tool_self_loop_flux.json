@@ -1,316 +1,4 @@
 {
-  "turn2": [
-    {
-      "type": "response.created",
-      "sequence_number": 0,
-      "response": {
-        "id": "resp_0",
-        "object": "response",
-        "created_at": null,
-        "completed_at": null,
-        "status": "in_progress",
-        "incomplete_details": null,
-        "stop_token_id": null,
-        "stop_token": null,
-        "model": "google/gemma-4-E2B-it",
-        "output": [],
-        "usage": null
-      }
-    },
-    {
-      "type": "response.in_progress",
-      "sequence_number": 1,
-      "response": {
-        "id": "resp_0",
-        "object": "response",
-        "created_at": null,
-        "completed_at": null,
-        "status": "in_progress",
-        "incomplete_details": null,
-        "stop_token_id": null,
-        "stop_token": null,
-        "model": "google/gemma-4-E2B-it",
-        "output": [],
-        "usage": null
-      }
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 2,
-      "token_id": 818,
-      "content": "The"
-    },
-    {
-      "type": "response.output_item.added",
-      "sequence_number": 3,
-      "output_index": 0,
-      "item": {
-        "type": "message",
-        "id": "msg_0",
-        "status": "in_progress",
-        "role": "assistant",
-        "content": []
-      }
-    },
-    {
-      "type": "response.content_part.added",
-      "sequence_number": 4,
-      "item_id": "msg_0",
-      "output_index": 0,
-      "content_index": 0,
-      "part": {
-        "type": "output_text",
-        "text": "",
-        "annotations": [],
-        "logprobs": []
-      }
-    },
-    {
-      "type": "response.output_text.delta",
-      "sequence_number": 5,
-      "item_id": "msg_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": "The",
-      "logprobs": []
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 6,
-      "token_id": 2495,
-      "content": " object"
-    },
-    {
-      "type": "response.output_text.delta",
-      "sequence_number": 7,
-      "item_id": "msg_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": " object",
-      "logprobs": []
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 8,
-      "token_id": 528,
-      "content": " in"
-    },
-    {
-      "type": "response.output_text.delta",
-      "sequence_number": 9,
-      "item_id": "msg_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": " in",
-      "logprobs": []
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 10,
-      "token_id": 506,
-      "content": " the"
-    },
-    {
-      "type": "response.output_text.delta",
-      "sequence_number": 11,
-      "item_id": "msg_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": " the",
-      "logprobs": []
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 12,
-      "token_id": 7835,
-      "content": " generated"
-    },
-    {
-      "type": "response.output_text.delta",
-      "sequence_number": 13,
-      "item_id": "msg_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": " generated",
-      "logprobs": []
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 14,
-      "token_id": 2471,
-      "content": " image"
-    },
-    {
-      "type": "response.output_text.delta",
-      "sequence_number": 15,
-      "item_id": "msg_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": " image",
-      "logprobs": []
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 16,
-      "token_id": 563,
-      "content": " is"
-    },
-    {
-      "type": "response.output_text.delta",
-      "sequence_number": 17,
-      "item_id": "msg_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": " is",
-      "logprobs": []
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 18,
-      "token_id": 496,
-      "content": " a"
-    },
-    {
-      "type": "response.output_text.delta",
-      "sequence_number": 19,
-      "item_id": "msg_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": " a",
-      "logprobs": []
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 20,
-      "token_id": 2604,
-      "content": " red"
-    },
-    {
-      "type": "response.output_text.delta",
-      "sequence_number": 21,
-      "item_id": "msg_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": " red",
-      "logprobs": []
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 22,
-      "token_id": 17810,
-      "content": " apple"
-    },
-    {
-      "type": "response.output_text.delta",
-      "sequence_number": 23,
-      "item_id": "msg_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": " apple",
-      "logprobs": []
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 24,
-      "token_id": 236761,
-      "content": "."
-    },
-    {
-      "type": "response.output_text.delta",
-      "sequence_number": 25,
-      "item_id": "msg_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": ".",
-      "logprobs": []
-    },
-    {
-      "type": "response.output_text.done",
-      "sequence_number": 26,
-      "item_id": "msg_0",
-      "output_index": 0,
-      "content_index": 0,
-      "text": "The object in the generated image is a red apple.",
-      "logprobs": []
-    },
-    {
-      "type": "response.content_part.done",
-      "sequence_number": 27,
-      "item_id": "msg_0",
-      "output_index": 0,
-      "content_index": 0,
-      "part": {
-        "type": "output_text",
-        "text": "The object in the generated image is a red apple.",
-        "annotations": [],
-        "logprobs": []
-      }
-    },
-    {
-      "type": "response.output_item.done",
-      "sequence_number": 28,
-      "output_index": 0,
-      "item": {
-        "type": "message",
-        "id": "msg_0",
-        "status": "completed",
-        "role": "assistant",
-        "content": [
-          {
-            "type": "output_text",
-            "text": "The object in the generated image is a red apple.",
-            "annotations": [],
-            "logprobs": []
-          }
-        ]
-      }
-    },
-    {
-      "type": "response.completed",
-      "sequence_number": 29,
-      "response": {
-        "id": "resp_0",
-        "object": "response",
-        "created_at": null,
-        "completed_at": null,
-        "status": "completed",
-        "incomplete_details": null,
-        "stop_token_id": 106,
-        "stop_token": "<turn|>",
-        "model": "google/gemma-4-E2B-it",
-        "output": [
-          {
-            "type": "message",
-            "id": "msg_0",
-            "status": "completed",
-            "role": "assistant",
-            "content": [
-              {
-                "type": "output_text",
-                "text": "The object in the generated image is a red apple.",
-                "annotations": [],
-                "logprobs": []
-              }
-            ]
-          }
-        ],
-        "usage": {
-          "input_tokens": 441,
-          "output_tokens": 12,
-          "total_tokens": 453,
-          "input_tokens_details": {
-            "cached_tokens": 0
-          },
-          "output_tokens_details": {
-            "reasoning_tokens": 0
-          }
-        }
-      }
-    },
-    {
-      "type": "done"
-    }
-  ],
   "turn1": [
     {
       "type": "response.created",
@@ -2085,6 +1773,318 @@
           },
           "output_tokens_details": {
             "reasoning_tokens": 100
+          }
+        }
+      }
+    },
+    {
+      "type": "done"
+    }
+  ],
+  "turn2": [
+    {
+      "type": "response.created",
+      "sequence_number": 0,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "in_progress",
+        "incomplete_details": null,
+        "stop_token_id": null,
+        "stop_token": null,
+        "model": "google/gemma-4-E2B-it",
+        "output": [],
+        "usage": null
+      }
+    },
+    {
+      "type": "response.in_progress",
+      "sequence_number": 1,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "in_progress",
+        "incomplete_details": null,
+        "stop_token_id": null,
+        "stop_token": null,
+        "model": "google/gemma-4-E2B-it",
+        "output": [],
+        "usage": null
+      }
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 2,
+      "token_id": 818,
+      "content": "The"
+    },
+    {
+      "type": "response.output_item.added",
+      "sequence_number": 3,
+      "output_index": 0,
+      "item": {
+        "type": "message",
+        "id": "msg_0",
+        "status": "in_progress",
+        "role": "assistant",
+        "content": []
+      }
+    },
+    {
+      "type": "response.content_part.added",
+      "sequence_number": 4,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "part": {
+        "type": "output_text",
+        "text": "",
+        "annotations": [],
+        "logprobs": []
+      }
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 5,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "The",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 6,
+      "token_id": 2495,
+      "content": " object"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 7,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " object",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 8,
+      "token_id": 528,
+      "content": " in"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 9,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " in",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 10,
+      "token_id": 506,
+      "content": " the"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 11,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " the",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 12,
+      "token_id": 7835,
+      "content": " generated"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 13,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " generated",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 14,
+      "token_id": 2471,
+      "content": " image"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 15,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " image",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 16,
+      "token_id": 563,
+      "content": " is"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 17,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " is",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 18,
+      "token_id": 496,
+      "content": " a"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 19,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " a",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 20,
+      "token_id": 2604,
+      "content": " red"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 21,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " red",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 22,
+      "token_id": 17810,
+      "content": " apple"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 23,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " apple",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 24,
+      "token_id": 236761,
+      "content": "."
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 25,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": ".",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_text.done",
+      "sequence_number": 26,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "text": "The object in the generated image is a red apple.",
+      "logprobs": []
+    },
+    {
+      "type": "response.content_part.done",
+      "sequence_number": 27,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "part": {
+        "type": "output_text",
+        "text": "The object in the generated image is a red apple.",
+        "annotations": [],
+        "logprobs": []
+      }
+    },
+    {
+      "type": "response.output_item.done",
+      "sequence_number": 28,
+      "output_index": 0,
+      "item": {
+        "type": "message",
+        "id": "msg_0",
+        "status": "completed",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "output_text",
+            "text": "The object in the generated image is a red apple.",
+            "annotations": [],
+            "logprobs": []
+          }
+        ]
+      }
+    },
+    {
+      "type": "response.completed",
+      "sequence_number": 29,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "completed",
+        "incomplete_details": null,
+        "stop_token_id": 106,
+        "stop_token": "<turn|>",
+        "model": "google/gemma-4-E2B-it",
+        "output": [
+          {
+            "type": "message",
+            "id": "msg_0",
+            "status": "completed",
+            "role": "assistant",
+            "content": [
+              {
+                "type": "output_text",
+                "text": "The object in the generated image is a red apple.",
+                "annotations": [],
+                "logprobs": []
+              }
+            ]
+          }
+        ],
+        "usage": {
+          "input_tokens": 441,
+          "output_tokens": 12,
+          "total_tokens": 453,
+          "input_tokens_details": {
+            "cached_tokens": 0
+          },
+          "output_tokens_details": {
+            "reasoning_tokens": 0
           }
         }
       }

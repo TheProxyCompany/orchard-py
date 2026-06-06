@@ -1,0 +1,407 @@
+{
+  "verifier": [
+    {
+      "type": "response.created",
+      "sequence_number": 0,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "in_progress",
+        "incomplete_details": null,
+        "stop_token_id": null,
+        "stop_token": null,
+        "model": "moondream/moondream3-preview",
+        "output": [],
+        "usage": null
+      }
+    },
+    {
+      "type": "response.in_progress",
+      "sequence_number": 1,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "in_progress",
+        "incomplete_details": null,
+        "stop_token_id": null,
+        "stop_token": null,
+        "model": "moondream/moondream3-preview",
+        "output": [],
+        "usage": null
+      }
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 2,
+      "token_id": 61,
+      "content": "I"
+    },
+    {
+      "type": "response.output_item.added",
+      "sequence_number": 3,
+      "output_index": 0,
+      "item": {
+        "type": "reasoning",
+        "id": "reasoning_0",
+        "status": "in_progress",
+        "summary": [],
+        "content": [],
+        "encrypted_content": null
+      }
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 4,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "I"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 5,
+      "token_id": 45478,
+      "content": " see a"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 6,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " see a"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 7,
+      "token_id": 2669,
+      "content": " blue"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 8,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " blue"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 9,
+      "token_id": 5210,
+      "content": " circle"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 10,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " circle"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 11,
+      "token_id": 45787,
+      "content": " on the left"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 12,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " on the left"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 13,
+      "token_id": 41261,
+      "content": " and a"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 14,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " and a"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 15,
+      "token_id": 1821,
+      "content": " red"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 16,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " red"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 17,
+      "token_id": 3461,
+      "content": " square"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 18,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " square"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 19,
+      "token_id": 45468,
+      "content": " on the right"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 20,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " on the right"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 21,
+      "token_id": 34,
+      "content": "."
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 22,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "."
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 23,
+      "token_id": 3,
+      "content": "<|md_reserved_2|>"
+    },
+    {
+      "type": "response.reasoning.done",
+      "sequence_number": 24,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "text": "I see a blue circle on the left and a red square on the right."
+    },
+    {
+      "type": "response.output_item.done",
+      "sequence_number": 25,
+      "output_index": 0,
+      "item": {
+        "type": "reasoning",
+        "id": "reasoning_0",
+        "status": "completed",
+        "summary": [],
+        "content": [
+          {
+            "type": "reasoning_text",
+            "text": "I see a blue circle on the left and a red square on the right."
+          }
+        ],
+        "encrypted_content": null
+      }
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 26,
+      "token_id": 11485,
+      "content": "blue"
+    },
+    {
+      "type": "response.output_item.added",
+      "sequence_number": 27,
+      "output_index": 1,
+      "item": {
+        "type": "message",
+        "id": "msg_0",
+        "status": "in_progress",
+        "role": "assistant",
+        "content": []
+      }
+    },
+    {
+      "type": "response.content_part.added",
+      "sequence_number": 28,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "part": {
+        "type": "output_text",
+        "text": "",
+        "annotations": [],
+        "logprobs": []
+      }
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 29,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "blue",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 30,
+      "token_id": 5210,
+      "content": " circle"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 31,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": " circle",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 32,
+      "token_id": 46758,
+      "content": ", red"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 33,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": ", red",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 34,
+      "token_id": 3461,
+      "content": " square"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 35,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": " square",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_text.done",
+      "sequence_number": 36,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "text": "blue circle, red square",
+      "logprobs": []
+    },
+    {
+      "type": "response.content_part.done",
+      "sequence_number": 37,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "part": {
+        "type": "output_text",
+        "text": "blue circle, red square",
+        "annotations": [],
+        "logprobs": []
+      }
+    },
+    {
+      "type": "response.output_item.done",
+      "sequence_number": 38,
+      "output_index": 1,
+      "item": {
+        "type": "message",
+        "id": "msg_0",
+        "status": "completed",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "output_text",
+            "text": "blue circle, red square",
+            "annotations": [],
+            "logprobs": []
+          }
+        ]
+      }
+    },
+    {
+      "type": "response.completed",
+      "sequence_number": 39,
+      "response": {
+        "id": "resp_0",
+        "object": "response",
+        "created_at": null,
+        "completed_at": null,
+        "status": "completed",
+        "incomplete_details": null,
+        "stop_token_id": 0,
+        "stop_token": "<|endoftext|>",
+        "model": "moondream/moondream3-preview",
+        "output": [
+          {
+            "type": "reasoning",
+            "id": "reasoning_0",
+            "status": "completed",
+            "summary": [],
+            "content": [
+              {
+                "type": "reasoning_text",
+                "text": "I see a blue circle on the left and a red square on the right."
+              }
+            ],
+            "encrypted_content": null
+          },
+          {
+            "type": "message",
+            "id": "msg_0",
+            "status": "completed",
+            "role": "assistant",
+            "content": [
+              {
+                "type": "output_text",
+                "text": "blue circle, red square",
+                "annotations": [],
+                "logprobs": []
+              }
+            ]
+          }
+        ],
+        "usage": {
+          "input_tokens": 745,
+          "output_tokens": 5,
+          "total_tokens": 750,
+          "input_tokens_details": {
+            "cached_tokens": 0
+          },
+          "output_tokens_details": {
+            "reasoning_tokens": 11
+          }
+        }
+      }
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

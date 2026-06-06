@@ -322,14 +322,15 @@ class ModelResolver:
                 with model_index_file.open(encoding="utf-8") as f:
                     model_index = json.load(f)
                 pipeline_class = model_index.get("_class_name")
-                if pipeline_class in {"Ideogram4Pipeline", "QwenImageEditPipeline"}:
+                pipeline_model_types = {
+                    "Ideogram4Pipeline": "ideogram4",
+                    "QwenImageEditPipeline": "qwen_image_edit",
+                    "FluxPipeline": "flux",
+                    "Flux2KleinPipeline": "flux",
+                }
+                if pipeline_class in pipeline_model_types:
                     config = dict(model_index)
-                    config.setdefault(
-                        "model_type",
-                        "ideogram4"
-                        if pipeline_class == "Ideogram4Pipeline"
-                        else "qwen_image_edit",
-                    )
+                    config.setdefault("model_type", pipeline_model_types[pipeline_class])
                     config.setdefault("source_format", "diffusers_directory")
                     return config
             raise ModelResolutionError(
