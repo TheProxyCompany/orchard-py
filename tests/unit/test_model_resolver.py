@@ -59,7 +59,9 @@ def test_resolve_downloads_when_cached_snapshot_is_missing_a_shard(
         calls.append(local_files_only)
         return str(cached if local_files_only else downloaded)
 
-    monkeypatch.setattr("orchard.app.model_resolver.snapshot_download", fake_snapshot_download)
+    monkeypatch.setattr(
+        "orchard.app.model_resolver.snapshot_download", fake_snapshot_download
+    )
 
     resolved = ModelResolver().resolve(repo_id)
 
@@ -91,7 +93,9 @@ def test_resolve_downloads_when_cached_single_file_snapshot_is_broken(
         calls.append(local_files_only)
         return str(cached if local_files_only else downloaded)
 
-    monkeypatch.setattr("orchard.app.model_resolver.snapshot_download", fake_snapshot_download)
+    monkeypatch.setattr(
+        "orchard.app.model_resolver.snapshot_download", fake_snapshot_download
+    )
 
     resolved = ModelResolver().resolve(repo_id)
 
@@ -139,7 +143,9 @@ def test_resolve_accepts_nested_diffusers_safetensors_snapshot(
         calls.append(local_files_only)
         return str(cached)
 
-    monkeypatch.setattr("orchard.app.model_resolver.snapshot_download", fake_snapshot_download)
+    monkeypatch.setattr(
+        "orchard.app.model_resolver.snapshot_download", fake_snapshot_download
+    )
 
     resolved = ModelResolver().resolve(repo_id)
 
@@ -149,6 +155,20 @@ def test_resolve_accepts_nested_diffusers_safetensors_snapshot(
     assert resolved.formatter_config is not None
     assert resolved.formatter_config["model_type"] == "ideogram4"
     assert "template_type" not in resolved.formatter_config
+
+
+def test_load_config_accepts_qwen_image_edit_model_index(tmp_path: Path) -> None:
+    model_dir = tmp_path / "qwen-image-edit"
+    model_dir.mkdir()
+    (model_dir / "model_index.json").write_text(
+        json.dumps({"_class_name": "QwenImageEditPipeline"}),
+        encoding="utf-8",
+    )
+
+    config = ModelResolver._load_config(model_dir)  # noqa: SLF001
+
+    assert config["model_type"] == "qwen_image_edit"
+    assert config["source_format"] == "diffusers_directory"
 
 
 def test_resolve_local_file_as_engine_inspected_source(tmp_path: Path) -> None:

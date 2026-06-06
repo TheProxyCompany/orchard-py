@@ -24,6 +24,7 @@ __all__ = [
     "ResolvedModel",
 ]
 
+
 @dataclass(slots=True)
 class ResolvedModel:
     """Result of resolving a model identifier to a local path."""
@@ -101,7 +102,9 @@ class ModelResolver:
         # Check absolute path
         if path.is_absolute():
             if path.exists() and path.is_dir():
-                if (path / "config.json").exists() or (path / "model_index.json").exists():
+                if (path / "config.json").exists() or (
+                    path / "model_index.json"
+                ).exists():
                     return self._build_resolved_model(path, source="local")
                 return self._build_local_source_model(path)
             if path.exists() and path.is_file():
@@ -121,9 +124,7 @@ class ModelResolver:
 
         return None
 
-    def _resolve_huggingface(
-        self, repo_id: str
-    ) -> ResolvedModel:
+    def _resolve_huggingface(self, repo_id: str) -> ResolvedModel:
         """Resolve a HuggingFace repo ID to a local cache path.
 
         Downloads the model if not already cached.
@@ -244,7 +245,9 @@ class ModelResolver:
                 if missing_shards:
                     raise IncompleteSnapshotError(
                         f"Cached HuggingFace snapshot '{model_dir}' is missing weight shard(s): "
-                        + ", ".join(str(index_file.parent / shard) for shard in missing_shards)
+                        + ", ".join(
+                            str(index_file.parent / shard) for shard in missing_shards
+                        )
                     )
             return
 
@@ -318,9 +321,15 @@ class ModelResolver:
             if model_index_file.exists():
                 with model_index_file.open(encoding="utf-8") as f:
                     model_index = json.load(f)
-                if model_index.get("_class_name") == "Ideogram4Pipeline":
+                pipeline_class = model_index.get("_class_name")
+                if pipeline_class in {"Ideogram4Pipeline", "QwenImageEditPipeline"}:
                     config = dict(model_index)
-                    config.setdefault("model_type", "ideogram4")
+                    config.setdefault(
+                        "model_type",
+                        "ideogram4"
+                        if pipeline_class == "Ideogram4Pipeline"
+                        else "qwen_image_edit",
+                    )
                     config.setdefault("source_format", "diffusers_directory")
                     return config
             raise ModelResolutionError(
@@ -394,11 +403,13 @@ class ModelResolver:
     @staticmethod
     def _has_tokenizer(model_dir: Path) -> bool:
         """Check if model directory has tokenizer files."""
-        return (model_dir / "tokenizer.json").exists() or (
-            model_dir / "tokenizer.model"
-        ).exists() or (
-            (model_dir / "vocab.json").exists()
-            and (model_dir / "merges.txt").exists()
+        return (
+            (model_dir / "tokenizer.json").exists()
+            or (model_dir / "tokenizer.model").exists()
+            or (
+                (model_dir / "vocab.json").exists()
+                and (model_dir / "merges.txt").exists()
+            )
         )
 
     def _ensure_tokenizer_complete(self, model_dir: Path) -> None:

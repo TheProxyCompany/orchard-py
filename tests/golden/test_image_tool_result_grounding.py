@@ -18,6 +18,7 @@ pytestmark = pytest.mark.asyncio
 GEMMA4_MODEL = "google/gemma-4-E2B-it"
 MOONDREAM3_MODEL = "moondream/moondream3-preview"
 IDEOGRAM4_MODEL = "ideogram-ai/ideogram-4-fp8"
+QWEN_IMAGE_EDIT_MODEL = "Qwen/Qwen-Image-Edit"
 
 GENERATE_IMAGE = {
     "type": "function",
@@ -47,6 +48,16 @@ USER = (
     "the generated image."
 )
 
+SHAPES_USER = (
+    "Use generate_image to create a simple flat icon on a plain white background: "
+    "a red circle on the left and a blue square on the right. No text, no shadows."
+)
+
+SWAP_COLORS_PROMPT = (
+    "Make the left circle bright blue. Make the right square bright red. "
+    "Keep the background white."
+)
+
 
 def _image_part(artifact: ModalArtifact) -> dict[str, str]:
     encoded = base64.b64encode(artifact.data).decode("ascii")
@@ -57,10 +68,14 @@ def _image_part(artifact: ModalArtifact) -> dict[str, str]:
     }
 
 
-async def _run_gemma_generate_image_call(client: Client) -> tuple[dict, OutputFunctionCall, str]:
+async def _run_gemma_generate_image_call(
+    client: Client,
+    user: str = USER,
+    required_prompt_terms: Sequence[str] = ("apple",),
+) -> tuple[dict, OutputFunctionCall, str]:
     conversation = [
         {"type": "message", "role": "system", "content": SYSTEM},
-        {"type": "message", "role": "user", "content": USER},
+        {"type": "message", "role": "user", "content": user},
     ]
     request = dict(
         input=conversation,
@@ -110,7 +125,11 @@ async def _run_gemma_generate_image_call(client: Client) -> tuple[dict, OutputFu
     assert set(arguments) == {"prompt"}
     prompt = arguments["prompt"]
     assert isinstance(prompt, str) and prompt.strip()
-    assert "apple" in prompt.lower(), f"generator prompt lost the requested object: {prompt!r}"
+    prompt_lower = prompt.lower()
+    for term in required_prompt_terms:
+        assert term in prompt_lower, (
+            f"generator prompt lost requested term {term!r}: {prompt!r}"
+        )
 
     return turn, call, prompt
 
@@ -134,6 +153,28 @@ async def _generate_ideogram_image(client: Client, prompt: str) -> ModalArtifact
     assert artifact.data.startswith(b"\x89PNG\r\n\x1a\n")
     assert len(artifact.data) > 1024
     return artifact
+
+
+async def _edit_with_qwen_image_edit(client: Client, artifact: ModalArtifact) -> ModalArtifact:
+    artifacts = await client.images.aedit(
+        QWEN_IMAGE_EDIT_MODEL,
+        artifact.data,
+        SWAP_COLORS_PROMPT,
+        height=512,
+        width=512,
+        num_steps=8,
+        true_cfg_scale=1.0,
+        negative_prompt="",
+        seed=1337,
+    )
+    assert isinstance(artifacts, Sequence)
+    assert len(artifacts) == 1
+    edited = artifacts[0]
+    assert edited.mime_type == "image/png"
+    assert edited.decoder_id == "qwen_image_edit"
+    assert edited.data.startswith(b"\x89PNG\r\n\x1a\n")
+    assert len(edited.data) > 1024
+    return edited
 
 
 async def test_image_tool_self_loop_and_blind_verifier(client: Client):
@@ -236,3 +277,63 @@ async def test_image_tool_self_loop_and_blind_verifier(client: Client):
     assert "apple" in verifier["content_done"].lower(), (
         f"moondream3 did not identify the generated image: {verifier['content_done']!r}"
     )
+
+
+async def test_image_edit_tool_blind_verifier(client: Client):
+    print(
+        "\n\033[1;33m━━━ gemma4 · ideogram → qwen image edit → moondream vision ━━━\033[0m",
+        flush=True,
+    )
+
+    generator, _call, prompt = await _run_gemma_generate_image_call(
+        client,
+        user=SHAPES_USER,
+        required_prompt_terms=("red", "circle", "blue", "square"),
+    )
+    assert_or_record("gemma4", "image_edit_tool_blind_verifier", "generator", generator["events"])
+
+    source = await _generate_ideogram_image(client, prompt)
+    edited = await _edit_with_qwen_image_edit(client, source)
+    image = _image_part(edited)
+
+    verifier_request = dict(
+        input=[
+            {
+                "type": "message",
+                "role": "user",
+                "content": [
+                    {
+                        "type": "input_text",
+                        "text": "What colors and shapes are in this image? Answer briefly.",
+                    },
+                    image,
+                ],
+            }
+        ],
+        temperature=0.0,
+        deterministic=True,
+        max_output_tokens=256,
+        reasoning={"effort": "medium"},
+        prefix_cache=False,
+    )
+    await render_prompt_blue(client, MOONDREAM3_MODEL, **verifier_request)
+    stream = await client.aresponses(
+        MOONDREAM3_MODEL, stream=True, stream_tokens=True, **verifier_request
+    )
+    verifier = await drain_stream(stream)
+    print_usage_summary([generator, verifier])
+    assert_or_record("moondream3", "image_edit_tool_blind_verifier", "verifier", verifier["events"])
+
+    assert verifier["order"][0] == "response.created"
+    assert verifier["order"][-1] == "done"
+    assert verifier["counts"]["response.created"] == 1
+    assert verifier["counts"]["response.in_progress"] == 1
+    assert verifier["counts"]["response.completed"] == 1
+    assert verifier["counts"]["response.output_text.done"] == 1
+    assert verifier["content"] == verifier["content_done"]
+    answer = verifier["content_done"].lower()
+    for term in ("blue", "circle", "red", "square"):
+        assert term in answer, (
+            f"moondream3 did not identify the edited image as blue circle/red square: "
+            f"{verifier['content_done']!r}"
+        )

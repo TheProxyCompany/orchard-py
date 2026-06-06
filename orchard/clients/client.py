@@ -204,6 +204,75 @@ class ImagesClient:
             return self._client._sync_iterator_bridge(result)
         return result
 
+    async def aedit(
+        self,
+        model_id: str,
+        image: bytes | bytearray | memoryview,
+        prompt: str,
+        *,
+        height: int | None = None,
+        width: int | None = None,
+        num_steps: int = 50,
+        true_cfg_scale: float = 4.0,
+        negative_prompt: str = " ",
+        seed: int | None = None,
+        stream: bool = False,
+        **options: Any,
+    ) -> list[ModalArtifact] | AsyncIterator[ClientDelta]:
+        modal_options = {
+            "height": height,
+            "width": width,
+            "num_steps": num_steps,
+            "true_cfg_scale": true_cfg_scale,
+            "negative_prompt": negative_prompt,
+            "seed": seed,
+            **options,
+        }
+        return await self._client._amodal_artifacts(
+            request_type="image",
+            model_id=model_id,
+            prompt=prompt,
+            task_name="image_to_image",
+            modal_options=modal_options,
+            max_generated_tokens=0,
+            stream=stream,
+            image_buffers=[bytes(image)],
+        )
+
+    def edit(
+        self,
+        model_id: str,
+        image: bytes | bytearray | memoryview,
+        prompt: str,
+        *,
+        height: int | None = None,
+        width: int | None = None,
+        num_steps: int = 50,
+        true_cfg_scale: float = 4.0,
+        negative_prompt: str = " ",
+        seed: int | None = None,
+        stream: bool = False,
+        **options: Any,
+    ) -> list[ModalArtifact] | Iterator[ClientDelta]:
+        result = self._client._sync_submit(
+            self.aedit(
+                model_id,
+                image,
+                prompt,
+                height=height,
+                width=width,
+                num_steps=num_steps,
+                true_cfg_scale=true_cfg_scale,
+                negative_prompt=negative_prompt,
+                seed=seed,
+                stream=stream,
+                **options,
+            )
+        )
+        if isinstance(result, AsyncIterator):
+            return self._client._sync_iterator_bridge(result)
+        return result
+
 
 class Client:
     """
@@ -506,9 +575,12 @@ class Client:
             ]
             error_message = next(
                 (
-                    delta.error_message or delta.content or "Transcription request failed."
+                    delta.error_message
+                    or delta.content
+                    or "Transcription request failed."
                     for delta in deltas
-                    if delta.error_message or (delta.finish_reason or "").lower() == "error"
+                    if delta.error_message
+                    or (delta.finish_reason or "").lower() == "error"
                 ),
                 None,
             )

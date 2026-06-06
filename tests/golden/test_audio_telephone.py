@@ -10,10 +10,32 @@ from orchard.clients.client import Client
 
 pytestmark = pytest.mark.asyncio
 
-QWEN3_TTS_MODEL = "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice"
+TTS_MODELS = [
+    (
+        "qwen3_tts_0_6b",
+        "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+        {"language": "English", "speaker": "Aiden", "temperature": 0.9, "top_k": 50},
+    ),
+    (
+        "qwen3_tts_1_7b",
+        "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice",
+        {"language": "English", "speaker": "Aiden", "temperature": 0.9, "top_k": 50},
+    ),
+]
 PARAKEET_MODEL = "mlx-community/parakeet-tdt-0.6b-v3"
-QWEN3_ASR_MODEL = "Qwen/Qwen3-ASR-0.6B"
-PHRASE = "hello this is a test"
+STT_MODELS = [
+    ("parakeet", PARAKEET_MODEL),
+    ("qwen3_asr_0_6b", "Qwen/Qwen3-ASR-0.6B"),
+    ("qwen3_asr_1_7b", "Qwen/Qwen3-ASR-1.7B"),
+]
+PHRASES = [
+    "hello this is a test",
+    "the quick brown fox jumps over the lazy dog",
+    "today we test local speech in a quiet room",
+    "set the kitchen timer for tomorrow morning after breakfast",
+    "proxy orchard handles audio images and text together",
+    "blue square red circle green triangle",
+]
 TARGET_SAMPLE_RATE = 16_000
 
 
@@ -61,18 +83,17 @@ def _wav_to_float32_pcm(wav_bytes: bytes, target_rate: int) -> list[float]:
     return _resample_linear(mono, source_rate, target_rate)
 
 
-async def _synthesize_phrase(client: Client) -> list[float]:
+async def _synthesize_phrase(
+    client: Client, model_id: str, phrase: str, options: dict[str, object]
+) -> list[float]:
     artifacts = await client.audio.agenerate(
-        QWEN3_TTS_MODEL,
-        PHRASE,
-        language="English",
-        speaker="Aiden",
+        model_id,
+        phrase,
         sample_rate=24_000,
         max_output_tokens=128,
-        temperature=0.9,
-        top_k=50,
         seed=1337,
         deterministic=True,
+        **options,
     )
     assert isinstance(artifacts, Sequence)
     assert len(artifacts) == 1
@@ -84,21 +105,19 @@ async def _synthesize_phrase(client: Client) -> list[float]:
     return _wav_to_float32_pcm(artifact.data, TARGET_SAMPLE_RATE)
 
 
-@pytest.mark.parametrize(
-    ("stt_label", "stt_model"),
-    [
-        ("parakeet", PARAKEET_MODEL),
-        ("qwen3_asr", QWEN3_ASR_MODEL),
-    ],
-)
-async def test_qwen3_tts_to_speech_to_text_transcription(
-    client: Client, stt_label: str, stt_model: str
-):
-    print(f"\n\033[1;33m━━━ qwen3_tts · telephone → {stt_label} ━━━\033[0m", flush=True)
-    pcm = await _synthesize_phrase(client)
-    assert pcm, "TTS produced no audio samples"
+async def test_tts_to_speech_to_text_transcription(client: Client):
+    for tts_label, tts_model, tts_options in TTS_MODELS:
+        for phrase in PHRASES:
+            print(f"\n\033[1;33m━━━ {tts_label} · telephone · {phrase!r} ━━━\033[0m", flush=True)
+            pcm = await _synthesize_phrase(client, tts_model, phrase, tts_options)
+            assert pcm, "TTS produced no audio samples"
 
-    transcript = await client.audio.atranscribe(stt_model, pcm)
-    normalized = _normalize_transcript(transcript)
-    print(f"\ntranscript={transcript!r} normalized={normalized!r}", flush=True)
-    assert normalized == PHRASE
+            for stt_label, stt_model in STT_MODELS:
+                transcript = await client.audio.atranscribe(stt_model, pcm)
+                normalized = _normalize_transcript(transcript)
+                print(
+                    f"\n{tts_label} → {stt_label}: "
+                    f"transcript={transcript!r} normalized={normalized!r}",
+                    flush=True,
+                )
+                assert normalized == phrase
