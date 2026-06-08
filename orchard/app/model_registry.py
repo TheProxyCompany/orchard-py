@@ -177,6 +177,12 @@ class ModelRegistry:
         canonical_id = resolved.canonical_id
         self._alias_cache[requested_model_id.lower()] = canonical_id
         self._alias_cache.setdefault(canonical_id.lower(), canonical_id)
+        model_is_local = resolved.source in {
+            "local",
+            "local_source",
+            "hf_cache",
+            "hf_hub",
+        } or (resolved.model_path and (resolved.model_path / "config.json").exists())
 
         async with self._lock:
             entry = self._entries.get(canonical_id)
@@ -214,38 +220,47 @@ class ModelRegistry:
             entry.activation_future = None
             entry.activation_loop = None
 
-            # If the model is already local (or in HF cache), build formatter immediately.
-            if resolved.source in {"local", "local_source", "hf_cache", "hf_hub"} or (
-                resolved.model_path and (resolved.model_path / "config.json").exists()
-            ):
-                try:
-                    if resolved.formatter_config is not None:
-                        formatter = await asyncio.to_thread(
-                            ChatFormatter.from_config,
-                            str(resolved.model_path),
-                            resolved.formatter_config,
-                        )
-                    else:
-                        formatter = await asyncio.to_thread(
-                            ChatFormatter, str(resolved.model_path)
-                        )
-                    info = ModelInfo(
-                        model_id=resolved.canonical_id,
-                        model_path=str(resolved.model_path),
-                        formatter=formatter,
+            # If the model is already local (or in HF cache), build formatter below
+            # without holding the registry lock.
+            if model_is_local:
+                entry.state = ModelLoadState.LOADING
+            else:
+                # Otherwise, schedule async download + formatter build.
+                entry.state = ModelLoadState.DOWNLOADING
+
+        if model_is_local:
+            try:
+                if resolved.formatter_config is not None:
+                    formatter = await asyncio.to_thread(
+                        ChatFormatter.from_config,
+                        str(resolved.model_path),
+                        resolved.formatter_config,
                     )
+                else:
+                    formatter = await asyncio.to_thread(
+                        ChatFormatter, str(resolved.model_path)
+                    )
+                info = ModelInfo(
+                    model_id=resolved.canonical_id,
+                    model_path=str(resolved.model_path),
+                    formatter=formatter,
+                )
+                async with self._lock:
+                    entry = self._entries[canonical_id]
                     entry.info = info
                     entry.state = ModelLoadState.LOADING
                     entry.event.set()
-                    return entry.state, canonical_id
-                except Exception as exc:
+                return ModelLoadState.LOADING, canonical_id
+            except Exception as exc:
+                async with self._lock:
+                    entry = self._entries[canonical_id]
                     entry.error = str(exc)
                     entry.state = ModelLoadState.FAILED
                     entry.event.set()
-                    return ModelLoadState.FAILED, canonical_id
+                return ModelLoadState.FAILED, canonical_id
 
-            # Otherwise, schedule async download + formatter build.
-            entry.state = ModelLoadState.DOWNLOADING
+        async with self._lock:
+            entry = self._entries[canonical_id]
 
             async def loader() -> None:
                 loop = asyncio.get_running_loop()

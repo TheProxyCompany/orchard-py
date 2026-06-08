@@ -157,6 +157,68 @@ def test_resolve_accepts_nested_diffusers_safetensors_snapshot(
     assert "template_type" not in resolved.formatter_config
 
 
+def test_resolve_uses_cached_hf_snapshot_without_remote_metadata(
+    monkeypatch, tmp_path: Path
+) -> None:
+    repo_id = "meta-llama/Llama-3.1-8B-Instruct"
+    cached = tmp_path / "cached"
+    _write_common_model_files(cached, repo_id=repo_id)
+    (cached / "model.safetensors").write_bytes(b"weights")
+
+    calls: list[bool] = []
+
+    def fake_snapshot_download(
+        requested_repo_id: str, *, local_files_only: bool, allow_patterns: list[str]
+    ) -> str:
+        assert requested_repo_id == repo_id
+        calls.append(local_files_only)
+        if not local_files_only:
+            raise AssertionError("remote metadata/download should not be used")
+        return str(cached)
+
+    monkeypatch.setattr(
+        "orchard.app.model_resolver.snapshot_download", fake_snapshot_download
+    )
+
+    resolved = ModelResolver().resolve(repo_id)
+
+    assert calls == [True]
+    assert resolved.source == "hf_cache"
+    assert resolved.model_path == cached.resolve()
+
+
+def test_fetch_tokenizer_uses_cached_snapshot_before_remote(
+    monkeypatch, tmp_path: Path
+) -> None:
+    repo_id = "tokenizer/source"
+    cached = tmp_path / "cached-tokenizer"
+    cached.mkdir()
+    (cached / "tokenizer.json").write_text("{}", encoding="utf-8")
+    target = tmp_path / "target"
+    target.mkdir()
+
+    calls: list[bool] = []
+
+    def fake_snapshot_download(
+        requested_repo_id: str, *, local_files_only: bool, allow_patterns: list[str]
+    ) -> str:
+        assert requested_repo_id == repo_id
+        assert "tokenizer.json" in allow_patterns
+        calls.append(local_files_only)
+        if not local_files_only:
+            raise AssertionError("remote tokenizer fetch should not be used")
+        return str(cached)
+
+    monkeypatch.setattr(
+        "orchard.app.model_resolver.snapshot_download", fake_snapshot_download
+    )
+
+    ModelResolver()._fetch_tokenizer(repo_id, target)  # noqa: SLF001
+
+    assert calls == [True]
+    assert (target / "tokenizer.json").exists()
+
+
 def test_load_config_accepts_qwen_image_edit_model_index(tmp_path: Path) -> None:
     model_dir = tmp_path / "qwen-image-edit"
     model_dir.mkdir()

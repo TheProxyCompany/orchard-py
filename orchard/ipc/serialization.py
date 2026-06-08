@@ -108,8 +108,7 @@ def _encode_layout(
     """Encode layout segments including text, image, audio, and capability types."""
     segments: list[tuple[int, int]] = []
     if not layout:
-        if text_len:
-            segments.append((_SEGMENT_TYPE_TEXT, text_len))
+        segments.append((_SEGMENT_TYPE_TEXT, text_len))
         for image in image_buffers:
             segments.append((_SEGMENT_TYPE_IMAGE, len(image)))
         for audio in audio_buffers:

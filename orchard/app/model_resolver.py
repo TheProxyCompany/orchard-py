@@ -456,23 +456,49 @@ class ModelResolver:
                 snapshot_download(
                     repo_id,
                     allow_patterns=tokenizer_patterns,
+                    local_files_only=True,
+                )
+            )
+            if self._copy_tokenizer_files(tokenizer_path, target_dir, tokenizer_patterns):
+                logger.info(
+                    f"Tokenizer files copied from cached {repo_id} to {target_dir.name}"
+                )
+                return
+        except LocalEntryNotFoundError:
+            pass
+        except Exception as e:
+            logger.warning(f"Failed to read cached tokenizer from {repo_id}: {e}")
+
+        try:
+            tokenizer_path = Path(
+                snapshot_download(
+                    repo_id,
+                    allow_patterns=tokenizer_patterns,
                     local_files_only=False,
                 )
             )
 
-            # Copy tokenizer files to target directory
-            for pattern in tokenizer_patterns:
-                src = tokenizer_path / pattern
-                if src.exists():
-                    dst = target_dir / pattern
-                    if not dst.exists():
-                        shutil.copy2(src, dst)
-                        logger.debug(f"Copied {pattern} to {target_dir.name}")
+            self._copy_tokenizer_files(tokenizer_path, target_dir, tokenizer_patterns)
 
             logger.info(f"Tokenizer files copied from {repo_id} to {target_dir.name}")
 
         except Exception as e:
             logger.warning(f"Failed to fetch tokenizer from {repo_id}: {e}")
+
+    @staticmethod
+    def _copy_tokenizer_files(
+        tokenizer_path: Path, target_dir: Path, tokenizer_patterns: Sequence[str]
+    ) -> bool:
+        copied = False
+        for pattern in tokenizer_patterns:
+            src = tokenizer_path / pattern
+            if src.exists():
+                dst = target_dir / pattern
+                if not dst.exists():
+                    shutil.copy2(src, dst)
+                    copied = True
+                    logger.debug(f"Copied {pattern} to {target_dir.name}")
+        return copied
 
     @staticmethod
     def _load_python_config(model_dir: Path, json_config: dict) -> dict | None:

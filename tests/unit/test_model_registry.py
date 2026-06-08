@@ -1,5 +1,6 @@
 import asyncio
 import json
+import threading
 
 import pytest
 
@@ -135,6 +136,47 @@ async def test_schedule_model_uses_ready_alias_before_local_source_inspection(tm
 
     assert state == ModelLoadState.READY
     assert resolved_id == canonical_id
+
+
+@pytest.mark.asyncio
+async def test_schedule_model_builds_local_formatters_concurrently(
+    monkeypatch, tmp_path
+):
+    ctx = GlobalContext()
+    ipc_state = IPCState(ctx)
+    registry = ModelRegistry(ipc_state)
+    started: list[str] = []
+    both_started = threading.Event()
+
+    def fake_resolve(model_id: str) -> ResolvedModel:
+        model_path = tmp_path / model_id
+        model_path.mkdir()
+        return ResolvedModel(
+            canonical_id=model_id,
+            model_path=model_path,
+            source="hf_cache",
+        )
+
+    def fake_formatter(model_path: str) -> object:
+        started.append(model_path)
+        if len(started) == 2:
+            both_started.set()
+        assert both_started.wait(timeout=1.0)
+        return object()
+
+    monkeypatch.setattr(
+        model_registry_module.ModelResolver,
+        "resolve",
+        lambda self, model_id: fake_resolve(model_id),
+    )
+    monkeypatch.setattr(model_registry_module, "ChatFormatter", fake_formatter)
+
+    await asyncio.gather(
+        registry.schedule_model("first"),
+        registry.schedule_model("second"),
+    )
+
+    assert len(started) == 2
 
 
 @pytest.mark.asyncio

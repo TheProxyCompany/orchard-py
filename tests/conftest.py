@@ -66,6 +66,7 @@ def engine() -> Generator[InferenceEngine, None, None]:
             client_log_file=CLIENT_LOG_PATH,
             engine_log_file=ENGINE_LOG_PATH,
             startup_timeout=120.0,
+            load_models=ALL_MODELS,
         )
         logger.info("Local Engine is ready. Yielding engine instance.")
         yield engine_instance
@@ -136,6 +137,8 @@ async def live_server():
         f"--port={SERVER_PORT}",
         "--engine-log-file",
         str(ENGINE_LOG_PATH),
+        "--models",
+        *ALL_MODELS,
     ]
 
     server_proc = None
