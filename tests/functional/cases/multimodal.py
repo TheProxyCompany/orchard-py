@@ -6,7 +6,7 @@ import pytest
 
 pytestmark = pytest.mark.asyncio
 
-ASSETS_DIR = Path(__file__).parents[1] / "assets"
+ASSETS_DIR = Path(__file__).parents[2] / "assets"
 APPLE_IMAGE_PATH = ASSETS_DIR / "apple.jpg"
 MOONDREAM_IMAGE_PATH = ASSETS_DIR / "moondream.jpg"
 

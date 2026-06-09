@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from collections.abc import Iterator
 
@@ -295,13 +296,15 @@ async def test_client_responses_text_helpers(client: Client, model_id: str) -> N
     ]
     assert "".join(async_chunks).strip()
 
-    sync_chunks = list(
-        client.responses_text(
-            model_id,
-            input="Write one short sentence about the ocean.",
-            temperature=0.0,
-            reasoning=False,
-            max_output_tokens=32,
+    sync_chunks = await asyncio.to_thread(
+        lambda: list(
+            client.responses_text(
+                model_id,
+                input="Write one short sentence about the ocean.",
+                temperature=0.0,
+                reasoning=False,
+                max_output_tokens=32,
+            )
         )
     )
     assert "".join(sync_chunks).strip()

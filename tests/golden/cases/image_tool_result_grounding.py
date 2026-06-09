@@ -3,8 +3,8 @@ import json
 from collections.abc import Sequence
 
 import pytest
-from golden_io import assert_or_record
-from helpers import drain_stream, print_usage_summary, render_prompt_blue
+from tests.golden.golden_io import assert_or_record
+from tests.helpers import drain_stream, print_usage_summary, render_prompt_blue
 
 from orchard.clients.client import Client, ModalArtifact
 from orchard.server.models.responses import (

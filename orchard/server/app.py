@@ -21,7 +21,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def create_app(inference_engine: InferenceEngine) -> FastAPI:
+def create_app(
+    inference_engine: InferenceEngine,
+    *,
+    close_engine_on_shutdown: bool = True,
+) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         app.state.inference_engine = inference_engine
@@ -32,7 +36,8 @@ def create_app(inference_engine: InferenceEngine) -> FastAPI:
         yield
         logger.info("FastAPI server lifespan shutting down.")
         app.state.client.close()
-        app.state.inference_engine.close()
+        if close_engine_on_shutdown:
+            app.state.inference_engine.close()
         logger.info("Application shutdown complete.")
 
     app = FastAPI(

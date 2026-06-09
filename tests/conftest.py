@@ -1,9 +1,8 @@
 import asyncio
-import atexit
 import logging
 import os
-import subprocess
-import sys
+import socket
+import threading
 from collections.abc import Generator
 from pathlib import Path
 
@@ -11,11 +10,12 @@ import dotenv
 import httpx
 import pytest
 import pytest_asyncio
+import uvicorn
 from models import MODELS, Model
 
 from orchard.clients.client import Client
-from orchard.engine.fetch import get_engine_path
 from orchard.engine.inference_engine import InferenceEngine
+from orchard.server.app import create_app
 
 logger = logging.getLogger(__name__)
 dotenv.load_dotenv()
@@ -37,7 +37,6 @@ CLIENT_LOG_PATH = LOG_DIR / "client.test.log"
 
 ALL_MODELS = [m.checkpoint for m in MODELS]
 
-SERVER_PORT = 8001
 SERVER_STARTUP_TIMEOUT_SECONDS = float(
     os.getenv("ORCHARD_TEST_SERVER_STARTUP_TIMEOUT_SECONDS", "120.0")
 )
@@ -112,64 +111,67 @@ def any_model_id(request: pytest.FixtureRequest) -> str:
 
 
 @pytest_asyncio.fixture(scope="session")
-async def live_server():
+async def live_server(engine: InferenceEngine):
     """
-    Starts the FastAPI server in a separate process.
+    Starts the FastAPI server against the shared test engine.
     """
-    server_exe = get_engine_path()
-    if not server_exe.exists():
-        pytest.fail(f"Server executable not found at {server_exe}.")
+    server_port = _free_local_port()
+    fastapi_app = create_app(engine, close_engine_on_shutdown=False)
+    config = uvicorn.Config(
+        fastapi_app,
+        host="127.0.0.1",
+        port=server_port,
+        log_level="warning",
+        loop="asyncio",
+        ws="none",
+    )
+    server = uvicorn.Server(config)
+    server_url = f"http://localhost:{server_port}"
+    server_errors: list[BaseException] = []
 
-    def server_cleanup():
-        logger.info("Server cleanup started.")
-        if server_proc and server_proc.poll() is None:
-            server_proc.terminate()
-            server_proc.wait(timeout=10)
-        logger.info("Server cleanup complete.")
+    def run_server() -> None:
+        try:
+            asyncio.run(server.serve())
+        except BaseException as exc:
+            server_errors.append(exc)
 
-    atexit.register(server_cleanup)
-
-    server_cmd = [
-        sys.executable,
-        "-m",
-        "orchard.cli.main",
-        "serve",
-        f"--port={SERVER_PORT}",
-        "--engine-log-file",
-        str(ENGINE_LOG_PATH),
-        "--models",
-        *ALL_MODELS,
-    ]
-
-    server_proc = None
+    server_thread = threading.Thread(
+        target=run_server,
+        name="orchard-test-fastapi",
+        daemon=True,
+    )
+    server_thread.start()
 
     try:
-        with open(SERVER_LOG_PATH, "wb") as log_file:
-            server_proc = subprocess.Popen(
-                server_cmd,
-                stdout=log_file,
-                stderr=log_file,
-            )
-
-        # Wait for the server to be connectable
-        server_url = f"http://localhost:{SERVER_PORT}"
         async with httpx.AsyncClient() as client:
             for _ in range(int(SERVER_STARTUP_TIMEOUT_SECONDS / 0.5)):
+                if not server_thread.is_alive():
+                    detail = f": {server_errors[0]!r}" if server_errors else ""
+                    pytest.fail(f"FastAPI server exited prematurely{detail}.")
                 try:
-                    await client.get(f"{server_url}/health")
+                    response = await client.get(f"{server_url}/health")
+                except httpx.ConnectError:
+                    await asyncio.sleep(0.5)
+                    continue
+                if response.status_code == 200:
                     logger.info("FastAPI live_server is up and healthy.")
                     break
-                except httpx.ConnectError:
-                    if server_proc.poll() is not None:
-                        pytest.fail(
-                            f"FastAPI server exited prematurely. Check logs at {SERVER_LOG_PATH}"
-                        )
-                    await asyncio.sleep(0.5)
+                await asyncio.sleep(0.5)
             else:
                 pytest.fail("Timeout waiting for FastAPI server to become connectable.")
 
         yield server_url
 
     finally:
-        atexit.unregister(server_cleanup)
-        server_cleanup()
+        server.should_exit = True
+        server_thread.join(timeout=10)
+        if server_thread.is_alive():
+            logger.warning("FastAPI server did not terminate cleanly; forcing exit.")
+            server.force_exit = True
+            server_thread.join(timeout=5)
+
+
+def _free_local_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])

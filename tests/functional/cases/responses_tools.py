@@ -2,7 +2,7 @@ import json
 
 import httpx
 import pytest
-from helpers import parse_sse_events
+from tests.helpers import parse_sse_events
 
 pytestmark = pytest.mark.asyncio
 

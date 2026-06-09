@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import threading
 import time
 import weakref
 from collections.abc import Callable
@@ -72,7 +73,7 @@ class IPCState:
 
         self.request_id_counter: int = 0
         self.dispatcher_task: asyncio.Task | None = None
-        self._lock = asyncio.Lock()
+        self._request_id_lock = threading.Lock()
         self.response_topic_prefix: bytes = b""
         self.response_topic_prefix_len: int = 0
         self.engine_pid_file: Path | None = None
@@ -83,7 +84,7 @@ class IPCState:
 
     async def get_next_request_id(self) -> int:
         """Atomically increments and returns the next request ID."""
-        async with self._lock:
+        with self._request_id_lock:
             self.request_id_counter += 1
             # Basic overflow protection
             if self.request_id_counter >= 2**63:

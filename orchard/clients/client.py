@@ -291,6 +291,7 @@ class Client:
         # For the synchronous wrapper
         self._sync_loop: asyncio.AbstractEventLoop | None = None
         self._sync_thread: threading.Thread | None = None
+        self._sync_start_lock = threading.Lock()
 
     def resolve_capabilities(self, model_id: str) -> dict[str, int]:
         """Resolve control token capabilities for a model into token IDs."""
@@ -1387,22 +1388,23 @@ class Client:
 
     def _start_sync_event_loop(self) -> None:
         """Starts a dedicated event loop in a background thread for sync calls."""
-        if self._sync_thread and self._sync_thread.is_alive():
-            return
+        with self._sync_start_lock:
+            if self._sync_thread and self._sync_thread.is_alive():
+                return
 
-        loop_started = threading.Event()
+            loop_started = threading.Event()
 
-        def _loop_target():
-            self._sync_loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(self._sync_loop)
-            loop_started.set()
-            self._sync_loop.run_forever()
+            def _loop_target():
+                self._sync_loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(self._sync_loop)
+                loop_started.set()
+                self._sync_loop.run_forever()
 
-        self._sync_thread = threading.Thread(
-            target=_loop_target, name="pie-client-sync-bridge", daemon=True
-        )
-        self._sync_thread.start()
-        loop_started.wait()  # Ensure the loop is running before we try to use it
+            self._sync_thread = threading.Thread(
+                target=_loop_target, name="pie-client-sync-bridge", daemon=True
+            )
+            self._sync_thread.start()
+            loop_started.wait()
 
     def _sync_iterator_bridge(self, async_iterator: AsyncIterator[T]) -> Iterator[T]:
         """Bridges an async iterator to a sync iterator."""

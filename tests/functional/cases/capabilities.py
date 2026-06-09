@@ -6,7 +6,7 @@ from PIL import Image
 from orchard.clients.moondream import MoondreamClient
 from orchard.engine.inference_engine import InferenceEngine
 
-ASSETS_DIR = Path(__file__).parents[1] / "assets"
+ASSETS_DIR = Path(__file__).parents[2] / "assets"
 APPLE_IMAGE_PATH = ASSETS_DIR / "apple.jpg"
 MOONDREAM_IMAGE_PATH = ASSETS_DIR / "moondream.jpg"
 BOTTLES_IMAGE_PATH = ASSETS_DIR / "bottles.jpg"

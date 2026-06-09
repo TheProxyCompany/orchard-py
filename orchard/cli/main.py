@@ -43,6 +43,7 @@ async def run_serve(args: argparse.Namespace):
             port=args.port,
             log_level="warning",
             loop="asyncio",
+            ws="none",
         )
         server = uvicorn.Server(config)
         await server.serve()

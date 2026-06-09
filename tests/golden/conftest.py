@@ -6,8 +6,9 @@ staged baselines to disk on pass, or discards them on fail — so a failing test
 never leaves a buggy golden behind.
 """
 
-import golden_io
 import pytest
+
+from tests.golden import golden_io
 
 
 @pytest.hookimpl(hookwrapper=True)

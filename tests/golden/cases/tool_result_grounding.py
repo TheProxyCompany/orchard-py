@@ -1,9 +1,9 @@
 import json
 
 import pytest
-from golden_io import assert_or_record
-from helpers import drain_stream, print_usage_summary, render_prompt_blue
-from models import Model
+from tests.golden.golden_io import assert_or_record
+from tests.helpers import drain_stream, print_usage_summary, render_prompt_blue
+from tests.models import Model
 
 from orchard.clients.client import Client
 from orchard.server.models.responses import (
@@ -30,19 +30,28 @@ SYSTEM = (
     "then call a tool when needed and use its result to answer."
 )
 
+# A deliberately surprising tool result: the kind of values a hallucinated
+# default would never produce. SF weather priors lean ~65°F and foggy, so a
+# model that answers from its prior instead of grounding on the tool result
+# gives itself away.
+SURPRISE_RESULT = {"temperature": 9, "unit": "celsius", "condition": "snowing"}
+HALLUCINATED = ("65", "fog")  # the obvious SF-weather prior — must NOT appear
 
-async def test_reason_then_tool(client: Client, model: Model):
-    """reason -> tool call -> tool result -> grounded answer, streamed.
+
+async def test_tool_result_grounding(client: Client, model: Model):
+    """reason -> tool call -> SURPRISING tool result -> grounded answer, streamed.
 
     Pins the streaming event lifecycle (exactly-once reasoning block, delta
-    accumulation, one tool call) and the semantic outcome (right tool, right
-    args, answer grounded in the result), deterministically.
+    accumulation, one tool call) and the semantic outcome that matters here:
+    the model grounds its answer on the injected tool result (9°C, snowing),
+    not on its San Francisco weather prior (65°F, fog). A model that reports
+    the prior is hallucinating over the tool, which this test fails.
     """
     if not model.tools:
         return
     reasoning = {"effort": "medium"} if model.thinking else None
     print(
-        f"\n\033[1;33m━━━ {model.template_type} · reason → tool · multi-turn ━━━\033[0m",
+        f"\n\033[1;33m━━━ {model.template_type} · tool-result grounding ━━━\033[0m",
         flush=True,
     )
 
@@ -67,7 +76,7 @@ async def test_reason_then_tool(client: Client, model: Model):
         model.checkpoint, stream=True, stream_tokens=True, **turn1_request
     )
     turn1 = await drain_stream(stream)
-    assert_or_record(model.template_type, "reason_then_tool", "turn1", turn1["events"])
+    assert_or_record(model.template_type, "tool_result_grounding", "turn1", turn1["events"])
 
     assert turn1["order"][0] == "response.created"
     assert turn1["order"][-1] == "done"
@@ -75,11 +84,9 @@ async def test_reason_then_tool(client: Client, model: Model):
     assert turn1["counts"]["response.in_progress"] == 1
     assert turn1["counts"]["response.completed"] == 1
 
-    turn1_reasoning_blocks = turn1["added"].get("reasoning", 0)
-    if not model.thinking:
-        assert turn1_reasoning_blocks == 0, "turn1: non-reasoning model reasoned"
-    if turn1_reasoning_blocks:
-        assert turn1_reasoning_blocks == 1, "turn1: expected exactly one reasoning block"
+    reasoning_blocks = turn1["added"].get("reasoning", 0)
+    if reasoning_blocks:
+        assert reasoning_blocks == 1, "turn1: expected at most one reasoning block"
         assert turn1["counts"]["response.reasoning.done"] == 1
         assert turn1["counts"]["response.reasoning.delta"] >= 1
         assert turn1["reasoning"].strip() == turn1["reasoning_done"], "turn1: reasoning deltas != reasoning.done"
@@ -94,10 +101,8 @@ async def test_reason_then_tool(client: Client, model: Model):
     assert len(turn1["function_calls"]) == 1
     call = turn1["function_calls"][0]
 
-    # The desktop UI renders the tool call incrementally off this stream, so pin the
-    # lifecycle it binds to: name + call_id are known when the item OPENS (args still
-    # empty), arguments stream as deltas, and the DONE item carries the full normalized
-    # arguments. (We don't pin the raw delta byte form — that's per-model tokenization.)
+    # Pin the incremental tool-call lifecycle the desktop UI binds to: name +
+    # call_id known at OPEN (args empty), full normalized args at DONE.
     opened = [item for item in turn1["items_added"] if isinstance(item, OutputFunctionCall)]
     assert len(opened) == 1, "turn1: expected one function_call opened"
     assert opened[0].name == "get_weather"
@@ -108,24 +113,20 @@ async def test_reason_then_tool(client: Client, model: Model):
     assert call.status == OutputStatus.COMPLETED
     assert json.loads(call.arguments) == {"location": "San Francisco"}
 
-    # Per-argument field_path tagging. The desktop UI binds each argument to its own
-    # field_path to render the call incrementally, so every native tool format must
-    # decompose the same way: value chunks carry the argument name, structural
-    # boilerplate (pythonic '(location=' / ')', json punctuation) stays untagged and is
-    # excluded from field_args. Value-only, format-agnostic. A model that streams the
-    # whole blob untagged is a tagging regression in PSE/PIE, not a model quirk.
+    # Per-argument field_path tagging: value chunks carry the argument name,
+    # structural boilerplate stays untagged. Value-only, format-agnostic.
     assert turn1["field_args"] == {"location": "San Francisco"}, (
         f"{model.template_type}: per-argument field_path tagging wrong "
         f"(expected location='San Francisco' value-only): {turn1['field_args']!r}"
     )
 
-    # Turn 2: feed the tool result back; the model answers using it.
+    # Turn 2: feed the SURPRISING tool result back; the model must answer from it.
     conversation += [
         {"type": "function_call", "call_id": call.call_id, "name": call.name, "arguments": turn1["args_done"]},
         {
             "type": "function_call_output",
             "call_id": call.call_id,
-            "output": json.dumps({"temperature": 65, "unit": "fahrenheit", "condition": "foggy"}),
+            "output": json.dumps(SURPRISE_RESULT),
         },
     ]
     turn2_request = dict(
@@ -147,7 +148,7 @@ async def test_reason_then_tool(client: Client, model: Model):
     )
     turn2 = await drain_stream(stream)
     print_usage_summary([turn1, turn2])
-    assert_or_record(model.template_type, "reason_then_tool", "turn2", turn2["events"])
+    assert_or_record(model.template_type, "tool_result_grounding", "turn2", turn2["events"])
 
     assert turn2["order"][0] == "response.created"
     assert turn2["order"][-1] == "done"
@@ -155,11 +156,11 @@ async def test_reason_then_tool(client: Client, model: Model):
     assert turn2["counts"]["response.in_progress"] == 1
     assert turn2["counts"]["response.completed"] == 1
 
-    turn2_reasoning_blocks = turn2["added"].get("reasoning", 0)
+    reasoning_blocks = turn2["added"].get("reasoning", 0)
     if not model.thinking:
-        assert turn2_reasoning_blocks == 0, "turn2: non-reasoning model reasoned"
-    if turn2_reasoning_blocks:
-        assert turn2_reasoning_blocks == 1, "turn2: expected exactly one reasoning block"
+        assert reasoning_blocks == 0, "turn2: non-reasoning model reasoned"
+    if reasoning_blocks:
+        assert reasoning_blocks == 1, "turn2: expected exactly one reasoning block"
         assert turn2["counts"]["response.reasoning.done"] == 1
         assert turn2["counts"]["response.reasoning.delta"] >= 1
         assert turn2["reasoning"].strip() == turn2["reasoning_done"], "turn2: reasoning deltas != reasoning.done"
@@ -171,8 +172,7 @@ async def test_reason_then_tool(client: Client, model: Model):
     assert turn2["counts"]["response.output_text.done"] == 1, "turn2: expected one message"
     assert turn2["content"] == turn2["content_done"], "turn2: content deltas != output_text.done"
 
-    # message lifecycle the UI streams: opens as an empty assistant message, fills via
-    # output_text deltas, closes completed.
+    # message lifecycle the UI streams: opens empty, fills via deltas, closes completed.
     msg_open = [item for item in turn2["items_added"] if isinstance(item, OutputMessage)]
     msg_done = [item for item in turn2["items_done"] if isinstance(item, OutputMessage)]
     assert len(msg_open) == 1 and len(msg_done) == 1, "turn2: expected one message item"
@@ -181,5 +181,13 @@ async def test_reason_then_tool(client: Client, model: Model):
     assert msg_open[0].status == OutputStatus.IN_PROGRESS
     assert msg_done[0].status == OutputStatus.COMPLETED
 
+    # The grounding assertion: the answer must carry the injected, surprising
+    # values (9 / snow) and must NOT fall back to the SF-weather prior (65 / fog).
     answer = turn2["content_done"].lower()
-    assert "65" in answer or "fog" in answer, f"{model.template_type}: answer ignored the tool result: {answer!r}"
+    assert "9" in answer, f"{model.template_type}: answer dropped the injected temperature: {answer!r}"
+    assert "snow" in answer, f"{model.template_type}: answer dropped the injected condition: {answer!r}"
+    for prior in HALLUCINATED:
+        assert prior not in answer, (
+            f"{model.template_type}: answer leaked the hallucinated SF prior "
+            f"({prior!r}) instead of grounding on the tool result: {answer!r}"
+        )
