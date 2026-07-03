@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import time
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -78,7 +79,16 @@ class ModelRegistry:
     ) -> ModelInfo:
         """Blocking wrapper around ensure_ready for synchronous contexts."""
 
-        return asyncio.run(self.ensure_ready(requested_model_id, timeout=timeout))
+        coro = self.ensure_ready(requested_model_id, timeout=timeout)
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(coro)
+        # Called from a running event loop (e.g. engine.client() inside async
+        # code): asyncio.run would raise, so block on a private loop in a
+        # dedicated thread instead.
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            return executor.submit(asyncio.run, coro).result()
 
     async def ensure_loaded(
         self, requested_model_id: str, timeout: float | None = None
