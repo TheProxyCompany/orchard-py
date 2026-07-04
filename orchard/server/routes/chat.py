@@ -426,17 +426,21 @@ async def gather_non_streaming_batch_response(
 
                 state_events = delta.get("state_events") or []
                 if state_events:
-                    message_deltas = [
+                    # A coalesced wire delta can carry several content_delta
+                    # events (message and reasoning items). The wire-level
+                    # content, when present, is the complete text for the
+                    # delta; otherwise reconstruct it from every span in event
+                    # order. Keying reconstruction on message spans alone
+                    # dropped reasoning text nondeterministically under load.
+                    span_deltas = [
                         str(event.get("delta", ""))
                         for event in state_events
                         if (
-                            event.get("item_type") == "message"
-                            and event.get("event_type") == "content_delta"
+                            event.get("event_type") == "content_delta"
+                            and event.get("item_type") in ("message", "reasoning")
                         )
                     ]
-                    delta_content = ""
-                    if message_deltas:
-                        delta_content = delta.get("content") or message_deltas[0]
+                    delta_content = delta.get("content") or "".join(span_deltas)
                     for event in state_events:
                         if (
                             event.get("item_type") == "message"
