@@ -105,7 +105,7 @@ async def test_reason_then_tool(client: Client, model: Model):
     assert opened[0].status == OutputStatus.IN_PROGRESS
     assert call.name == "get_weather"
     assert call.status == OutputStatus.COMPLETED
-    assert json.loads(call.arguments) == {"location": "San Francisco"}
+    assert json.loads(call.arguments) == {"location": "San Francisco"}, f"ACTUAL-ARGS: {call.arguments!r}"
 
     # Per-argument field_path tagging. The desktop UI binds each argument to its own
     # field_path to render the call incrementally, so every native tool format must

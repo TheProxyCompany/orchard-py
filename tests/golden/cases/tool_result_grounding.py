@@ -110,7 +110,7 @@ async def test_tool_result_grounding(client: Client, model: Model):
     assert opened[0].status == OutputStatus.IN_PROGRESS
     assert call.name == "get_weather"
     assert call.status == OutputStatus.COMPLETED
-    assert json.loads(call.arguments) == {"location": "San Francisco"}
+    assert json.loads(call.arguments) == {"location": "San Francisco"}, f"ACTUAL-ARGS: {call.arguments!r}"
 
     # Per-argument field_path tagging: value chunks carry the argument name,
     # structural boilerplate stays untagged. Value-only, format-agnostic.

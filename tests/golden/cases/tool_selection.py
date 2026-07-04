@@ -169,7 +169,7 @@ async def test_tool_selection(client: Client, model: Model):
     )
     assert call.name not in distractor_names
     assert call.status == OutputStatus.COMPLETED
-    assert json.loads(call.arguments) == {"location": "San Francisco"}
+    assert json.loads(call.arguments) == {"location": "San Francisco"}, f"ACTUAL-ARGS: {call.arguments!r}"
 
     # Per-argument field_path tagging: value-only, format-agnostic.
     assert turn1["field_args"] == {"location": "San Francisco"}, (
