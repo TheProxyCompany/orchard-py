@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import os
 import random
 from collections import defaultdict
 from collections.abc import AsyncIterable
@@ -425,22 +426,59 @@ async def gather_non_streaming_batch_response(
                     prompt_token_totals[prompt_index] = prompt_token_count
 
                 state_events = delta.get("state_events") or []
+                if os.getenv("ORCHARD_DUMP_DELTAS"):
+                    logger.info(
+                        "DELTA-DUMP req=%s p=%s c=%s content=%r spans=%r final=%r",
+                        request_id,
+                        delta.get("prompt_index"),
+                        delta.get("candidate_index"),
+                        delta.get("content"),
+                        [
+                            (
+                                event.get("item_type"),
+                                event.get("event_type"),
+                                str(event.get("delta", event.get("value", "")))[:60],
+                            )
+                            for event in state_events
+                        ],
+                        delta.get("finish_reason"),
+                    )
                 if state_events:
-                    # A coalesced wire delta can carry several content_delta
-                    # events (message and reasoning items). The wire-level
-                    # content, when present, is the complete text for the
-                    # delta; otherwise reconstruct it from every span in event
-                    # order. Keying reconstruction on message spans alone
-                    # dropped reasoning text nondeterministically under load.
+                    # Message content_delta spans are the ground truth for
+                    # chat content: each span appears exactly once, so joining
+                    # them survives coalesced deltas, and reasoning-item spans
+                    # (whose text the wire mirrors into top-level content)
+                    # stay out of message content. Every candidate carries
+                    # state events (forked candidates clone their steppers),
+                    # so all candidates assemble through this branch.
                     span_deltas = [
                         str(event.get("delta", ""))
                         for event in state_events
                         if (
                             event.get("event_type") == "content_delta"
-                            and event.get("item_type") in ("message", "reasoning")
+                            and event.get("item_type") == "message"
                         )
                     ]
-                    delta_content = delta.get("content") or "".join(span_deltas)
+                    # Top-level content is used only when it extends the span
+                    # join: a stop matched mid-token ships its tail solely in
+                    # content (the span holds the pre-match prefix). A
+                    # span-less delta's content is reasoning text or the raw
+                    # stop text and must stay excluded; a coalesced delta's
+                    # content covers only the last tick and must lose to the
+                    # joined spans.
+                    joined = "".join(span_deltas)
+                    content_field = delta.get("content") or ""
+                    delta_content = (
+                        content_field
+                        if span_deltas and content_field.startswith(joined)
+                        else joined
+                    )
+                    if not state.get("saw_state_events"):
+                        state["saw_state_events"] = True
+                        # Anything accumulated before the first state event is
+                        # structural marker text (a bare think-open token ships
+                        # event-less ahead of its item_started).
+                        state["content"] = ""
                     for event in state_events:
                         if (
                             event.get("item_type") == "message"
@@ -451,7 +489,13 @@ async def gather_non_streaming_batch_response(
                         ):
                             state["content"] = str(event["value"])
                 else:
-                    delta_content = delta.get("content") or ""
+                    # Event-classified streams route all content through spans;
+                    # a stray event-less delta there is structural or coalesced
+                    # duplicate text. Pure content-only streams keep this path.
+                    delta_content = (
+                        "" if state.get("saw_state_events")
+                        else (delta.get("content") or "")
+                    )
                 if delta_content:
                     state["content"] += delta_content
 
