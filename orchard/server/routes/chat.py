@@ -434,11 +434,25 @@ async def gather_non_streaming_batch_response(
                             and event.get("event_type") == "content_delta"
                         )
                     ]
-                    # Assemble from the classified event spans only: the raw
-                    # delta text can span the reasoning->content boundary when
-                    # the engine coalesces tokens, and how much it spans is a
-                    # timing artifact of batching pressure.
+                    # The event spans classify reasoning vs message text, but
+                    # only the raw delta text carries the engine's
+                    # stop-sequence truncation. A coalesced delta can hold a
+                    # reasoning tail (raw = tail + spans), a stop cut
+                    # (spans = raw + overrun), or both, so keep the longest
+                    # prefix of the spans that is a suffix of the raw text.
                     delta_content = "".join(message_deltas)
+                    raw_content = delta.get("content")
+                    if raw_content is not None and raw_content != delta_content:
+                        delta_content = next(
+                            (
+                                delta_content[:k]
+                                for k in range(
+                                    min(len(raw_content), len(delta_content)), 0, -1
+                                )
+                                if raw_content.endswith(delta_content[:k])
+                            ),
+                            "",
+                        )
                     for event in state_events:
                         if (
                             event.get("item_type") == "message"
