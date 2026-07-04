@@ -434,9 +434,11 @@ async def gather_non_streaming_batch_response(
                             and event.get("event_type") == "content_delta"
                         )
                     ]
-                    delta_content = ""
-                    if message_deltas:
-                        delta_content = delta.get("content") or message_deltas[0]
+                    # Assemble from the classified event spans only: the raw
+                    # delta text can span the reasoning->content boundary when
+                    # the engine coalesces tokens, and how much it spans is a
+                    # timing artifact of batching pressure.
+                    delta_content = "".join(message_deltas)
                     for event in state_events:
                         if (
                             event.get("item_type") == "message"
