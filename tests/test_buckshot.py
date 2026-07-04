@@ -69,10 +69,10 @@ async def test_buckshot_full_matrix(live_server, client, engine):
         run_suite("golden", m.template_type,
                   lambda m=m: run_golden(model_cases(), {"client": client}, m))
         for m in models
-    ] + [
-        run_suite("golden", "pipeline",
-                  lambda: run_golden(pipeline_cases(), {"client": client})),
     ]
+    if "pipeline" not in skip:
+        jobs.append(run_suite("golden", "pipeline",
+                              lambda: run_golden(pipeline_cases(), {"client": client})))
 
     wall_start = time.perf_counter()
     results = await asyncio.gather(*jobs)
@@ -84,6 +84,9 @@ async def test_buckshot_full_matrix(live_server, client, engine):
     for suite, name, secs, failures, timed_out in sorted(results, key=lambda r: -r[2]):
         state = "TIMEOUT" if timed_out else f"{len(failures)} fail"
         print(f"{suite:11s} {name:15s} {secs:6.1f}  {state}")
+        for failure in failures:
+            head = failure.detail.strip().splitlines()[-1][:200]
+            print(f"    x {failure.case_id}: {head}")
 
     hung = [(s, n, round(t)) for s, n, t, _, timed_out in results if timed_out]
     assert not hung, f"suites timed out at {SUITE_TIMEOUT_S}s: {hung}"

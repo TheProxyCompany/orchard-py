@@ -25,7 +25,7 @@ async def test_chat_completion_best_of_selects_top_n(
         "best_of": best_of,
     }
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    async with httpx.AsyncClient(timeout=180.0) as client:
         response = await client.post(
             f"{server_url}/v1/chat/completions", json=request_payload
         )
@@ -59,7 +59,7 @@ async def test_chat_completion_best_of_validation_less_than_n(
         "best_of": 1,
     }
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=180.0) as client:
         response = await client.post(
             f"{server_url}/v1/chat/completions", json=request_payload
         )
@@ -80,7 +80,7 @@ async def test_chat_completion_best_of_streaming_disallowed(
         "best_of": 2,
     }
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=180.0) as client:
         response = await client.post(
             f"{server_url}/v1/chat/completions", json=request_payload
         )

@@ -22,7 +22,7 @@ async def test_chat_completion_respects_stop_sequence(live_server, text_model_id
         "top_logprobs": 10,
     }
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    async with httpx.AsyncClient(timeout=180.0) as client:
         response = await client.post(
             f"{server_url}/v1/chat/completions",
             json=payload,

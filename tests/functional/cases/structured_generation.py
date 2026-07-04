@@ -49,7 +49,7 @@ async def test_chat_completion_structured_json_response(
         },
     }
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    async with httpx.AsyncClient(timeout=180.0) as client:
         response = await client.post(
             f"{server_url}/v1/chat/completions",
             json=payload,

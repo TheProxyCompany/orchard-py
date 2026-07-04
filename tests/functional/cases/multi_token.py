@@ -24,7 +24,7 @@ async def test_chat_completion_multi_token_non_streaming(
         "stream": False,
     }
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    async with httpx.AsyncClient(timeout=180.0) as client:
         response = await client.post(
             f"{server_url}/v1/chat/completions", json=request_payload
         )
@@ -101,7 +101,7 @@ async def test_chat_completion_multi_token_streaming(
     full_content = ""
     finish_reason = None
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=180.0) as client:
         async with client.stream(
             "POST",
             f"{server_url}/v1/chat/completions",

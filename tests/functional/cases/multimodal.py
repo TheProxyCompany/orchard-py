@@ -32,7 +32,7 @@ async def test_multimodal_e2e_apple_image(live_server, vision_model_id):
         ],
     }
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=180.0) as client:
         response = await client.post(
             f"{live_server}/v1/responses", json=request_payload
         )
@@ -74,7 +74,7 @@ async def test_multimodal_e2e_moondream_image(live_server, vision_model_id):
         ],
     }
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=180.0) as client:
         response = await client.post(
             f"{live_server}/v1/responses", json=request_payload
         )

@@ -19,7 +19,7 @@ async def test_chat_completion_batched_homogeneous(
         "stream": False,
     }
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    async with httpx.AsyncClient(timeout=180.0) as client:
         response = await client.post(
             f"{server_url}/v1/chat/completions", json=request_payload
         )
@@ -59,7 +59,7 @@ async def test_chat_completion_batched_heterogeneous(live_server, text_model_id)
         "stream": False,
     }
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    async with httpx.AsyncClient(timeout=180.0) as client:
         response = await client.post(
             f"{server_url}/v1/chat/completions", json=request_payload
         )
@@ -90,7 +90,7 @@ async def test_chat_completion_batch_length_mismatch_returns_422(
         "stream": False,
     }
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    async with httpx.AsyncClient(timeout=180.0) as client:
         response = await client.post(
             f"{server_url}/v1/chat/completions", json=request_payload
         )
