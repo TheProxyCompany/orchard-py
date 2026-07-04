@@ -1757,15 +1757,19 @@ class Client:
         prompt_text = formatter.strip_template_placeholders(prompt_text)
 
         prompt_bytes = prompt_text.encode("utf-8")
-        generation_defaults = self._formatter_generation_defaults(formatter)
+        deterministic = bool(kwargs.get("deterministic", False))
+        generation_defaults = formatter.get_generation_defaults(
+            "recommended" if deterministic else "default"
+        )
         temperature = float(
             self._generation_value(kwargs, generation_defaults, "temperature", 1.0)
         )
         top_p = float(self._generation_value(kwargs, generation_defaults, "top_p", 1.0))
         top_k = int(self._generation_value(kwargs, generation_defaults, "top_k", -1))
         min_p = float(self._generation_value(kwargs, generation_defaults, "min_p", 0.0))
-        rng_seed = int(kwargs.get("rng_seed", random.randint(0, 2**32 - 1)))
-        deterministic = bool(kwargs.get("deterministic", False))
+        rng_seed = int(
+            kwargs.get("rng_seed", 11 if deterministic else random.randint(0, 2**32 - 1))
+        )
         top_logprobs = int(kwargs.get("top_logprobs", 0))
         frequency_penalty = float(
             self._generation_value(
@@ -1887,10 +1891,6 @@ class Client:
             "tool_choice": normalized_tool_choice,
         }
         return prompt_payload, capture_payload
-
-    @staticmethod
-    def _formatter_generation_defaults(formatter: ChatFormatter) -> dict[str, Any]:
-        return formatter.get_generation_defaults("default")
 
     @staticmethod
     def _generation_value(

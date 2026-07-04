@@ -82,7 +82,6 @@ async def _run_gemma_generate_image_call(
         input=conversation,
         core_tools=[GENERATE_IMAGE],
         tool_choice="required",
-        temperature=0.0,
         deterministic=True,
         max_output_tokens=512,
         reasoning={"effort": "medium"},
@@ -230,7 +229,6 @@ async def test_image_tool_self_loop_and_blind_verifier(client: Client):
         input=conversation,
         core_tools=[GENERATE_IMAGE],
         tool_choice="none",
-        temperature=0.0,
         deterministic=True,
         max_output_tokens=512,
         reasoning={"effort": "medium"},
@@ -274,7 +272,6 @@ async def test_image_tool_self_loop_and_blind_verifier(client: Client):
                 ],
             }
         ],
-        temperature=0.0,
         deterministic=True,
         max_output_tokens=512,
         reasoning={"effort": "medium"},
@@ -332,7 +329,6 @@ async def test_image_tool_self_loop_and_blind_verifier_flux(client: Client):
         input=conversation,
         core_tools=[GENERATE_IMAGE],
         tool_choice="none",
-        temperature=0.0,
         deterministic=True,
         max_output_tokens=512,
         reasoning={"effort": "medium"},
@@ -369,7 +365,6 @@ async def test_image_tool_self_loop_and_blind_verifier_flux(client: Client):
                 ],
             }
         ],
-        temperature=0.0,
         deterministic=True,
         max_output_tokens=512,
         reasoning={"effort": "medium"},
@@ -426,7 +421,6 @@ async def test_image_edit_tool_blind_verifier(client: Client):
                 ],
             }
         ],
-        temperature=0.0,
         deterministic=True,
         max_output_tokens=256,
         reasoning={"effort": "medium"},
@@ -486,7 +480,6 @@ async def test_image_edit_tool_blind_verifier_flux(client: Client):
                 ],
             }
         ],
-        temperature=0.0,
         deterministic=True,
         max_output_tokens=256,
         reasoning={"effort": "medium"},

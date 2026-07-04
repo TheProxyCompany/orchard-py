@@ -62,7 +62,9 @@ async def handle_completion_request(
 
     formatter = model_info.formatter
     model_path = model_info.model_path
-    generation_defaults = formatter.get_generation_defaults()
+    generation_defaults = formatter.get_generation_defaults(
+        "recommended" if request.deterministic else "default"
+    )
     request_fields = request.model_fields_set
 
     current_request_id = await ipc_state.get_next_request_id()
@@ -100,7 +102,7 @@ async def handle_completion_request(
             }
         ]
 
-        rng_seed = random.randint(0, 2**32 - 1)
+        rng_seed = 11 if request.deterministic else random.randint(0, 2**32 - 1)
         temperature = request.temperature
         top_p = request.top_p
         top_k = request.top_k if request.top_k > 0 else -1

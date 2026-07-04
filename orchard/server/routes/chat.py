@@ -100,7 +100,6 @@ async def handle_completion_request(
 
     batch_size = len(normalized_instances)
     logger.debug("Normalized chat batch size: %d", batch_size)
-    generation_defaults = formatter.get_generation_defaults()
     request_fields = request.model_fields_set
 
     fanout_counts = [instance.best_of for instance in normalized_instances]
@@ -158,6 +157,9 @@ async def handle_completion_request(
             if instance.response_format
             else ""
         )
+        generation_defaults = formatter.get_generation_defaults(
+            "recommended" if instance.deterministic else "default"
+        )
         temperature = instance.temperature
         top_p = instance.top_p
         top_k = instance.top_k
@@ -191,7 +193,7 @@ async def handle_completion_request(
                 "top_p": top_p if top_p is not None else 1.0,
                 "top_k": top_k if top_k is not None else -1,
                 "min_p": min_p if min_p is not None else 0.0,
-                "rng_seed": random.randint(0, 2**32 - 1),
+                "rng_seed": 11 if instance.deterministic else random.randint(0, 2**32 - 1),
                 "deterministic": instance.deterministic,
             },
             "logits_params": {

@@ -194,7 +194,9 @@ async def handle_response_request(
     )
     response_channel_id = ipc_state.response_channel_id or current_request_id
 
-    generation_defaults = formatter.get_generation_defaults()
+    generation_defaults = formatter.get_generation_defaults(
+        "recommended" if request.deterministic else "default"
+    )
     temperature = (
         request.temperature
         if request.temperature is not None
@@ -230,7 +232,7 @@ async def handle_response_request(
     )
     repetition_penalty = float(generation_defaults.get("repetition_penalty", 1.0))
     max_output_tokens = request.max_output_tokens or 0
-    rng_seed = random.randint(0, 2**32 - 1)
+    rng_seed = 11 if request.deterministic else random.randint(0, 2**32 - 1)
 
     response_format_json = json.dumps(request.text.to_dict()) if request.text else ""
     stop_sequences = (
