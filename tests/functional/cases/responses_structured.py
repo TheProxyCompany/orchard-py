@@ -53,10 +53,10 @@ async def test_responses_structured_json_schema(live_server, text_model_id):
     assert start != -1 and end != -1, f"No JSON found in output: {raw_text}"
 
     parsed = json.loads(raw_text[start : end + 1])
-    assert isinstance(parsed, dict)
-    assert "capital" in parsed
-    assert "population" in parsed
-    assert isinstance(parsed["capital"], str)
-    assert isinstance(parsed["population"], int)
-    assert "paris" in parsed["capital"].lower()
+    assert isinstance(parsed, dict), f"ACTUAL-STRUCTURED: {raw_text!r}"
+    assert "capital" in parsed, f"ACTUAL-STRUCTURED: {parsed!r}"
+    assert "population" in parsed, f"ACTUAL-STRUCTURED: {parsed!r}"
+    assert isinstance(parsed["capital"], str), f"ACTUAL-STRUCTURED: {parsed!r}"
+    assert isinstance(parsed["population"], int), f"ACTUAL-STRUCTURED: {parsed!r}"
+    assert "paris" in parsed["capital"].lower(), f"ACTUAL-STRUCTURED: {parsed!r}"
     print(f"Structured output: {parsed}")
