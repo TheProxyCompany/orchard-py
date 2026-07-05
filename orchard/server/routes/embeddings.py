@@ -204,7 +204,7 @@ async def gather_embedding_response(
 
     while True:
         try:
-            delta = await asyncio.wait_for(queue.get(), timeout=30.0)
+            delta = await asyncio.wait_for(queue.get(), timeout=180.0)
         except TimeoutError as e:
             logger.error(
                 "Timeout waiting for embedding response for request %d", request_id
