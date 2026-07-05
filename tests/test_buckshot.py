@@ -47,10 +47,11 @@ PIPELINE_TOOL_MODELS = [
 
 async def test_buckshot_full_matrix(live_server, client, engine):
     fixtures = {"live_server": live_server, "client": client, "engine": engine}
-    # Unbounded width (21 suites, ~10 concurrent model schedulers) trips the
-    # macOS GPU watchdog: one command buffer hangs, recovery kills the rest.
-    # Cap concurrent suites until the engine paces command buffers itself.
-    width = int(os.getenv("BUCKSHOT_WIDTH", "4"))
+    # Width >= 4 (let alone unbounded, 21 suites / ~10 concurrent model
+    # schedulers) trips the macOS GPU watchdog: one command buffer hangs,
+    # recovery kills the rest of the engine. Width 2 is the proven-stable
+    # cap until the engine paces command buffers itself.
+    width = int(os.getenv("BUCKSHOT_WIDTH", "2"))
     gate = asyncio.Semaphore(width if width > 0 else len(MODELS) * 2 + 1)
     skip = {s for s in os.getenv("BUCKSHOT_SKIP", "").split(",") if s}
     models = [m for m in MODELS if m.template_type not in skip]
