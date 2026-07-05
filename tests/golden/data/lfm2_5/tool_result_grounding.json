@@ -2224,8 +2224,8 @@
     {
       "type": "response.output_token",
       "sequence_number": 8,
-      "token_id": 4577,
-      "content": " temperature"
+      "token_id": 7420,
+      "content": " weather"
     },
     {
       "type": "response.output_text.delta",
@@ -2233,7 +2233,7 @@
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " temperature",
+      "delta": " weather",
       "logprobs": []
     },
     {
@@ -2299,8 +2299,8 @@
     {
       "type": "response.output_token",
       "sequence_number": 18,
-      "token_id": 229,
-      "content": " "
+      "token_id": 7575,
+      "content": " **"
     },
     {
       "type": "response.output_text.delta",
@@ -2308,7 +2308,7 @@
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " ",
+      "delta": " **",
       "logprobs": []
     },
     {
@@ -2344,8 +2344,8 @@
     {
       "type": "response.output_token",
       "sequence_number": 24,
-      "token_id": 20,
-      "content": ","
+      "token_id": 962,
+      "content": "**"
     },
     {
       "type": "response.output_text.delta",
@@ -2353,14 +2353,14 @@
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": ",",
+      "delta": "**",
       "logprobs": []
     },
     {
       "type": "response.output_token",
       "sequence_number": 26,
-      "token_id": 309,
-      "content": " and"
+      "token_id": 415,
+      "content": " with"
     },
     {
       "type": "response.output_text.delta",
@@ -2368,14 +2368,14 @@
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " and",
+      "delta": " with",
       "logprobs": []
     },
     {
       "type": "response.output_token",
       "sequence_number": 28,
-      "token_id": 435,
-      "content": " it"
+      "token_id": 7575,
+      "content": " **"
     },
     {
       "type": "response.output_text.delta",
@@ -2383,14 +2383,14 @@
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " it",
+      "delta": " **",
       "logprobs": []
     },
     {
       "type": "response.output_token",
       "sequence_number": 30,
-      "token_id": 589,
-      "content": "'s"
+      "token_id": 91,
+      "content": "s"
     },
     {
       "type": "response.output_text.delta",
@@ -2398,14 +2398,14 @@
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "'s",
+      "delta": "s",
       "logprobs": []
     },
     {
       "type": "response.output_token",
       "sequence_number": 32,
-      "token_id": 6153,
-      "content": " currently"
+      "token_id": 89631,
+      "content": "nowing"
     },
     {
       "type": "response.output_text.delta",
@@ -2413,14 +2413,14 @@
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " currently",
+      "delta": "nowing",
       "logprobs": []
     },
     {
       "type": "response.output_token",
       "sequence_number": 34,
-      "token_id": 10409,
-      "content": " snow"
+      "token_id": 88050,
+      "content": "**."
     },
     {
       "type": "response.output_text.delta",
@@ -2428,48 +2428,18 @@
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " snow",
+      "delta": "**.",
       "logprobs": []
     },
     {
       "type": "response.output_token",
       "sequence_number": 36,
-      "token_id": 299,
-      "content": "ing"
-    },
-    {
-      "type": "response.output_text.delta",
-      "sequence_number": 37,
-      "item_id": "msg_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": "ing",
-      "logprobs": []
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 38,
-      "token_id": 22,
-      "content": "."
-    },
-    {
-      "type": "response.output_text.delta",
-      "sequence_number": 39,
-      "item_id": "msg_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": ".",
-      "logprobs": []
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 40,
       "token_id": 6134,
       "content": " Let"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 41,
+      "sequence_number": 37,
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
@@ -2478,13 +2448,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 42,
+      "sequence_number": 38,
       "token_id": 622,
       "content": " me"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 43,
+      "sequence_number": 39,
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
@@ -2493,13 +2463,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 44,
+      "sequence_number": 40,
       "token_id": 1341,
       "content": " know"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 45,
+      "sequence_number": 41,
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
@@ -2508,13 +2478,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 46,
+      "sequence_number": 42,
       "token_id": 787,
       "content": " if"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 47,
+      "sequence_number": 43,
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
@@ -2523,13 +2493,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 48,
+      "sequence_number": 44,
       "token_id": 509,
       "content": " you"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 49,
+      "sequence_number": 45,
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
@@ -2538,13 +2508,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 50,
+      "sequence_number": 46,
       "token_id": 1094,
       "content": " need"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 51,
+      "sequence_number": 47,
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
@@ -2553,13 +2523,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 52,
+      "sequence_number": 48,
       "token_id": 3258,
       "content": " further"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 53,
+      "sequence_number": 49,
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
@@ -2568,13 +2538,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 54,
+      "sequence_number": 50,
       "token_id": 6578,
       "content": " details"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 55,
+      "sequence_number": 51,
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
@@ -2583,13 +2553,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 56,
+      "sequence_number": 52,
       "token_id": 9,
       "content": "!"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 57,
+      "sequence_number": 53,
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
@@ -2598,29 +2568,29 @@
     },
     {
       "type": "response.output_text.done",
-      "sequence_number": 58,
+      "sequence_number": 54,
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
-      "text": "The current temperature in San Francisco is 9°C, and it's currently snowing. Let me know if you need further details!",
+      "text": "The current weather in San Francisco is **9°C** with **snowing**. Let me know if you need further details!",
       "logprobs": []
     },
     {
       "type": "response.content_part.done",
-      "sequence_number": 59,
+      "sequence_number": 55,
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
       "part": {
         "type": "output_text",
-        "text": "The current temperature in San Francisco is 9°C, and it's currently snowing. Let me know if you need further details!",
+        "text": "The current weather in San Francisco is **9°C** with **snowing**. Let me know if you need further details!",
         "annotations": [],
         "logprobs": []
       }
     },
     {
       "type": "response.output_item.done",
-      "sequence_number": 60,
+      "sequence_number": 56,
       "output_index": 0,
       "item": {
         "type": "message",
@@ -2630,7 +2600,7 @@
         "content": [
           {
             "type": "output_text",
-            "text": "The current temperature in San Francisco is 9°C, and it's currently snowing. Let me know if you need further details!",
+            "text": "The current weather in San Francisco is **9°C** with **snowing**. Let me know if you need further details!",
             "annotations": [],
             "logprobs": []
           }
@@ -2639,7 +2609,7 @@
     },
     {
       "type": "response.completed",
-      "sequence_number": 61,
+      "sequence_number": 57,
       "response": {
         "id": "resp_0",
         "object": "response",
@@ -2659,7 +2629,7 @@
             "content": [
               {
                 "type": "output_text",
-                "text": "The current temperature in San Francisco is 9°C, and it's currently snowing. Let me know if you need further details!",
+                "text": "The current weather in San Francisco is **9°C** with **snowing**. Let me know if you need further details!",
                 "annotations": [],
                 "logprobs": []
               }
@@ -2668,8 +2638,8 @@
         ],
         "usage": {
           "input_tokens": 153,
-          "output_tokens": 28,
-          "total_tokens": 181,
+          "output_tokens": 26,
+          "total_tokens": 179,
           "input_tokens_details": {
             "cached_tokens": 0
           },

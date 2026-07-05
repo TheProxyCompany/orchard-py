@@ -694,8 +694,8 @@
     {
       "type": "response.output_token",
       "sequence_number": 28,
-      "token_id": 5727,
-      "content": " contains"
+      "token_id": 374,
+      "content": " is"
     },
     {
       "type": "response.output_text.delta",
@@ -703,18 +703,168 @@
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " contains",
+      "delta": " is",
       "logprobs": []
     },
     {
       "type": "response.output_token",
       "sequence_number": 30,
+      "token_id": 36718,
+      "content": " unlocked"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 31,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " unlocked",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 32,
+      "token_id": 449,
+      "content": " with"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 33,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " with",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 34,
+      "token_id": 433,
+      "content": " it"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 35,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " it",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 36,
+      "token_id": 13,
+      "content": "."
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 37,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": ".",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 38,
+      "token_id": 28468,
+      "content": " Inside"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 39,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " Inside",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 40,
+      "token_id": 279,
+      "content": " the"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 41,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " the",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 42,
+      "token_id": 15489,
+      "content": " chest"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 43,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " chest",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 44,
+      "token_id": 11,
+      "content": ","
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 45,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": ",",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 46,
+      "token_id": 499,
+      "content": " you"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 47,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " you",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 48,
+      "token_id": 1505,
+      "content": " find"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 49,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " find",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 50,
       "token_id": 264,
       "content": " a"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 31,
+      "sequence_number": 51,
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
@@ -723,13 +873,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 32,
+      "sequence_number": 52,
       "token_id": 86115,
       "content": " jade"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 33,
+      "sequence_number": 53,
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
@@ -738,13 +888,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 34,
+      "sequence_number": 54,
       "token_id": 26161,
       "content": " dragon"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 35,
+      "sequence_number": 55,
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
@@ -753,13 +903,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 36,
+      "sequence_number": 56,
       "token_id": 56755,
       "content": " figur"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 37,
+      "sequence_number": 57,
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
@@ -768,13 +918,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 38,
+      "sequence_number": 58,
       "token_id": 483,
       "content": "ine"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 39,
+      "sequence_number": 59,
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
@@ -783,13 +933,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 40,
+      "sequence_number": 60,
       "token_id": 13,
       "content": "."
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 41,
+      "sequence_number": 61,
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
@@ -798,29 +948,29 @@
     },
     {
       "type": "response.output_text.done",
-      "sequence_number": 42,
+      "sequence_number": 62,
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
-      "text": "The key is hidden in the library, and the treasure chest contains a jade dragon figurine.",
+      "text": "The key is hidden in the library, and the treasure chest is unlocked with it. Inside the chest, you find a jade dragon figurine.",
       "logprobs": []
     },
     {
       "type": "response.content_part.done",
-      "sequence_number": 43,
+      "sequence_number": 63,
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
       "part": {
         "type": "output_text",
-        "text": "The key is hidden in the library, and the treasure chest contains a jade dragon figurine.",
+        "text": "The key is hidden in the library, and the treasure chest is unlocked with it. Inside the chest, you find a jade dragon figurine.",
         "annotations": [],
         "logprobs": []
       }
     },
     {
       "type": "response.output_item.done",
-      "sequence_number": 44,
+      "sequence_number": 64,
       "output_index": 0,
       "item": {
         "type": "message",
@@ -830,7 +980,7 @@
         "content": [
           {
             "type": "output_text",
-            "text": "The key is hidden in the library, and the treasure chest contains a jade dragon figurine.",
+            "text": "The key is hidden in the library, and the treasure chest is unlocked with it. Inside the chest, you find a jade dragon figurine.",
             "annotations": [],
             "logprobs": []
           }
@@ -839,7 +989,7 @@
     },
     {
       "type": "response.completed",
-      "sequence_number": 45,
+      "sequence_number": 65,
       "response": {
         "id": "resp_0",
         "object": "response",
@@ -859,7 +1009,7 @@
             "content": [
               {
                 "type": "output_text",
-                "text": "The key is hidden in the library, and the treasure chest contains a jade dragon figurine.",
+                "text": "The key is hidden in the library, and the treasure chest is unlocked with it. Inside the chest, you find a jade dragon figurine.",
                 "annotations": [],
                 "logprobs": []
               }
@@ -868,8 +1018,8 @@
         ],
         "usage": {
           "input_tokens": 254,
-          "output_tokens": 20,
-          "total_tokens": 274,
+          "output_tokens": 30,
+          "total_tokens": 284,
           "input_tokens_details": {
             "cached_tokens": 0
           },

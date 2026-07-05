@@ -1736,8 +1736,8 @@
     {
       "type": "response.output_token",
       "sequence_number": 133,
-      "token_id": 24976,
-      "content": " fog"
+      "token_id": 1032,
+      "content": " "
     },
     {
       "type": "response.reasoning.delta",
@@ -1745,13 +1745,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " fog"
+      "delta": " "
     },
     {
       "type": "response.output_token",
       "sequence_number": 135,
-      "token_id": 2891,
-      "content": "gy"
+      "token_id": 1054,
+      "content": "6"
     },
     {
       "type": "response.reasoning.delta",
@@ -1759,13 +1759,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "gy"
+      "delta": "6"
     },
     {
       "type": "response.output_token",
       "sequence_number": 137,
-      "token_id": 1454,
-      "content": " with"
+      "token_id": 1053,
+      "content": "5"
     },
     {
       "type": "response.reasoning.delta",
@@ -1773,13 +1773,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " with"
+      "delta": "5"
     },
     {
       "type": "response.output_token",
       "sequence_number": 139,
-      "token_id": 1261,
-      "content": " a"
+      "token_id": 4372,
+      "content": "°"
     },
     {
       "type": "response.reasoning.delta",
@@ -1787,13 +1787,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " a"
+      "delta": "°"
     },
     {
       "type": "response.output_token",
       "sequence_number": 141,
-      "token_id": 6138,
-      "content": " temperature"
+      "token_id": 1070,
+      "content": "F"
     },
     {
       "type": "response.reasoning.delta",
@@ -1801,13 +1801,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " temperature"
+      "delta": "F"
     },
     {
       "type": "response.output_token",
       "sequence_number": 143,
-      "token_id": 1307,
-      "content": " of"
+      "token_id": 1454,
+      "content": " with"
     },
     {
       "type": "response.reasoning.delta",
@@ -1815,13 +1815,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " of"
+      "delta": " with"
     },
     {
       "type": "response.output_token",
       "sequence_number": 145,
-      "token_id": 1032,
-      "content": " "
+      "token_id": 24976,
+      "content": " fog"
     },
     {
       "type": "response.reasoning.delta",
@@ -1829,13 +1829,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " "
+      "delta": " fog"
     },
     {
       "type": "response.output_token",
       "sequence_number": 147,
-      "token_id": 1054,
-      "content": "6"
+      "token_id": 2891,
+      "content": "gy"
     },
     {
       "type": "response.reasoning.delta",
@@ -1843,13 +1843,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "6"
+      "delta": "gy"
     },
     {
       "type": "response.output_token",
       "sequence_number": 149,
-      "token_id": 1053,
-      "content": "5"
+      "token_id": 5481,
+      "content": " conditions"
     },
     {
       "type": "response.reasoning.delta",
@@ -1857,13 +1857,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "5"
+      "delta": " conditions"
     },
     {
       "type": "response.output_token",
       "sequence_number": 151,
-      "token_id": 4372,
-      "content": "°"
+      "token_id": 2613,
+      "content": ".\""
     },
     {
       "type": "response.reasoning.delta",
@@ -1871,13 +1871,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "°"
+      "delta": ".\""
     },
     {
       "type": "response.output_token",
       "sequence_number": 153,
-      "token_id": 1070,
-      "content": "F"
+      "token_id": 5646,
+      "content": " That"
     },
     {
       "type": "response.reasoning.delta",
@@ -1885,13 +1885,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "F"
+      "delta": " That"
     },
     {
       "type": "response.output_token",
       "sequence_number": 155,
-      "token_id": 2613,
-      "content": ".\""
+      "token_id": 1681,
+      "content": "'s"
     },
     {
       "type": "response.reasoning.delta",
@@ -1899,13 +1899,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": ".\""
+      "delta": "'s"
     },
     {
       "type": "response.output_token",
       "sequence_number": 157,
-      "token_id": 5646,
-      "content": " That"
+      "token_id": 104335,
+      "content": " concise"
     },
     {
       "type": "response.reasoning.delta",
@@ -1913,13 +1913,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " That"
+      "delta": " concise"
     },
     {
       "type": "response.output_token",
       "sequence_number": 159,
-      "token_id": 1681,
-      "content": "'s"
+      "token_id": 1321,
+      "content": " and"
     },
     {
       "type": "response.reasoning.delta",
@@ -1927,13 +1927,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "'s"
+      "delta": " and"
     },
     {
       "type": "response.output_token",
       "sequence_number": 161,
-      "token_id": 41494,
-      "content": " straightforward"
+      "token_id": 6987,
+      "content": " includes"
     },
     {
       "type": "response.reasoning.delta",
@@ -1941,13 +1941,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " straightforward"
+      "delta": " includes"
     },
     {
       "type": "response.output_token",
       "sequence_number": 163,
-      "token_id": 1046,
-      "content": "."
+      "token_id": 2960,
+      "content": " both"
     },
     {
       "type": "response.reasoning.delta",
@@ -1955,13 +1955,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "."
+      "delta": " both"
     },
     {
       "type": "response.output_token",
       "sequence_number": 165,
-      "token_id": 1362,
-      "content": " I"
+      "token_id": 6138,
+      "content": " temperature"
     },
     {
       "type": "response.reasoning.delta",
@@ -1969,13 +1969,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " I"
+      "delta": " temperature"
     },
     {
       "type": "response.output_token",
       "sequence_number": 167,
-      "token_id": 7534,
-      "content": "'ll"
+      "token_id": 1321,
+      "content": " and"
     },
     {
       "type": "response.reasoning.delta",
@@ -1983,13 +1983,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "'ll"
+      "delta": " and"
     },
     {
       "type": "response.output_token",
       "sequence_number": 169,
-      "token_id": 4848,
-      "content": " output"
+      "token_id": 6570,
+      "content": " condition"
     },
     {
       "type": "response.reasoning.delta",
@@ -1997,13 +1997,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " output"
+      "delta": " condition"
     },
     {
       "type": "response.output_token",
       "sequence_number": 171,
-      "token_id": 1455,
-      "content": " that"
+      "token_id": 1046,
+      "content": "."
     },
     {
       "type": "response.reasoning.delta",
@@ -2011,13 +2011,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " that"
+      "delta": "."
     },
     {
       "type": "response.output_token",
       "sequence_number": 173,
-      "token_id": 1626,
-      "content": ".\n"
+      "token_id": 1362,
+      "content": " I"
     },
     {
       "type": "response.reasoning.delta",
@@ -2025,25 +2025,81 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": ".\n"
+      "delta": " I"
     },
     {
       "type": "response.output_token",
       "sequence_number": 175,
+      "token_id": 7534,
+      "content": "'ll"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 176,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "'ll"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 177,
+      "token_id": 4848,
+      "content": " output"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 178,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " output"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 179,
+      "token_id": 1455,
+      "content": " that"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 180,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " that"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 181,
+      "token_id": 1626,
+      "content": ".\n"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 182,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": ".\n"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 183,
       "token_id": 13,
       "content": "</think>"
     },
     {
       "type": "response.reasoning.done",
-      "sequence_number": 176,
+      "sequence_number": 184,
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "text": "The user asked for the weather in San Francisco. I called the get_weather function with location \"San Francisco\". The response is: temperature 65°F, condition \"foggy\". I need to present this information in a user-friendly way. I'll say something like: \"The current weather in San Francisco is foggy with a temperature of 65°F.\" That's straightforward. I'll output that."
+      "text": "The user asked for the weather in San Francisco. I called the get_weather function with location \"San Francisco\". The response is: temperature 65°F, condition \"foggy\". I need to present this information in a user-friendly way. I'll say something like: \"The current weather in San Francisco is 65°F with foggy conditions.\" That's concise and includes both temperature and condition. I'll output that."
     },
     {
       "type": "response.output_item.done",
-      "sequence_number": 177,
+      "sequence_number": 185,
       "output_index": 0,
       "item": {
         "type": "reasoning",
@@ -2053,7 +2109,7 @@
         "content": [
           {
             "type": "reasoning_text",
-            "text": "The user asked for the weather in San Francisco. I called the get_weather function with location \"San Francisco\". The response is: temperature 65°F, condition \"foggy\". I need to present this information in a user-friendly way. I'll say something like: \"The current weather in San Francisco is foggy with a temperature of 65°F.\" That's straightforward. I'll output that."
+            "text": "The user asked for the weather in San Francisco. I called the get_weather function with location \"San Francisco\". The response is: temperature 65°F, condition \"foggy\". I need to present this information in a user-friendly way. I'll say something like: \"The current weather in San Francisco is 65°F with foggy conditions.\" That's concise and includes both temperature and condition. I'll output that."
           }
         ],
         "encrypted_content": null
@@ -2061,13 +2117,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 178,
+      "sequence_number": 186,
       "token_id": 1010,
       "content": "\n"
     },
     {
       "type": "response.output_item.added",
-      "sequence_number": 179,
+      "sequence_number": 187,
       "output_index": 1,
       "item": {
         "type": "message",
@@ -2079,7 +2135,7 @@
     },
     {
       "type": "response.content_part.added",
-      "sequence_number": 180,
+      "sequence_number": 188,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -2092,7 +2148,7 @@
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 181,
+      "sequence_number": 189,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -2101,13 +2157,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 182,
+      "sequence_number": 190,
       "token_id": 1784,
       "content": "The"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 183,
+      "sequence_number": 191,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -2116,13 +2172,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 184,
+      "sequence_number": 192,
       "token_id": 3519,
       "content": " current"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 185,
+      "sequence_number": 193,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -2131,13 +2187,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 186,
+      "sequence_number": 194,
       "token_id": 17253,
       "content": " weather"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 187,
+      "sequence_number": 195,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -2146,13 +2202,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 188,
+      "sequence_number": 196,
       "token_id": 1294,
       "content": " in"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 189,
+      "sequence_number": 197,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -2161,13 +2217,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 190,
+      "sequence_number": 198,
       "token_id": 5151,
       "content": " San"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 191,
+      "sequence_number": 199,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -2176,13 +2232,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 192,
+      "sequence_number": 200,
       "token_id": 12717,
       "content": " Francisco"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 193,
+      "sequence_number": 201,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -2191,13 +2247,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 194,
+      "sequence_number": 202,
       "token_id": 1395,
       "content": " is"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 195,
+      "sequence_number": 203,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -2206,103 +2262,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 196,
-      "token_id": 24976,
-      "content": " fog"
-    },
-    {
-      "type": "response.output_text.delta",
-      "sequence_number": 197,
-      "item_id": "msg_0",
-      "output_index": 1,
-      "content_index": 0,
-      "delta": " fog",
-      "logprobs": []
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 198,
-      "token_id": 2891,
-      "content": "gy"
-    },
-    {
-      "type": "response.output_text.delta",
-      "sequence_number": 199,
-      "item_id": "msg_0",
-      "output_index": 1,
-      "content_index": 0,
-      "delta": "gy",
-      "logprobs": []
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 200,
-      "token_id": 1454,
-      "content": " with"
-    },
-    {
-      "type": "response.output_text.delta",
-      "sequence_number": 201,
-      "item_id": "msg_0",
-      "output_index": 1,
-      "content_index": 0,
-      "delta": " with",
-      "logprobs": []
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 202,
-      "token_id": 1261,
-      "content": " a"
-    },
-    {
-      "type": "response.output_text.delta",
-      "sequence_number": 203,
-      "item_id": "msg_0",
-      "output_index": 1,
-      "content_index": 0,
-      "delta": " a",
-      "logprobs": []
-    },
-    {
-      "type": "response.output_token",
       "sequence_number": 204,
-      "token_id": 6138,
-      "content": " temperature"
-    },
-    {
-      "type": "response.output_text.delta",
-      "sequence_number": 205,
-      "item_id": "msg_0",
-      "output_index": 1,
-      "content_index": 0,
-      "delta": " temperature",
-      "logprobs": []
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 206,
-      "token_id": 1307,
-      "content": " of"
-    },
-    {
-      "type": "response.output_text.delta",
-      "sequence_number": 207,
-      "item_id": "msg_0",
-      "output_index": 1,
-      "content_index": 0,
-      "delta": " of",
-      "logprobs": []
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 208,
       "token_id": 1032,
       "content": " "
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 209,
+      "sequence_number": 205,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -2311,13 +2277,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 210,
+      "sequence_number": 206,
       "token_id": 1054,
       "content": "6"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 211,
+      "sequence_number": 207,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -2326,13 +2292,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 212,
+      "sequence_number": 208,
       "token_id": 1053,
       "content": "5"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 213,
+      "sequence_number": 209,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -2341,13 +2307,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 214,
+      "sequence_number": 210,
       "token_id": 4372,
       "content": "°"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 215,
+      "sequence_number": 211,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -2356,13 +2322,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 216,
+      "sequence_number": 212,
       "token_id": 1070,
       "content": "F"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 217,
+      "sequence_number": 213,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -2371,13 +2337,73 @@
     },
     {
       "type": "response.output_token",
+      "sequence_number": 214,
+      "token_id": 1454,
+      "content": " with"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 215,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": " with",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 216,
+      "token_id": 24976,
+      "content": " fog"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 217,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": " fog",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
       "sequence_number": 218,
+      "token_id": 2891,
+      "content": "gy"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 219,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": "gy",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 220,
+      "token_id": 5481,
+      "content": " conditions"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 221,
+      "item_id": "msg_0",
+      "output_index": 1,
+      "content_index": 0,
+      "delta": " conditions",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 222,
       "token_id": 1046,
       "content": "."
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 219,
+      "sequence_number": 223,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -2386,29 +2412,29 @@
     },
     {
       "type": "response.output_text.done",
-      "sequence_number": 220,
+      "sequence_number": 224,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
-      "text": "\nThe current weather in San Francisco is foggy with a temperature of 65°F.",
+      "text": "\nThe current weather in San Francisco is 65°F with foggy conditions.",
       "logprobs": []
     },
     {
       "type": "response.content_part.done",
-      "sequence_number": 221,
+      "sequence_number": 225,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
       "part": {
         "type": "output_text",
-        "text": "\nThe current weather in San Francisco is foggy with a temperature of 65°F.",
+        "text": "\nThe current weather in San Francisco is 65°F with foggy conditions.",
         "annotations": [],
         "logprobs": []
       }
     },
     {
       "type": "response.output_item.done",
-      "sequence_number": 222,
+      "sequence_number": 226,
       "output_index": 1,
       "item": {
         "type": "message",
@@ -2418,7 +2444,7 @@
         "content": [
           {
             "type": "output_text",
-            "text": "\nThe current weather in San Francisco is foggy with a temperature of 65°F.",
+            "text": "\nThe current weather in San Francisco is 65°F with foggy conditions.",
             "annotations": [],
             "logprobs": []
           }
@@ -2427,7 +2453,7 @@
     },
     {
       "type": "response.completed",
-      "sequence_number": 223,
+      "sequence_number": 227,
       "response": {
         "id": "resp_0",
         "object": "response",
@@ -2447,7 +2473,7 @@
             "content": [
               {
                 "type": "reasoning_text",
-                "text": "The user asked for the weather in San Francisco. I called the get_weather function with location \"San Francisco\". The response is: temperature 65°F, condition \"foggy\". I need to present this information in a user-friendly way. I'll say something like: \"The current weather in San Francisco is foggy with a temperature of 65°F.\" That's straightforward. I'll output that."
+                "text": "The user asked for the weather in San Francisco. I called the get_weather function with location \"San Francisco\". The response is: temperature 65°F, condition \"foggy\". I need to present this information in a user-friendly way. I'll say something like: \"The current weather in San Francisco is 65°F with foggy conditions.\" That's concise and includes both temperature and condition. I'll output that."
               }
             ],
             "encrypted_content": null
@@ -2460,7 +2486,7 @@
             "content": [
               {
                 "type": "output_text",
-                "text": "\nThe current weather in San Francisco is foggy with a temperature of 65°F.",
+                "text": "\nThe current weather in San Francisco is 65°F with foggy conditions.",
                 "annotations": [],
                 "logprobs": []
               }
@@ -2469,13 +2495,13 @@
         ],
         "usage": {
           "input_tokens": 226,
-          "output_tokens": 21,
-          "total_tokens": 247,
+          "output_tokens": 19,
+          "total_tokens": 245,
           "input_tokens_details": {
             "cached_tokens": 0
           },
           "output_tokens_details": {
-            "reasoning_tokens": 87
+            "reasoning_tokens": 91
           }
         }
       }

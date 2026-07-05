@@ -2030,8 +2030,8 @@
     {
       "type": "response.output_token",
       "sequence_number": 157,
-      "token_id": 1639,
-      "content": " me"
+      "token_id": 1681,
+      "content": "'s"
     },
     {
       "type": "response.reasoning.delta",
@@ -2039,7 +2039,7 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " me"
+      "delta": "'s"
     },
     {
       "type": "response.output_token",
@@ -2058,8 +2058,8 @@
     {
       "type": "response.output_token",
       "sequence_number": 161,
-      "token_id": 1455,
-      "content": " that"
+      "token_id": 1494,
+      "content": " it"
     },
     {
       "type": "response.reasoning.delta",
@@ -2067,13 +2067,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " that"
+      "delta": " it"
     },
     {
       "type": "response.output_token",
       "sequence_number": 163,
-      "token_id": 3246,
-      "content": " now"
+      "token_id": 1626,
+      "content": ".\n"
     },
     {
       "type": "response.reasoning.delta",
@@ -2081,39 +2081,25 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " now"
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 165,
-      "token_id": 1626,
-      "content": ".\n"
-    },
-    {
-      "type": "response.reasoning.delta",
-      "sequence_number": 166,
-      "item_id": "reasoning_0",
-      "output_index": 0,
-      "content_index": 0,
       "delta": ".\n"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 167,
+      "sequence_number": 165,
       "token_id": 13,
       "content": "</think>"
     },
     {
       "type": "response.reasoning.done",
-      "sequence_number": 168,
+      "sequence_number": 166,
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "text": "The user is asking for two pieces of information: weather in San Francisco and time in Tokyo. I need to call both functions. I already called get_weather for San Francisco. Now I need to call get_time for Tokyo. The get_time function requires a timezone identifier. Tokyo is in the Japan Standard Time timezone, which is Asia/Tokyo. I'll call that. Let me do that now."
+      "text": "The user is asking for two pieces of information: weather in San Francisco and time in Tokyo. I need to call both functions. I already called get_weather for San Francisco. Now I need to call get_time for Tokyo. The get_time function requires a timezone identifier. Tokyo is in the Japan Standard Time timezone, which is Asia/Tokyo. I'll call that. Let's do it."
     },
     {
       "type": "response.output_item.done",
-      "sequence_number": 169,
+      "sequence_number": 167,
       "output_index": 0,
       "item": {
         "type": "reasoning",
@@ -2123,11 +2109,23 @@
         "content": [
           {
             "type": "reasoning_text",
-            "text": "The user is asking for two pieces of information: weather in San Francisco and time in Tokyo. I need to call both functions. I already called get_weather for San Francisco. Now I need to call get_time for Tokyo. The get_time function requires a timezone identifier. Tokyo is in the Japan Standard Time timezone, which is Asia/Tokyo. I'll call that. Let me do that now."
+            "text": "The user is asking for two pieces of information: weather in San Francisco and time in Tokyo. I need to call both functions. I already called get_weather for San Francisco. Now I need to call get_time for Tokyo. The get_time function requires a timezone identifier. Tokyo is in the Japan Standard Time timezone, which is Asia/Tokyo. I'll call that. Let's do it."
           }
         ],
         "encrypted_content": null
       }
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 168,
+      "token_id": 14,
+      "content": "<tool_call>"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 169,
+      "token_id": 1010,
+      "content": "\n"
     },
     {
       "type": "response.output_token",
@@ -2138,54 +2136,30 @@
     {
       "type": "response.output_token",
       "sequence_number": 171,
-      "token_id": 71440,
-      "content": "tool"
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 172,
-      "token_id": 59654,
-      "content": "_call"
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 173,
-      "token_id": 1561,
-      "content": ">\n"
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 174,
-      "token_id": 1060,
-      "content": "<"
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 175,
       "token_id": 5165,
       "content": "function"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 176,
+      "sequence_number": 172,
       "token_id": 94314,
       "content": "=get"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 177,
+      "sequence_number": 173,
       "token_id": 11332,
       "content": "_time"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 178,
+      "sequence_number": 174,
       "token_id": 1561,
       "content": ">\n"
     },
     {
       "type": "response.output_item.added",
-      "sequence_number": 179,
+      "sequence_number": 175,
       "output_index": 1,
       "item": {
         "type": "function_call",
@@ -2198,49 +2172,49 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 180,
+      "sequence_number": 176,
       "token_id": 1060,
       "content": "<"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 181,
+      "sequence_number": 177,
       "token_id": 31960,
       "content": "parameter"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 182,
+      "sequence_number": 178,
       "token_id": 1061,
       "content": "="
     },
     {
       "type": "response.output_token",
-      "sequence_number": 183,
+      "sequence_number": 179,
       "token_id": 7647,
       "content": "time"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 184,
+      "sequence_number": 180,
       "token_id": 14864,
       "content": "zone"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 185,
+      "sequence_number": 181,
       "token_id": 1561,
       "content": ">\n"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 186,
+      "sequence_number": 182,
       "token_id": 70184,
       "content": "Asia"
     },
     {
       "type": "response.function_call_arguments.delta",
-      "sequence_number": 187,
+      "sequence_number": 183,
       "item_id": "fc_0",
       "output_index": 1,
       "delta": "Asia",
@@ -2248,13 +2222,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 188,
+      "sequence_number": 184,
       "token_id": 27501,
       "content": "/T"
     },
     {
       "type": "response.function_call_arguments.delta",
-      "sequence_number": 189,
+      "sequence_number": 185,
       "item_id": "fc_0",
       "output_index": 1,
       "delta": "/T",
@@ -2262,13 +2236,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 190,
+      "sequence_number": 186,
       "token_id": 1662,
       "content": "ok"
     },
     {
       "type": "response.function_call_arguments.delta",
-      "sequence_number": 191,
+      "sequence_number": 187,
       "item_id": "fc_0",
       "output_index": 1,
       "delta": "ok",
@@ -2276,13 +2250,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 192,
+      "sequence_number": 188,
       "token_id": 13504,
       "content": "yo"
     },
     {
       "type": "response.function_call_arguments.delta",
-      "sequence_number": 193,
+      "sequence_number": 189,
       "item_id": "fc_0",
       "output_index": 1,
       "delta": "yo",
@@ -2290,49 +2264,49 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 194,
+      "sequence_number": 190,
       "token_id": 1010,
       "content": "\n"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 195,
+      "sequence_number": 191,
       "token_id": 1885,
       "content": "</"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 196,
+      "sequence_number": 192,
       "token_id": 31960,
       "content": "parameter"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 197,
+      "sequence_number": 193,
       "token_id": 1561,
       "content": ">\n"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 198,
+      "sequence_number": 194,
       "token_id": 1885,
       "content": "</"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 199,
+      "sequence_number": 195,
       "token_id": 5165,
       "content": "function"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 200,
+      "sequence_number": 196,
       "token_id": 1561,
       "content": ">\n"
     },
     {
       "type": "response.function_call_arguments.delta",
-      "sequence_number": 201,
+      "sequence_number": 197,
       "item_id": "fc_0",
       "output_index": 1,
       "delta": "{\"timezone\":\"Asia/Tokyo\"}",
@@ -2340,14 +2314,14 @@
     },
     {
       "type": "response.function_call_arguments.done",
-      "sequence_number": 202,
+      "sequence_number": 198,
       "item_id": "fc_0",
       "output_index": 1,
       "arguments": "{\"timezone\": \"Asia/Tokyo\"}"
     },
     {
       "type": "response.output_item.done",
-      "sequence_number": 203,
+      "sequence_number": 199,
       "output_index": 1,
       "item": {
         "type": "function_call",
@@ -2360,13 +2334,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 204,
+      "sequence_number": 200,
       "token_id": 15,
       "content": "</tool_call>"
     },
     {
       "type": "response.completed",
-      "sequence_number": 205,
+      "sequence_number": 201,
       "response": {
         "id": "resp_0",
         "object": "response",
@@ -2386,7 +2360,7 @@
             "content": [
               {
                 "type": "reasoning_text",
-                "text": "The user is asking for two pieces of information: weather in San Francisco and time in Tokyo. I need to call both functions. I already called get_weather for San Francisco. Now I need to call get_time for Tokyo. The get_time function requires a timezone identifier. Tokyo is in the Japan Standard Time timezone, which is Asia/Tokyo. I'll call that. Let me do that now."
+                "text": "The user is asking for two pieces of information: weather in San Francisco and time in Tokyo. I need to call both functions. I already called get_weather for San Francisco. Now I need to call get_time for Tokyo. The get_time function requires a timezone identifier. Tokyo is in the Japan Standard Time timezone, which is Asia/Tokyo. I'll call that. Let's do it."
               }
             ],
             "encrypted_content": null
@@ -2402,13 +2376,13 @@
         ],
         "usage": {
           "input_tokens": 312,
-          "output_tokens": 27,
-          "total_tokens": 339,
+          "output_tokens": 25,
+          "total_tokens": 337,
           "input_tokens_details": {
             "cached_tokens": 0
           },
           "output_tokens_details": {
-            "reasoning_tokens": 83
+            "reasoning_tokens": 82
           }
         }
       }
