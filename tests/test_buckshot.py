@@ -30,6 +30,20 @@ pytestmark = [
 
 SUITE_TIMEOUT_S = 480
 
+# The pipeline suite's tool models activate on demand; under a full buckshot
+# that means hydrating a diffusion model while the GPU is saturated, which
+# trips the macOS watchdog and kills the engine. Activate them up front on an
+# idle GPU instead, like the chat matrix.
+PIPELINE_TOOL_MODELS = [
+    "ideogram-ai/ideogram-4-fp8",
+    "black-forest-labs/FLUX.2-klein-4B",
+    "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+    "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice",
+    "mlx-community/parakeet-tdt-0.6b-v3",
+    "Qwen/Qwen3-ASR-0.6B",
+    "Qwen/Qwen3-ASR-1.7B",
+]
+
 
 async def test_buckshot_full_matrix(live_server, client, engine):
     fixtures = {"live_server": live_server, "client": client, "engine": engine}
@@ -71,6 +85,7 @@ async def test_buckshot_full_matrix(live_server, client, engine):
         for m in models
     ]
     if "pipeline" not in skip:
+        await engine.load_models(PIPELINE_TOOL_MODELS)
         jobs.append(run_suite("golden", "pipeline",
                               lambda: run_golden(pipeline_cases(), {"client": client})))
 
@@ -85,8 +100,17 @@ async def test_buckshot_full_matrix(live_server, client, engine):
         state = "TIMEOUT" if timed_out else f"{len(failures)} fail"
         print(f"{suite:11s} {name:15s} {secs:6.1f}  {state}")
         for failure in failures:
-            head = failure.detail.strip().splitlines()[-1][:200]
-            print(f"    x {failure.case_id}: {head}")
+            tail = failure.detail.strip().splitlines()[-4:]
+            print(f"    x {failure.case_id}:")
+            for line in tail:
+                print(f"      | {line[:400]}")
 
     hung = [(s, n, round(t)) for s, n, t, _, timed_out in results if timed_out]
     assert not hung, f"suites timed out at {SUITE_TIMEOUT_S}s: {hung}"
+
+    failed = [
+        (s, n, [f.case_id for f in failures])
+        for s, n, _, failures, _ in results
+        if failures
+    ]
+    assert not failed, f"suites had case failures: {failed}"
