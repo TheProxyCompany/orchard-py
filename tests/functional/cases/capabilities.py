@@ -163,6 +163,7 @@ def test_moondream_detect_gaze(engine: InferenceEngine, moondream_model_id: str)
             image,
             eye=eye_position,
             temperature=0.0,
+            deterministic=True,
             max_completion_tokens=100,
         )
     finally:
@@ -172,6 +173,6 @@ def test_moondream_detect_gaze(engine: InferenceEngine, moondream_model_id: str)
     gaze = result["gaze"]
     assert isinstance(gaze, dict)
     assert "x" in gaze and "y" in gaze
-    assert gaze["x"] == 0.568359375
-    assert gaze["y"] == 0.349609375
+    assert gaze["x"] == 0.568359375, f"ACTUAL-GAZE: {gaze}"
+    assert gaze["y"] == 0.349609375, f"ACTUAL-GAZE: {gaze}"
     print(f"Gaze: ({gaze['x']}, {gaze['y']})")

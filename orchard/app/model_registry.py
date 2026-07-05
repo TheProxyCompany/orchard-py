@@ -63,10 +63,22 @@ class ModelRegistry:
     def __init__(self, ipc_state: "IPCState") -> None:
         self._entries: dict[str, ModelEntry] = {}
         self._lock = asyncio.Lock()
+        self._lock_loop: asyncio.AbstractEventLoop | None = None
         self._resolver = ModelResolver()
         self._alias_cache: dict[str, str] = {}
         self._local_source_inspection_cache: dict[str, ResolvedModel] = {}
         self._ipc_state = ipc_state
+
+    def _bound_lock(self) -> asyncio.Lock:
+        # Same loop-rebinding rationale as IPCState.management_lock: the
+        # registry outlives test/session event loops.
+        loop = asyncio.get_running_loop()
+        if self._lock_loop is not loop:
+            if self._lock.locked():
+                raise RuntimeError("model registry lock is held on another event loop")
+            self._lock = asyncio.Lock()
+            self._lock_loop = loop
+        return self._lock
 
     async def ensure_ready(
         self, requested_model_id: str, *, timeout: float | None = None
@@ -104,7 +116,7 @@ class ModelRegistry:
             return info
 
         # Activation phase (IPC load command)
-        async with self._lock:
+        async with self._bound_lock():
             entry = self._entries[canonical_id]
             if entry.state == ModelLoadState.READY and entry.info:
                 return entry.info
@@ -146,7 +158,7 @@ class ModelRegistry:
                 await self.cancel_activation(canonical_id)
             raise
         except Exception as exc:
-            async with self._lock:
+            async with self._bound_lock():
                 entry = self._entries.get(canonical_id)
                 if entry and entry.state != ModelLoadState.READY:
                     entry.state = ModelLoadState.FAILED
@@ -168,7 +180,7 @@ class ModelRegistry:
         if not force_reload and (
             canonical_id := self._canonicalize(requested_model_id)
         ):
-            async with self._lock:
+            async with self._bound_lock():
                 entry = self._entries.get(canonical_id)
                 if entry and entry.state != ModelLoadState.IDLE:
                     if (
@@ -194,7 +206,7 @@ class ModelRegistry:
             "hf_hub",
         } or (resolved.model_path and (resolved.model_path / "config.json").exists())
 
-        async with self._lock:
+        async with self._bound_lock():
             entry = self._entries.get(canonical_id)
             if entry is None:
                 entry = ModelEntry()
@@ -255,21 +267,21 @@ class ModelRegistry:
                     model_path=str(resolved.model_path),
                     formatter=formatter,
                 )
-                async with self._lock:
+                async with self._bound_lock():
                     entry = self._entries[canonical_id]
                     entry.info = info
                     entry.state = ModelLoadState.LOADING
                     entry.event.set()
                 return ModelLoadState.LOADING, canonical_id
             except Exception as exc:
-                async with self._lock:
+                async with self._bound_lock():
                     entry = self._entries[canonical_id]
                     entry.error = str(exc)
                     entry.state = ModelLoadState.FAILED
                     entry.event.set()
                 return ModelLoadState.FAILED, canonical_id
 
-        async with self._lock:
+        async with self._bound_lock():
             entry = self._entries[canonical_id]
 
             async def loader() -> None:
@@ -278,7 +290,7 @@ class ModelRegistry:
                 async def _update_progress(
                     bytes_downloaded: int, bytes_total: int
                 ) -> None:
-                    async with self._lock:
+                    async with self._bound_lock():
                         entry.bytes_downloaded = bytes_downloaded
                         entry.bytes_total = bytes_total
 
@@ -306,7 +318,7 @@ class ModelRegistry:
                         model_path=str(download_path),
                         formatter=formatter,
                     )
-                    async with self._lock:
+                    async with self._bound_lock():
                         entry.info = info
                         entry.state = ModelLoadState.LOADING
                         entry.resolved = ResolvedModel(
@@ -321,7 +333,7 @@ class ModelRegistry:
                 ):  # pragma: no cover - cooperative cancellation
                     raise
                 except Exception as exc:  # pragma: no cover - best effort logging
-                    async with self._lock:
+                    async with self._bound_lock():
                         entry.error = str(exc)
                         entry.state = ModelLoadState.FAILED
                         entry.info = None
@@ -338,7 +350,7 @@ class ModelRegistry:
         if canonical_id is None:
             raise ValueError(f"Model '{model_id}' has not been scheduled")
 
-        async with self._lock:
+        async with self._bound_lock():
             entry = self._entries.get(canonical_id)
             if entry is None:
                 raise ValueError(f"Model '{canonical_id}' has not been scheduled")
@@ -352,7 +364,7 @@ class ModelRegistry:
         except TimeoutError:
             return ModelLoadState.LOADING, None, None
 
-        async with self._lock:
+        async with self._bound_lock():
             entry = self._entries[canonical_id]
             return entry.state, entry.info, entry.error
 
@@ -394,7 +406,7 @@ class ModelRegistry:
     async def cancel_activation(self, model_id: str) -> dict | None:
         canonical_id = self._canonicalize(model_id) or model_id
 
-        async with self._lock:
+        async with self._bound_lock():
             entry = self._entries.get(canonical_id)
             state = entry.state if entry else None
 
@@ -529,7 +541,7 @@ class ModelRegistry:
         if not ipc_state or not ipc_state.management_socket:
             raise RuntimeError("IPC state is not initialized.")
 
-        async with self._lock:
+        async with self._bound_lock():
             entry = self._entries.get(canonical_id)
         if entry is None or entry.activation_future is None:
             await self._mark_activation_failed(
@@ -592,7 +604,7 @@ class ModelRegistry:
             )
 
         # Accepted: wait for model_loaded event via handle_model_loaded
-        async with self._lock:
+        async with self._bound_lock():
             entry = self._entries[canonical_id]
             waiter = entry.activation_future
 
@@ -786,7 +798,7 @@ class ModelRegistry:
     async def _complete_activation(
         self, model_id: str, capabilities_updated: bool
     ) -> None:
-        async with self._lock:
+        async with self._bound_lock():
             entry = self._entries.get(model_id)
             if not entry:
                 return
@@ -804,7 +816,7 @@ class ModelRegistry:
             entry.activation_loop = None
 
     async def _mark_activation_failed(self, model_id: str, reason: str) -> None:
-        async with self._lock:
+        async with self._bound_lock():
             entry = self._entries.get(model_id)
             if not entry:
                 return

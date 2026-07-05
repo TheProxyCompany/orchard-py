@@ -66,7 +66,8 @@ class IPCState:
         self.request_socket: pynng.Push0 | None = None
         self.response_socket: pynng.Sub0 | None = None
         self.management_socket: pynng.Req0 | None = None
-        self.management_lock = asyncio.Lock()
+        self._management_lock = asyncio.Lock()
+        self._management_lock_loop: asyncio.AbstractEventLoop | None = None
 
         self.response_channel_id: int = 0
         self.active_request_queues: dict[int, QueueRegistration] = {}
@@ -81,6 +82,23 @@ class IPCState:
         self.shutdown_requested: bool = False
 
         self.global_context = weakref.ref(global_context)
+
+    @property
+    def management_lock(self) -> asyncio.Lock:
+        # An asyncio.Lock binds to the loop that first acquires it, but this
+        # state outlives test/session event loops (model activation from a
+        # later loop raised "bound to a different event loop"). Rebind when
+        # the loop changed and the lock is free; real cross-loop contention
+        # stays a loud error.
+        loop = asyncio.get_running_loop()
+        if self._management_lock_loop is not loop:
+            if self._management_lock.locked():
+                raise RuntimeError(
+                    "management_lock is held on another event loop"
+                )
+            self._management_lock = asyncio.Lock()
+            self._management_lock_loop = loop
+        return self._management_lock
 
     async def get_next_request_id(self) -> int:
         """Atomically increments and returns the next request ID."""
