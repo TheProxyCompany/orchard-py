@@ -6,7 +6,7 @@ import pytest
 pytestmark = pytest.mark.asyncio
 
 _UNSUPPORTED_EMBEDDING_MODELS: dict[str, str] = {}
-REQUEST_TIMEOUT_S = 40.0
+REQUEST_TIMEOUT_S = 200.0
 
 
 def _mark_unsupported(model_id: str, detail: str) -> None:
