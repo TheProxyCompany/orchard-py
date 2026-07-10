@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import os
 import traceback
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
@@ -17,7 +18,6 @@ from . import (
     batching,
     best_of,
     capabilities,
-    client as client_cases,
     determinism,
     embeddings,
     logprobs,
@@ -32,7 +32,9 @@ from . import (
     structured_generation,
     unicode_payload,
 )
-
+from . import (
+    client as client_cases,
+)
 
 _MODULES = [
     basic,
@@ -154,11 +156,7 @@ def cases_for_model(model: Model) -> list[FunctionalCase]:
 
 
 def cases_for_model_and_surface(model: Model, surface: str) -> list[FunctionalCase]:
-    return [
-        case
-        for case in cases_for_model(model)
-        if case.surface == surface
-    ]
+    return [case for case in cases_for_model(model) if case.surface == surface]
 
 
 async def run_cases(
@@ -175,7 +173,20 @@ async def run_cases(
             return case.id, exc
         return case.id, None
 
-    results = await asyncio.gather(*(run_one(case) for case in cases))
+    # CASES_WIDTH=N caps concurrent cases (0/unset = all at once). Diagnostic
+    # knob: intermittent garbage output appears only when enough same-model
+    # requests co-batch, so bisecting the width isolates the trigger.
+    width = int(os.getenv("CASES_WIDTH", "0"))
+    if width > 0:
+        gate = asyncio.Semaphore(width)
+
+        async def run_gated(case: FunctionalCase) -> tuple[str, BaseException | None]:
+            async with gate:
+                return await run_one(case)
+
+        results = await asyncio.gather(*(run_gated(case) for case in cases))
+    else:
+        results = await asyncio.gather(*(run_one(case) for case in cases))
 
     failures: list[CaseFailure] = []
     skipped: list[str] = []
@@ -191,16 +202,15 @@ async def run_cases(
 
 
 def format_failures(model: Model, failures: list[CaseFailure]) -> str:
-    parts = [
-        f"{model.template_type} functional matrix failed "
-        f"{len(failures)} case(s):"
-    ]
+    parts = [f"{model.template_type} functional matrix failed {len(failures)} case(s):"]
     for failure in failures:
         parts.append(f"\n--- {failure.case_id} ---\n{failure.detail}")
     return "\n".join(parts)
 
 
-def _expand_parameters(function: Callable[..., Any]) -> list[tuple[str, dict[str, Any]]]:
+def _expand_parameters(
+    function: Callable[..., Any],
+) -> list[tuple[str, dict[str, Any]]]:
     dimensions: list[tuple[list[str], list[Any]]] = []
     for mark in getattr(function, "pytestmark", ()):
         if mark.name != "parametrize":
