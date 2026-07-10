@@ -11,6 +11,7 @@ from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
 
+from orchard import defaults
 from orchard.formatter.multimodal import (
     build_multimodal_layout,
     build_multimodal_messages,
@@ -452,7 +453,9 @@ async def gather_non_streaming_response(
 
     while True:
         try:
-            delta = await asyncio.wait_for(queue.get(), timeout=30.0)
+            delta = await asyncio.wait_for(
+                queue.get(), timeout=defaults.DELTA_TIMEOUT_S
+            )
         except builtins.TimeoutError as exc:
             logger.error(
                 "Timeout waiting for response delta for request %d", request_id
@@ -668,7 +671,9 @@ async def stream_response_generator(
 
     while True:
         try:
-            delta = await asyncio.wait_for(queue.get(), timeout=30.0)
+            delta = await asyncio.wait_for(
+                queue.get(), timeout=defaults.DELTA_TIMEOUT_S
+            )
         except TimeoutError:
             logger.error(
                 "Timeout waiting for delta for streaming request %d", request_id

@@ -110,24 +110,34 @@ async def test_buckshot_full_matrix(live_server, client, engine):
         )
         return entries
 
-    jobs = []
+    wall_start = time.perf_counter()
+    results = []
     if "pipeline" not in skip:
         # Preload MUST happen on an idle GPU, before the volley: activating
         # diffusion/TTS models while chat decode is in flight trips the GPU
         # watchdog and kills the engine (re-confirmed 2026-07-08 when this
-        # load was briefly moved inside the volley).
-        await engine.load_models(PIPELINE_TOOL_MODELS)
-        jobs.append(
-            run_suite(
+        # load was briefly moved inside the volley). Load them one at a time:
+        # hydrating all seven concurrently on top of the resident chat matrix
+        # spikes wired memory past the Metal limit and the engine dies with a
+        # silent abort (three full-matrix runs, 2026-07-10).
+        for model_id in PIPELINE_TOOL_MODELS:
+            await engine.load_models([model_id])
+        # The diffusion window runs the GPU exclusively. Chat decode beside
+        # active diffusion starves 3-10x (measured: nemotron_h golden 45s ->
+        # 241-254s, gemma4 golden 13s -> 155s), pushing first-token latency
+        # past the server's delta timeout — whole suites 502. Every type-1
+        # GPU-restart engine death on record also had diffusion + chat
+        # in flight together. Until the engine paces GPU work across model
+        # runtimes, the pipeline suite and the chat volley don't overlap.
+        results.append(
+            await run_suite(
                 "golden",
                 "pipeline",
                 lambda: run_golden(pipeline_cases(), {"client": client}),
             )
         )
-    jobs += [run_suite(suite, name, factory) for suite, name, factory in suite_jobs()]
-
-    wall_start = time.perf_counter()
-    results = await asyncio.gather(*jobs)
+    jobs = [run_suite(suite, name, factory) for suite, name, factory in suite_jobs()]
+    results += await asyncio.gather(*jobs)
     wall = time.perf_counter() - wall_start
 
     print(

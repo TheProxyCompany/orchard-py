@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
 
+from orchard import defaults
 from orchard.defaults import MAX_GENERATED_TOKENS
 from orchard.ipc.serialization import _build_request_payload
 from orchard.ipc.utils import (
@@ -194,7 +195,9 @@ async def handle_completion_request(
                 "top_p": top_p if top_p is not None else 1.0,
                 "top_k": top_k if top_k is not None else -1,
                 "min_p": min_p if min_p is not None else 0.0,
-                "rng_seed": 11 if instance.deterministic else random.randint(0, 2**32 - 1),
+                "rng_seed": 11
+                if instance.deterministic
+                else random.randint(0, 2**32 - 1),
                 "deterministic": instance.deterministic,
             },
             "logits_params": {
@@ -370,7 +373,9 @@ async def gather_non_streaming_batch_response(
 
     while remaining_sequences > 0:
         try:
-            delta = await asyncio.wait_for(queue.get(), timeout=30.0)
+            delta = await asyncio.wait_for(
+                queue.get(), timeout=defaults.DELTA_TIMEOUT_S
+            )
         except TimeoutError as exc:
             logger.error(
                 "Timeout waiting for delta for non-streaming request %d", request_id
@@ -493,7 +498,8 @@ async def gather_non_streaming_batch_response(
                     # a stray event-less delta there is structural or coalesced
                     # duplicate text. Pure content-only streams keep this path.
                     delta_content = (
-                        "" if state.get("saw_state_events")
+                        ""
+                        if state.get("saw_state_events")
                         else (delta.get("content") or "")
                     )
                 if delta_content:
@@ -742,7 +748,9 @@ async def stream_response_generator(
 
     while True:
         try:
-            delta_dict = await asyncio.wait_for(queue.get(), timeout=30.0)
+            delta_dict = await asyncio.wait_for(
+                queue.get(), timeout=defaults.DELTA_TIMEOUT_S
+            )
         except TimeoutError:
             logger.error(
                 "Timeout waiting for delta for streaming request %d", request_id
