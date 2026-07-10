@@ -44,7 +44,9 @@ def _normalize_transcript(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def _resample_linear(samples: list[float], source_rate: int, target_rate: int) -> list[float]:
+def _resample_linear(
+    samples: list[float], source_rate: int, target_rate: int
+) -> list[float]:
     if source_rate == target_rate or not samples:
         return samples
     target_count = max(1, round(len(samples) * target_rate / source_rate))
@@ -70,7 +72,9 @@ def _wav_to_float32_pcm(wav_bytes: bytes, target_rate: int) -> list[float]:
         frames = handle.readframes(handle.getnframes())
 
     assert channels >= 1, "TTS WAV must have at least one channel"
-    assert sample_width == 2, f"expected 16-bit PCM WAV, got sample_width={sample_width}"
+    assert sample_width == 2, (
+        f"expected 16-bit PCM WAV, got sample_width={sample_width}"
+    )
     values = struct.unpack(f"<{len(frames) // sample_width}h", frames)
     if channels == 1:
         mono = [sample / 32768.0 for sample in values]
@@ -106,13 +110,26 @@ async def _synthesize_phrase(
 
 
 async def test_tts_to_speech_to_text_transcription(client: Client):
-    for tts_label, tts_model, tts_options in TTS_MODELS:
-        for phrase in PHRASES:
-            print(f"\n\033[1;33m━━━ {tts_label} · telephone · {phrase!r} ━━━\033[0m", flush=True)
+    # Every (tts_model, phrase) leg is independent, and within a leg the STT
+    # models are independent given the synthesized pcm. Run legs concurrently
+    # instead of 12 serial synth calls + 36 serial transcriptions. Cap 2:
+    # this suite shares the engine with a chat suite and the image chain —
+    # wider audio fan-out contributed to a GPU-watchdog engine death
+    # (2026-07-08 storm, exit 134).
+    import asyncio
+
+    gate = asyncio.Semaphore(2)
+
+    async def leg(tts_label, tts_model, tts_options, phrase):
+        async with gate:
+            print(
+                f"\n\033[1;33m━━━ {tts_label} · telephone · {phrase!r} ━━━\033[0m",
+                flush=True,
+            )
             pcm = await _synthesize_phrase(client, tts_model, phrase, tts_options)
             assert pcm, "TTS produced no audio samples"
 
-            for stt_label, stt_model in STT_MODELS:
+            async def check(stt_label, stt_model):
                 transcript = await client.audio.atranscribe(stt_model, pcm)
                 normalized = _normalize_transcript(transcript)
                 print(
@@ -121,3 +138,15 @@ async def test_tts_to_speech_to_text_transcription(client: Client):
                     flush=True,
                 )
                 assert normalized == phrase
+
+            await asyncio.gather(
+                *(check(stt_label, stt_model) for stt_label, stt_model in STT_MODELS)
+            )
+
+    await asyncio.gather(
+        *(
+            leg(tts_label, tts_model, tts_options, phrase)
+            for tts_label, tts_model, tts_options in TTS_MODELS
+            for phrase in PHRASES
+        )
+    )

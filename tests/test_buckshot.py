@@ -66,36 +66,74 @@ async def test_buckshot_full_matrix(live_server, client, engine):
                 failures, timed_out = [], True
             secs = time.perf_counter() - start
             state = "TIMEOUT" if timed_out else f"{len(failures)} fail"
-            print(f"[buckshot] {suite:11s} {name:15s} {secs:6.1f}s  {state}",
-                  flush=True)
+            print(
+                f"[buckshot] {suite:11s} {name:15s} {secs:6.1f}s  {state}", flush=True
+            )
             return (suite, name, secs, failures, timed_out)
 
     async def functional_suite(model: Model):
-        failures, skipped = await run_functional(
+        failures, _skipped = await run_functional(
             functional_cases(model), fixtures, model
         )
         return failures
 
-    jobs = [
-        run_suite("functional", m.template_type,
-                  lambda m=m: functional_suite(m))
-        for m in models
-    ] + [
-        run_suite("golden", m.template_type,
-                  lambda m=m: run_golden(model_cases(), {"client": client}, m))
-        for m in models
+    # Keep giants apart: the semaphore serves jobs in creation order, and two
+    # giants sharing the width-2 window starve each other (measured twice:
+    # nemotron_h golden 45s solo -> 254s beside the pipeline suite at the
+    # tail, -> 241s beside it at the head). The pipeline suite goes first and
+    # owns one slot for ~230s; light suites cycle through the other slot;
+    # heavy chat suites run LAST, after the pipeline suite is done or nearly
+    # done, ordered so nemotron_h — the proven starvation victim — enters
+    # when the GPU is quietest.
+    TAIL = [
+        ("golden", "lfm2_5"),
+        ("golden", "afmoe"),
+        ("functional", "lfm2_5"),
+        ("golden", "nemotron_h"),
     ]
+
+    def suite_jobs():
+        entries = []
+        for m in models:
+            entries.append(
+                ("functional", m.template_type, lambda m=m: functional_suite(m))
+            )
+            entries.append(
+                (
+                    "golden",
+                    m.template_type,
+                    lambda m=m: run_golden(model_cases(), {"client": client}, m),
+                )
+            )
+        entries.sort(
+            key=lambda e: (TAIL.index((e[0], e[1])) if (e[0], e[1]) in TAIL else -1)
+        )
+        return entries
+
+    jobs = []
     if "pipeline" not in skip:
+        # Preload MUST happen on an idle GPU, before the volley: activating
+        # diffusion/TTS models while chat decode is in flight trips the GPU
+        # watchdog and kills the engine (re-confirmed 2026-07-08 when this
+        # load was briefly moved inside the volley).
         await engine.load_models(PIPELINE_TOOL_MODELS)
-        jobs.append(run_suite("golden", "pipeline",
-                              lambda: run_golden(pipeline_cases(), {"client": client})))
+        jobs.append(
+            run_suite(
+                "golden",
+                "pipeline",
+                lambda: run_golden(pipeline_cases(), {"client": client}),
+            )
+        )
+    jobs += [run_suite(suite, name, factory) for suite, name, factory in suite_jobs()]
 
     wall_start = time.perf_counter()
     results = await asyncio.gather(*jobs)
     wall = time.perf_counter() - wall_start
 
-    print(f"\nBUCKSHOT wall: {wall:.1f}s "
-          f"({len(results)} suites, width={width}, skip={sorted(skip) or 'none'})")
+    print(
+        f"\nBUCKSHOT wall: {wall:.1f}s "
+        f"({len(results)} suites, width={width}, skip={sorted(skip) or 'none'})"
+    )
     print(f"{'suite':11s} {'model':15s} {'secs':>6s}  result")
     for suite, name, secs, failures, timed_out in sorted(results, key=lambda r: -r[2]):
         state = "TIMEOUT" if timed_out else f"{len(failures)} fail"
