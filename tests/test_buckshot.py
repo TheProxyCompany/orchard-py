@@ -96,6 +96,11 @@ async def test_buckshot_full_matrix(live_server, client, engine):
         )
         return entries
 
+    # BUCKSHOT_PHASED=0 lets the pipeline suite join the volley instead of
+    # running the GPU exclusively first — for measuring overlap once the
+    # engine paces diffusion command buffers (MAX_OPS_PER_BUFFER) under the
+    # GPU watchdog.
+    phased = os.getenv("BUCKSHOT_PHASED", "1") != "0"
     wall_start = time.perf_counter()
     results = []
     if "pipeline" not in skip:
@@ -115,14 +120,19 @@ async def test_buckshot_full_matrix(live_server, client, engine):
         # GPU-restart engine death on record also had diffusion + chat
         # in flight together. Until the engine paces GPU work across model
         # runtimes, the pipeline suite and the chat volley don't overlap.
-        results.append(
-            await run_suite(
-                "golden",
-                "pipeline",
-                lambda: run_golden(pipeline_cases(), {"client": client}),
-            )
+        pipeline_job = run_suite(
+            "golden",
+            "pipeline",
+            lambda: run_golden(pipeline_cases(), {"client": client}),
         )
+        if phased:
+            results.append(await pipeline_job)
+            pipeline_job = None
+    else:
+        pipeline_job = None
     jobs = [run_suite(suite, name, factory) for suite, name, factory in suite_jobs()]
+    if pipeline_job is not None:
+        jobs.insert(0, pipeline_job)
     results += await asyncio.gather(*jobs)
     wall = time.perf_counter() - wall_start
 
