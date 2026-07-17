@@ -70,7 +70,9 @@ class ResponsesRequest(ResponseRequest):
             content = item.content
             if isinstance(content, list):
                 content = [
-                    part.model_dump(mode="json") if hasattr(part, "model_dump") else part
+                    part.model_dump(mode="json")
+                    if hasattr(part, "model_dump")
+                    else part
                     for part in content
                 ]
             message: dict[str, Any] = {
@@ -396,7 +398,10 @@ def aggregate_non_streaming_response(
     stop_token: str | None = None
 
     for delta in deltas:
-        error = delta.get("error")
+        # The engine wire field is `error_message` (see PIE transport.cpp);
+        # a plain "error" key never existed, so failures were silently
+        # rendered as successful truncated responses.
+        error = delta.get("error_message")
         if error:
             error_detail = str(error)
 
@@ -487,7 +492,9 @@ def _process_state_event_for_streaming(
         and not identifier.startswith("tool_call:")
     ):
         if event_type == "content_delta":
-            field_item = stream_state.get_or_create_item(output_index, item_type, identifier)
+            field_item = stream_state.get_or_create_item(
+                output_index, item_type, identifier
+            )
             mapped_events.append(
                 FunctionCallArgumentsDeltaEvent(
                     sequence_number=stream_state.next_sequence_number(),
@@ -712,7 +719,7 @@ async def iter_response_events(
     usage = ResponseUsage(input_tokens=0, output_tokens=0, total_tokens=0)
 
     async for delta in delta_iterator:
-        if error := delta.get("error"):
+        if error := delta.get("error_message"):
             error_detail = str(error)
             break
 
