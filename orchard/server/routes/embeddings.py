@@ -144,6 +144,8 @@ async def create_embeddings(
         socket = ipc_state.request_socket
         if socket is None:
             raise RuntimeError("Request socket is not initialized.")
+        if ipc_state.engine_dead:
+            raise RuntimeError("Engine process is dead; cannot submit new requests.")
 
         await socket.asend(request_bytes)
         logger.info("Submitted embedding request %d successfully", current_request_id)
