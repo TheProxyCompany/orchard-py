@@ -1,0 +1,72 @@
+name: Buckshot Gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: "Consecutive green runs required"
+        default: "5"
+      pie_url:
+        description: "Direct PIE release archive URL (empty = stable manifest latest)"
+        default: ""
+  schedule:
+    # Offset from the 06:00 UTC gauntlet on terminal-0; this runs on terminal-1.
+    - cron: "0 7 * * *"
+
+jobs:
+  gate:
+    runs-on: [self-hosted, terminal-1]
+    timeout-minutes: 180
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Namespace the engine cache root (never touch live serving)
+        run: |
+          CI_ROOT="$HOME/Library/Caches/com.theproxycompany.ci"
+          mkdir -p "$CI_ROOT"
+          echo "ORCHARD_CACHE_ROOT=$CI_ROOT" >> "$GITHUB_ENV"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install dependencies
+        run: |
+          uv venv .venv
+          source .venv/bin/activate
+          uv pip install -e ".[dev]"
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+
+      - name: Resolve PIE release
+        run: |
+          set -euo pipefail
+          PIE_DIR="$HOME/Library/Caches/com.theproxycompany.ci/pie-release"
+          if [ -n "${{ github.event.inputs.pie_url }}" ]; then
+            URL="${{ github.event.inputs.pie_url }}"
+          else
+            MANIFEST=$(curl -fsSL "https://orchard.theproxycompany.com/manifest?channel=stable")
+            LATEST=$(echo "$MANIFEST" | python3 -c "import json,sys; m=json.load(sys.stdin); print(m['latest'])")
+            URL=$(echo "$MANIFEST" | python3 -c "import json,sys; m=json.load(sys.stdin); print(m['releases'][m['latest']]['url'])")
+            echo "Resolved stable latest: $LATEST"
+          fi
+          rm -rf "$PIE_DIR" && mkdir -p "$PIE_DIR"
+          curl -fsSL "$URL" | tar -xz -C "$PIE_DIR"
+          echo "PIE_LOCAL_BUILD=$PIE_DIR" >> "$GITHUB_ENV"
+          if [ -f "$PIE_DIR/lib/pal.metallib" ]; then
+            echo "PAL_METALLIB_PATH=$PIE_DIR/lib/pal.metallib" >> "$GITHUB_ENV"
+          fi
+
+      - name: Run the gate
+        run: |
+          source .venv/bin/activate
+          bash scripts/buckshot_gate.sh "${{ github.event.inputs.runs || '5' }}" buckshot_gate_results
+
+      - name: Golden data must be untouched
+        run: git diff --exit-code tests/golden/data
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: buckshot-gate-results
+          path: buckshot_gate_results/

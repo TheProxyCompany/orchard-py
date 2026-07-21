@@ -74,6 +74,10 @@ line_length = 100
 pythonpath = [
     "tests",
 ]
+addopts = "-m 'not buckshot'"
+markers = [
+    "buckshot: full-matrix concurrent volley; select with -m buckshot",
+]
 
 [dependency-groups]
 dev = [

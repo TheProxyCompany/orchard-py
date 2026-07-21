@@ -5,8 +5,7 @@ already fire their cases in one asyncio.gather. This collapses the remaining
 serial axis — models and suites — into the same gather, so the whole matrix
 becomes one continuous batch against the engine.
 
-Opt-in (it duplicates the per-model matrices): BUCKSHOT=1 python -m pytest
-tests/test_buckshot.py -q -s
+Opt-in (it duplicates the per-model matrices): python -m pytest -m buckshot -q -s
 BUCKSHOT_WIDTH=N caps concurrent suites (0 = unbounded).
 BUCKSHOT_SKIP=a,b excludes models by template_type.
 """
@@ -25,7 +24,7 @@ from tests.models import MODELS, PIPELINE_TOOL_MODELS, Model
 
 pytestmark = [
     pytest.mark.asyncio,
-    pytest.mark.skipif(not os.getenv("BUCKSHOT"), reason="opt-in: set BUCKSHOT=1"),
+    pytest.mark.buckshot,
 ]
 
 SUITE_TIMEOUT_S = 480
