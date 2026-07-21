@@ -7,6 +7,7 @@ import threading
 import time
 import weakref
 from collections.abc import Callable
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -81,6 +82,11 @@ class IPCState:
         self.engine_dead: bool = False
         self.shutdown_requested: bool = False
 
+        self._inflight_lock = threading.Lock()
+        self._inflight_ops = 0
+        self._inflight_drained = threading.Event()
+        self._inflight_drained.set()
+
         self.global_context = weakref.ref(global_context)
 
     @property
@@ -93,12 +99,45 @@ class IPCState:
         loop = asyncio.get_running_loop()
         if self._management_lock_loop is not loop:
             if self._management_lock.locked():
-                raise RuntimeError(
-                    "management_lock is held on another event loop"
-                )
+                raise RuntimeError("management_lock is held on another event loop")
             self._management_lock = asyncio.Lock()
             self._management_lock_loop = loop
         return self._management_lock
+
+    @contextmanager
+    def socket_op(self):
+        """Tracks an in-flight NNG operation so shutdown can drain before
+        closing the sockets. Refuses new operations once shutdown started;
+        closing a socket while an async operation is pending frees nng aio
+        structures still in use and aborts the process."""
+        with self._inflight_lock:
+            if self.shutdown_requested:
+                raise RuntimeError(
+                    "IPC shutdown in progress; cannot start new socket operations."
+                )
+            self._inflight_ops += 1
+            self._inflight_drained.clear()
+        try:
+            yield
+        finally:
+            with self._inflight_lock:
+                self._inflight_ops -= 1
+                if self._inflight_ops == 0:
+                    self._inflight_drained.set()
+
+    def wait_for_inflight_drain(self, timeout_s: float) -> bool:
+        """Blocks until no socket operations are in flight. Returns False on
+        timeout, meaning the NNG sockets are not safe to close."""
+        return self._inflight_drained.wait(timeout_s)
+
+    async def send_request(self, request_bytes: bytes) -> None:
+        socket = self.request_socket
+        if socket is None:
+            raise RuntimeError("Request socket is not initialized.")
+        if self.engine_dead:
+            raise RuntimeError("Engine process is dead; cannot submit new requests.")
+        with self.socket_op():
+            await socket.asend(request_bytes)
 
     async def get_next_request_id(self) -> int:
         """Atomically increments and returns the next request ID."""
@@ -118,14 +157,19 @@ class IPCState:
         socket = self.management_socket
         if socket is None:
             raise RuntimeError("Management socket is not initialized.")
+        if self.engine_dead:
+            raise RuntimeError(
+                "Engine process is dead; cannot send management commands."
+            )
 
         payload = json.dumps(command).encode("utf-8")
-        async with self.management_lock:
-            await socket.asend(payload)
-            if timeout is None:
-                reply_bytes = await socket.arecv()
-            else:
-                reply_bytes = await asyncio.wait_for(socket.arecv(), timeout)
+        with self.socket_op():
+            async with self.management_lock:
+                await socket.asend(payload)
+                if timeout is None:
+                    reply_bytes = await socket.arecv()
+                else:
+                    reply_bytes = await asyncio.wait_for(socket.arecv(), timeout)
 
         try:
             response = json.loads(reply_bytes.decode("utf-8"))

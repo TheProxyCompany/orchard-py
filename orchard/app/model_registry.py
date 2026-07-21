@@ -474,9 +474,10 @@ class ModelRegistry:
         management_socket = ipc_state.management_socket
         assert management_socket is not None
 
-        async with ipc_state.management_lock:
-            await management_socket.asend(payload)
-            reply_bytes = await management_socket.arecv()
+        with ipc_state.socket_op():
+            async with ipc_state.management_lock:
+                await management_socket.asend(payload)
+                reply_bytes = await management_socket.arecv()
 
         response = json.loads(reply_bytes.decode("utf-8"))
         if response.get("status") != "ok":
@@ -562,9 +563,10 @@ class ModelRegistry:
         assert management_socket is not None  # for type-checkers
 
         try:
-            async with ipc_state.management_lock:
-                await management_socket.asend(payload)
-                reply_bytes = await management_socket.arecv()
+            with ipc_state.socket_op():
+                async with ipc_state.management_lock:
+                    await management_socket.asend(payload)
+                    reply_bytes = await management_socket.arecv()
         except Exception as exc:
             await self._mark_activation_failed(
                 canonical_id, f"Failed to send load_model command: {exc}"

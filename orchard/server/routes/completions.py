@@ -179,13 +179,7 @@ async def handle_completion_request(
             prompts=prompt_payloads,
         )
 
-        socket = ipc_state.request_socket
-        if socket is None:
-            raise RuntimeError("Request socket is not initialized.")
-        if ipc_state.engine_dead:
-            raise RuntimeError("Engine process is dead; cannot submit new requests.")
-
-        await socket.asend(request_bytes)
+        await ipc_state.send_request(request_bytes)
         logger.info(
             "Submitted completions request %d with %d prompts.",
             current_request_id,

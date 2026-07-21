@@ -9,9 +9,9 @@ import random
 import sys
 import threading
 from array import array
-from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Iterator
 from dataclasses import dataclass
-from typing import Any, Iterable, Literal, TypeVar, overload
+from typing import Any, Literal, TypeVar, overload
 
 from orchard.app.ipc_dispatch import IPCState, QueueRegistration
 from orchard.app.model_registry import ModelRegistry
@@ -453,10 +453,7 @@ class Client:
                     }
                 ],
             )
-            socket = self._ipc_state.request_socket
-            if socket is None:
-                raise RuntimeError("Request socket is not initialized.")
-            await socket.asend(request_bytes)
+            await self._ipc_state.send_request(request_bytes)
 
             async def _stream_generator() -> AsyncIterator[ClientDelta]:
                 stream_processor = self._async_process_stream(
@@ -563,10 +560,7 @@ class Client:
                     }
                 ],
             )
-            socket = self._ipc_state.request_socket
-            if socket is None:
-                raise RuntimeError("Request socket is not initialized.")
-            await socket.asend(request_bytes)
+            await self._ipc_state.send_request(request_bytes)
             deltas = [
                 delta
                 async for delta in self._async_process_stream(
@@ -717,10 +711,7 @@ class Client:
                 for text in texts
             ],
         )
-        socket = self._ipc_state.request_socket
-        if socket is None:
-            raise RuntimeError("Request socket is not initialized.")
-        await socket.asend(request_bytes)
+        await self._ipc_state.send_request(request_bytes)
 
     async def aprefill_task(
         self,
@@ -1768,7 +1759,9 @@ class Client:
         top_k = int(self._generation_value(kwargs, generation_defaults, "top_k", -1))
         min_p = float(self._generation_value(kwargs, generation_defaults, "min_p", 0.0))
         rng_seed = int(
-            kwargs.get("rng_seed", 11 if deterministic else random.randint(0, 2**32 - 1))
+            kwargs.get(
+                "rng_seed", 11 if deterministic else random.randint(0, 2**32 - 1)
+            )
         )
         top_logprobs = int(kwargs.get("top_logprobs", 0))
         frequency_penalty = float(
@@ -1930,11 +1923,7 @@ class Client:
             response_channel_id=response_channel_id,
             prompts=[prompt_payload],
         )
-        socket = self._ipc_state.request_socket
-        if socket is None:
-            raise RuntimeError("Request socket is not initialized.")
-
-        await socket.asend(request_bytes)
+        await self._ipc_state.send_request(request_bytes)
 
     async def _asubmit_request_batch(
         self,
@@ -1974,8 +1963,4 @@ class Client:
             response_channel_id=response_channel_id,
             prompts=prompt_payloads,
         )
-        socket = self._ipc_state.request_socket
-        if socket is None:
-            raise RuntimeError("Request socket is not initialized.")
-
-        await socket.asend(request_bytes)
+        await self._ipc_state.send_request(request_bytes)

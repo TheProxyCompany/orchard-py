@@ -121,7 +121,9 @@ class InferenceEngine:
             try:
                 loop = asyncio.get_running_loop()
                 task = loop.create_task(self.load_models(load_models))
-                task.add_done_callback(lambda t: t.result() if not t.cancelled() else None)
+                task.add_done_callback(
+                    lambda t: t.result() if not t.cancelled() else None
+                )
             except RuntimeError:
                 asyncio.run(self.load_models(load_models))
 
@@ -281,7 +283,9 @@ class InferenceEngine:
                     raise
 
         try:
-            created_context = self.initialize_global_context(global_context, self._paths)
+            created_context = self.initialize_global_context(
+                global_context, self._paths
+            )
             if created_context:
                 try:
                     self._send_client_lifecycle_command("client_register")
@@ -472,9 +476,7 @@ class InferenceEngine:
             ctx.ipc_state.shutdown_requested = True
 
     @staticmethod
-    def _join_dispatcher_thread(
-        ctx: GlobalContext, timeout_s: float = 3.0
-    ) -> bool:
+    def _join_dispatcher_thread(ctx: GlobalContext, timeout_s: float = 3.0) -> bool:
         if ctx.dispatcher_thread and ctx.dispatcher_thread.is_alive():
             ctx.dispatcher_thread.join(timeout=timeout_s)
         return not (ctx.dispatcher_thread and ctx.dispatcher_thread.is_alive())
@@ -484,6 +486,15 @@ class InferenceEngine:
         if ctx.dispatcher_thread and ctx.dispatcher_thread.is_alive():
             logger.warning(
                 "Skipping socket close because dispatcher thread did not stop in time."
+            )
+            return
+        # shutdown_requested is already set, so no new socket operations can
+        # start; wait for in-flight ones to drain. Closing NNG sockets under a
+        # pending asend/arecv frees aio structures still in use and aborts the
+        # process, so leak the sockets instead when the drain times out.
+        if ctx.ipc_state and not ctx.ipc_state.wait_for_inflight_drain(timeout_s=5.0):
+            logger.warning(
+                "Skipping socket close because in-flight IPC operations did not drain in time."
             )
             return
         close_sockets(ctx.ipc_state)

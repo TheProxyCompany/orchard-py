@@ -141,13 +141,7 @@ async def create_embeddings(
         logger.debug(
             "Submitting embedding request %d to C++ engine", current_request_id
         )
-        socket = ipc_state.request_socket
-        if socket is None:
-            raise RuntimeError("Request socket is not initialized.")
-        if ipc_state.engine_dead:
-            raise RuntimeError("Engine process is dead; cannot submit new requests.")
-
-        await socket.asend(request_bytes)
+        await ipc_state.send_request(request_bytes)
         logger.info("Submitted embedding request %d successfully", current_request_id)
 
         # 5. Gather response (embeddings are always non-streaming)

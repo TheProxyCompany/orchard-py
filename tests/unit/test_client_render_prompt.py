@@ -143,6 +143,9 @@ class _DummyIPCState:
         self._next_request_id += 1
         return self._next_request_id
 
+    async def send_request(self, request_bytes: bytes) -> None:
+        await self.request_socket.asend(request_bytes)
+
     async def cancel_request(self, request_id: int) -> dict[str, Any]:
         self.cancelled_requests.append(request_id)
         return {"status": "accepted"}
@@ -466,7 +469,7 @@ def test_chat_aggregate_uses_message_state_events_when_present() -> None:
         ClientDelta(request_id=1, is_final_delta=True, finish_reason="stop"),
     ]
 
-    response = client._aggregate_response(deltas)  # noqa: SLF001
+    response = client._aggregate_response(deltas)
     assert response.text == "visible answer"
     assert response.reasoning == ["hidden thought"]
 
@@ -500,7 +503,7 @@ def test_chat_aggregate_does_not_duplicate_completed_message_value() -> None:
         ClientDelta(request_id=1, is_final_delta=True, finish_reason="stop"),
     ]
 
-    assert client._aggregate_response(deltas).text == '{"answer":"A"}'  # noqa: SLF001
+    assert client._aggregate_response(deltas).text == '{"answer":"A"}'
 
 
 def test_chat_aggregate_uses_completed_message_when_no_delta_seen() -> None:
@@ -519,7 +522,7 @@ def test_chat_aggregate_uses_completed_message_when_no_delta_seen() -> None:
         ),
     ]
 
-    assert client._aggregate_response(deltas).text == "complete"  # noqa: SLF001
+    assert client._aggregate_response(deltas).text == "complete"
 
 
 def test_chat_aggregate_keeps_raw_content_without_state_events() -> None:
@@ -529,7 +532,7 @@ def test_chat_aggregate_keeps_raw_content_without_state_events() -> None:
         ClientDelta(request_id=1, content="world"),
     ]
 
-    assert client._aggregate_response(deltas).text == "hello world"  # noqa: SLF001
+    assert client._aggregate_response(deltas).text == "hello world"
 
 
 @pytest.mark.asyncio
@@ -543,7 +546,7 @@ async def test_chat_stream_close_cancels_request(monkeypatch) -> None:
         **kwargs: Any,
     ) -> None:
         del model_id, conversations, kwargs
-        queue = client._ipc_state.active_request_queues[request_id].queue  # noqa: SLF001
+        queue = client._ipc_state.active_request_queues[request_id].queue
         await queue.put(
             {
                 "request_id": request_id,
@@ -571,7 +574,7 @@ async def test_chat_stream_close_cancels_request(monkeypatch) -> None:
 
     await stream.aclose()
 
-    assert client._ipc_state.cancelled_requests == [1]  # noqa: SLF001
+    assert client._ipc_state.cancelled_requests == [1]
 
 
 def test_chat_aggregate_exposes_tool_calls_from_state_events() -> None:
@@ -601,7 +604,7 @@ def test_chat_aggregate_exposes_tool_calls_from_state_events() -> None:
         )
     ]
 
-    response = client._aggregate_response(deltas)  # noqa: SLF001
+    response = client._aggregate_response(deltas)
 
     assert response.text == ""
     assert response.tool_calls == [
@@ -633,7 +636,7 @@ def test_chat_aggregate_parses_tool_call_json_string_completion() -> None:
         )
     ]
 
-    response = client._aggregate_response(deltas)  # noqa: SLF001
+    response = client._aggregate_response(deltas)
 
     assert response.tool_calls == [
         {"name": "share_to_party", "arguments": {"content": "hi"}}
@@ -692,7 +695,7 @@ async def test_arender_prompt_matches_submit_path(
     )
 
     rendered = await client.arender_prompt("test-model", messages, **kwargs)
-    await client._asubmit_request(1, "test-model", messages, **kwargs)  # noqa: SLF001
+    await client._asubmit_request(1, "test-model", messages, **kwargs)
 
     private_payload = captured["prompt_payload"]
     assert rendered["rendered_prompt_text"] == private_payload["prompt_bytes"].decode(
@@ -773,7 +776,7 @@ async def test_batched_prompt_payload_uses_per_prompt_response_format(
         client_module, "_build_request_payload", _capture_request_payload
     )
 
-    await client._asubmit_request_batch(  # noqa: SLF001
+    await client._asubmit_request_batch(
         1,
         "test-model",
         conversations,
@@ -896,7 +899,7 @@ async def test_arender_responses_prompt_maps_tools_to_core_tools(
         client_module, "_build_request_payload", _capture_request_payload
     )
 
-    await client._asubmit_request(  # noqa: SLF001
+    await client._asubmit_request(
         1,
         "test-model",
         request.to_messages(),
@@ -951,7 +954,7 @@ async def test_gemma4_multimodal_uses_placeholder_token(
     rendered = await client.arender_prompt(
         "test-model", messages, rng_seed=1234, reasoning_effort="high"
     )
-    await client._asubmit_request(  # noqa: SLF001
+    await client._asubmit_request(
         1, "test-model", messages, rng_seed=1234, reasoning_effort="high"
     )
 
@@ -1141,7 +1144,7 @@ async def test_gemma4_tool_result_image_renders_multimodal_layout(
     )
 
     rendered = await client.arender_prompt("test-model", messages, rng_seed=1234)
-    await client._asubmit_request(1, "test-model", messages, rng_seed=1234)  # noqa: SLF001
+    await client._asubmit_request(1, "test-model", messages, rng_seed=1234)
 
     prompt = rendered["rendered_prompt_text"]
     assert "<|image|>" not in prompt
@@ -1181,7 +1184,7 @@ async def test_non_native_thinking_profile_drops_reasoning_payload(
         reasoning=True,
         reasoning_effort="high",
     )
-    await client._asubmit_request(  # noqa: SLF001
+    await client._asubmit_request(
         1,
         "test-model",
         messages,
@@ -1428,7 +1431,7 @@ async def test_arender_prompt_splits_core_and_active_tools(
     )
 
     rendered = await client.arender_prompt("test-model", messages, **kwargs)
-    await client._asubmit_request(1, "test-model", messages, **kwargs)  # noqa: SLF001
+    await client._asubmit_request(1, "test-model", messages, **kwargs)
 
     private_payload = captured["prompt_payload"]
     assert "tools=1" in rendered["rendered_prompt_text"]
@@ -1479,7 +1482,7 @@ async def test_arender_responses_prompt_matches_submit_path(
     )
 
     rendered = await client.arender_responses_prompt("test-model", request=request)
-    await client._asubmit_request(  # noqa: SLF001
+    await client._asubmit_request(
         1,
         "test-model",
         request.to_messages(),

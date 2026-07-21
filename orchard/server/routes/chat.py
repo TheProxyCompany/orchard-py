@@ -263,13 +263,7 @@ async def handle_completion_request(
             response_channel_id=response_channel_id,
             prompts=prompt_payloads,
         )
-        socket = ipc_state.request_socket
-        if socket is None:
-            raise RuntimeError("Request socket is not initialized.")
-        if ipc_state.engine_dead:
-            raise RuntimeError("Engine process is dead; cannot submit new requests.")
-
-        await socket.asend(request_bytes)
+        await ipc_state.send_request(request_bytes)
         logger.info("Submitted batched request %d successfully", current_request_id)
         if request.stream:
             logger.debug("Handling streaming for request %d", current_request_id)
