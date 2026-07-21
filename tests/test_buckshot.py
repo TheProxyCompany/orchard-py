@@ -18,6 +18,7 @@ import pytest
 
 from tests.functional.cases.registry import cases_for_model as functional_cases
 from tests.functional.cases.registry import run_cases as run_functional
+from tests.golden import golden_io
 from tests.golden.cases.registry import model_cases, pipeline_cases
 from tests.golden.cases.registry import run_cases as run_golden
 from tests.models import MODELS, PIPELINE_TOOL_MODELS, Model
@@ -158,3 +159,12 @@ async def test_buckshot_full_matrix(live_server, client, engine):
         if failures
     ]
     assert not failed, f"suites had case failures: {failed}"
+
+    # Buckshot bypasses the tests/golden conftest record-on-pass hooks, so a
+    # missing baseline would otherwise stage silently and "pass". Missing
+    # goldens are a failure here; record them via the golden matrix.
+    missing = [str(path) for path in golden_io.pending_paths()]
+    golden_io.discard_pending()
+    assert not missing, (
+        f"golden baselines missing (record via golden matrix): {missing}"
+    )

@@ -30,7 +30,9 @@ from pydantic import BaseModel
 
 DATA_DIR = Path(__file__).parent / "data"
 
-ID_KEYS = frozenset({"id", "item_id", "call_id", "response_id"})  # random per run -> canonicalized
+ID_KEYS = frozenset(
+    {"id", "item_id", "call_id", "response_id"}
+)  # random per run -> canonicalized
 TIMESTAMP_KEYS = frozenset({"created_at", "completed_at"})  # wall clock -> dropped
 
 # Baselines staged this test, written to disk only if the whole test passes
@@ -117,7 +119,9 @@ def assert_or_record(
         if len(live) > n:
             detail += f"; live has an extra event at index {n}:\n  live: {live[n]}"
         elif len(recorded) > n:
-            detail += f"; live is missing the event at index {n}:\n  golden: {recorded[n]}"
+            detail += (
+                f"; live is missing the event at index {n}:\n  golden: {recorded[n]}"
+            )
 
     raise AssertionError(f"golden drift {template_type}/{scenario}/{turn}: {detail}")
 
@@ -131,6 +135,11 @@ def flush_pending() -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
     _pending.clear()
+
+
+def pending_paths() -> list[Path]:
+    """Golden files staged for recording but not yet flushed."""
+    return sorted(_pending)
 
 
 def discard_pending() -> None:

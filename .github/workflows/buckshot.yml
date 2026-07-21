@@ -46,7 +46,7 @@ jobs:
           else
             MANIFEST=$(curl -fsSL "https://orchard.theproxycompany.com/manifest?channel=stable")
             LATEST=$(echo "$MANIFEST" | python3 -c "import json,sys; m=json.load(sys.stdin); print(m['latest'])")
-            URL=$(echo "$MANIFEST" | python3 -c "import json,sys; m=json.load(sys.stdin); print(m['releases'][m['latest']]['url'])")
+            URL=$(echo "$MANIFEST" | python3 -c "import json,sys; m=json.load(sys.stdin); print(m['versions'][m['latest']]['url'])")
             echo "Resolved stable latest: $LATEST"
           fi
           rm -rf "$PIE_DIR" && mkdir -p "$PIE_DIR"
