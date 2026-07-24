@@ -146,7 +146,7 @@ async def create_embeddings(
 
         # 5. Gather response (embeddings are always non-streaming)
         response_data = await gather_embedding_response(
-            current_request_id, response_queue
+            current_request_id, response_queue, ipc_state
         )
 
         usage = EmbeddingUsage(
@@ -193,6 +193,7 @@ async def create_embeddings(
 async def gather_embedding_response(
     request_id: int,
     queue: asyncio.Queue[ResponseDeltaDict],
+    ipc_state: IPCStateDep,
 ) -> dict[str, Any]:
     """Collects the embedding response from the queue."""
     prompt_tokens = 0
@@ -200,7 +201,7 @@ async def gather_embedding_response(
 
     while True:
         try:
-            delta = await asyncio.wait_for(queue.get(), timeout=180.0)
+            delta = await ipc_state.next_delta(queue)
         except TimeoutError as e:
             logger.error(
                 "Timeout waiting for embedding response for request %d", request_id

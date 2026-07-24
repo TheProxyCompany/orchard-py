@@ -11,7 +11,6 @@ from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
 
-from orchard import defaults
 from orchard.formatter.multimodal import (
     build_multimodal_layout,
     build_multimodal_messages,
@@ -336,6 +335,7 @@ async def handle_response_request(
                     async for event in stream_response_generator(
                         request_id=current_request_id,
                         queue=response_queue,
+                        ipc_state=ipc_state,
                         response_id=response_id,
                         model_name=request.model,
                         stream_tokens=request.stream_tokens,
@@ -352,7 +352,7 @@ async def handle_response_request(
 
         # Non-streaming path
         aggregated = await gather_non_streaming_response(
-            current_request_id, response_queue
+            current_request_id, response_queue, ipc_state
         )
 
         usage = ResponseUsage(
@@ -429,6 +429,7 @@ async def handle_response_request(
 async def gather_non_streaming_response(
     request_id: int,
     queue: asyncio.Queue[ResponseDeltaDict],
+    ipc_state: IPCStateDep,
 ) -> dict[str, Any]:
     """Aggregate non-streaming deltas into a final response with proper output items."""
 
@@ -449,9 +450,7 @@ async def gather_non_streaming_response(
 
     while True:
         try:
-            delta = await asyncio.wait_for(
-                queue.get(), timeout=defaults.DELTA_TIMEOUT_S
-            )
+            delta = await ipc_state.next_delta(queue)
         except builtins.TimeoutError as exc:
             logger.error(
                 "Timeout waiting for response delta for request %d", request_id
@@ -638,6 +637,7 @@ def _build_output_items(
 async def stream_response_generator(
     request_id: int,
     queue: asyncio.Queue[ResponseDeltaDict],
+    ipc_state: IPCStateDep,
     response_id: str,
     model_name: str,
     stream_tokens: bool = False,
@@ -667,9 +667,7 @@ async def stream_response_generator(
 
     while True:
         try:
-            delta = await asyncio.wait_for(
-                queue.get(), timeout=defaults.DELTA_TIMEOUT_S
-            )
+            delta = await ipc_state.next_delta(queue)
         except TimeoutError:
             logger.error(
                 "Timeout waiting for delta for streaming request %d", request_id

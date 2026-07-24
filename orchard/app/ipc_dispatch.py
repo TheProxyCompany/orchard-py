@@ -14,6 +14,7 @@ from typing import Any
 
 import pynng
 
+from orchard import defaults
 from orchard.engine.global_context import GlobalContext
 from orchard.engine.multiprocess import pid_is_alive, read_pid_file
 from orchard.ipc.utils import ResponseDeltaDict
@@ -82,6 +83,13 @@ class IPCState:
         self.engine_dead: bool = False
         self.shutdown_requested: bool = False
 
+        # Monotonic time of the last engine message that proves generation or
+        # activation progress (any response delta, model_loaded/_load_failed).
+        # Written by the dispatcher thread, read by delta waiters; a float
+        # attribute write is atomic under the GIL. Telemetry heartbeats do not
+        # count — a wedged engine still emits them.
+        self.last_progress_monotonic: float = 0.0
+
         self._inflight_lock = threading.Lock()
         self._inflight_ops = 0
         self._inflight_drained = threading.Event()
@@ -147,6 +155,43 @@ class IPCState:
             if self.request_id_counter >= 2**63:
                 self.request_id_counter = 1
             return self.request_id_counter
+
+    async def next_delta(
+        self,
+        queue: asyncio.Queue[ResponseDeltaDict],
+    ) -> ResponseDeltaDict:
+        """Waits for this request's next delta without mistaking a busy engine
+        for a dead one.
+
+        A cold-peak volley legitimately parks a request's first prefill far
+        beyond any flat per-delta timeout (measured 91s behind ~800 queued
+        sequences at buckshot width 21) while the engine streams deltas for
+        other requests the whole time. So wait in slices: engine-wide
+        delta/activation traffic keeps the wait alive, DELTA_TIMEOUT_S of
+        engine-wide silence raises TimeoutError (the old flat-timeout
+        semantics for a wedged engine), and DELTA_HARD_TIMEOUT_S bounds the
+        total wait (a request the engine dropped). Engine death needs no
+        timeout at all: the dispatcher's exit path fails every registered
+        queue with a terminal error delta immediately.
+        """
+        start = time.monotonic()
+        hard_deadline = start + defaults.DELTA_HARD_TIMEOUT_S
+        while True:
+            if self.engine_dead and queue.empty():
+                raise TimeoutError(
+                    "Engine process died while waiting for a response delta."
+                )
+            now = time.monotonic()
+            newest_progress = max(start, self.last_progress_monotonic)
+            deadline = min(newest_progress + defaults.DELTA_TIMEOUT_S, hard_deadline)
+            if now >= deadline:
+                raise TimeoutError(
+                    "Timed out waiting for a response delta from the engine."
+                )
+            try:
+                return await asyncio.wait_for(queue.get(), timeout=deadline - now)
+            except TimeoutError:
+                continue
 
     async def send_management_command(
         self,
@@ -225,6 +270,7 @@ class IPCState:
 
     def handle_response_delta(self, msg_bytes: bytes) -> None:
         """Dispatches a response delta to the registered client queue."""
+        self.last_progress_monotonic = time.monotonic()
         prefix_len = self.response_topic_prefix_len
         if prefix_len <= 0:
             logger.error(
@@ -281,6 +327,9 @@ class IPCState:
         if event_name == "telemetry" and ctx is not None:
             ctx.last_telemetry = payload
             return
+
+        if event_name in ("model_loaded", "model_load_failed"):
+            self.last_progress_monotonic = time.monotonic()
 
         if event_name == "model_loaded":
             model_id = payload.get("model_id")
@@ -362,7 +411,17 @@ class IPCState:
                 now = time.monotonic()
                 if now - last_engine_check >= ENGINE_LIVENESS_POLL_INTERVAL_S:
                     last_engine_check = now
-                    if not ipc_state.engine_process_is_alive():
+                    try:
+                        engine_alive = ipc_state.engine_process_is_alive()
+                    except Exception:
+                        # A probe that failed to run is no death verdict. Only a
+                        # confirmed-dead engine may exit the dispatcher, which
+                        # fails every active stream and latches engine_dead.
+                        logger.exception(
+                            "Engine liveness probe failed; retrying at next poll."
+                        )
+                        engine_alive = True
+                    if not engine_alive:
                         logger.error(
                             "PIE is no longer alive; shutting down response dispatcher."
                         )

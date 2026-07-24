@@ -5,6 +5,7 @@ import base64
 import contextlib
 import json
 import logging
+import os
 import random
 import sys
 import threading
@@ -1399,7 +1400,7 @@ class Client:
 
     def _sync_iterator_bridge(self, async_iterator: AsyncIterator[T]) -> Iterator[T]:
         """Bridges an async iterator to a sync iterator."""
-        DELTA_TIMEOUT_S = 300  # 5 minutes max wait per delta
+        DELTA_TIMEOUT_S = float(os.getenv("ORCHARD_SYNC_DELTA_TIMEOUT_S", "300"))
 
         async def _next_delta() -> T:
             return await async_iterator.__anext__()

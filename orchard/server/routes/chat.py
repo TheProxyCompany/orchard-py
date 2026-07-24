@@ -12,7 +12,6 @@ from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
 
-from orchard import defaults
 from orchard.defaults import MAX_GENERATED_TOKENS
 from orchard.ipc.serialization import _build_request_payload
 from orchard.ipc.utils import (
@@ -292,6 +291,7 @@ async def handle_completion_request(
         response_data = await gather_non_streaming_batch_response(
             current_request_id,
             response_queue,
+            ipc_state,
             fanout_counts,
             final_candidate_counts,
         )
@@ -339,6 +339,7 @@ async def handle_completion_request(
 async def gather_non_streaming_batch_response(
     request_id: int,
     queue: asyncio.Queue[ResponseDeltaDict],
+    ipc_state: IPCStateDep,
     prompt_fanout_counts: list[int],
     prompt_final_counts: list[int],
 ) -> dict[str, Any]:
@@ -369,9 +370,7 @@ async def gather_non_streaming_batch_response(
 
     while remaining_sequences > 0:
         try:
-            delta = await asyncio.wait_for(
-                queue.get(), timeout=defaults.DELTA_TIMEOUT_S
-            )
+            delta = await ipc_state.next_delta(queue)
         except TimeoutError as exc:
             logger.error(
                 "Timeout waiting for delta for non-streaming request %d", request_id
@@ -744,9 +743,7 @@ async def stream_response_generator(
 
     while True:
         try:
-            delta_dict = await asyncio.wait_for(
-                queue.get(), timeout=defaults.DELTA_TIMEOUT_S
-            )
+            delta_dict = await ipc_state.next_delta(queue)
         except TimeoutError:
             logger.error(
                 "Timeout waiting for delta for streaming request %d", request_id
