@@ -87,6 +87,18 @@ def _process_executable_path(pid: int) -> Path | None:
         return None
 
 
+def _pid_is_engine(pid: int) -> bool:
+    """
+    True if the pid currently belongs to a PIE engine binary.
+
+    Pid files can go stale and the OS recycles pids, so a pid read from disk
+    may name an arbitrary unrelated process. Every signal an engine lifecycle
+    path sends must first pass this check.
+    """
+    executable = _process_executable_path(pid)
+    return executable is not None and executable.name == "proxy_inference_engine"
+
+
 def _mark_process_atexit() -> None:
     global _in_atexit
     _in_atexit = True
@@ -263,7 +275,11 @@ class InferenceEngine:
 
         with self._lock:
             engine_pid = read_pid_file(self._paths.pid_file)
-            engine_running = engine_pid is not None and pid_is_alive(engine_pid)
+            engine_running = (
+                engine_pid is not None
+                and pid_is_alive(engine_pid)
+                and _pid_is_engine(engine_pid)
+            )
             if not engine_running:
                 engine_pid = None
                 self._paths.pid_file.unlink(missing_ok=True)
@@ -273,29 +289,57 @@ class InferenceEngine:
                 engine_pid = None
                 engine_running = False
 
-            if not engine_running:
+            launched_fresh = not engine_running
+            if launched_fresh:
                 logger.debug("Inference engine not running. Launching new instance.")
                 try:
                     self._launch_engine_locked()
                     engine_pid = self._wait_for_engine_ready()
-                except Exception:
+                except BaseException:
                     self._cleanup_failed_launch()
                     raise
 
         try:
-            created_context = self.initialize_global_context(
-                global_context, self._paths
-            )
-            if created_context:
-                try:
-                    self._send_client_lifecycle_command("client_register")
-                except Exception:
-                    self.shutdown_global_context(global_context, decrement_ref=True)
-                    raise
+            self._init_context_and_register()
         except Exception:
-            raise
+            if launched_fresh:
+                raise
+            # The pid-file engine failed us during attach: it accepted its
+            # last client's deregistration just before we arrived and is now
+            # self-terminating (register rejected or the management socket is
+            # already gone). Attaching to it would poison this session, so
+            # replace it and retry once.
+            logger.warning(
+                "Attach to running engine PID %s failed; replacing it with a "
+                "fresh engine.",
+                engine_pid,
+                exc_info=True,
+            )
+            with self._lock:
+                current_pid = read_pid_file(self._paths.pid_file)
+                if current_pid is not None and pid_is_alive(current_pid):
+                    self._stop_engine_locked(current_pid)
+                else:
+                    self._paths.pid_file.unlink(missing_ok=True)
+                    self._paths.ready_file.unlink(missing_ok=True)
+                try:
+                    self._launch_engine_locked()
+                    self._wait_for_engine_ready()
+                except BaseException:
+                    self._cleanup_failed_launch()
+                    raise
+            self._init_context_and_register()
 
         self._lease_active = True
+
+    def _init_context_and_register(self) -> None:
+        created_context = self.initialize_global_context(global_context, self._paths)
+        if created_context:
+            try:
+                self._send_client_lifecycle_command("client_register")
+            except Exception:
+                self.shutdown_global_context(global_context, decrement_ref=True)
+                raise
 
     def _must_restart_running_engine(self, pid: int) -> bool:
         if "PIE_LOCAL_BUILD" not in os.environ:
@@ -321,6 +365,7 @@ class InferenceEngine:
             self._startup_timeout,
             process_alive_check=lambda: self._launch_process is not None
             and self._launch_process.poll() is None,
+            expected_pid=self._launch_process.pid if self._launch_process else None,
         )
 
     def _cleanup_failed_launch(self) -> None:
@@ -338,6 +383,16 @@ class InferenceEngine:
     def _stop_engine_locked(self, pid: int) -> None:
         if not pid_is_alive(pid):
             logger.debug("orchard engine PID %s already exited.", pid)
+            self._paths.pid_file.unlink(missing_ok=True)
+            self._paths.ready_file.unlink(missing_ok=True)
+            return
+
+        if not _pid_is_engine(pid):
+            logger.warning(
+                "PID %s from stale pid file is not a proxy_inference_engine "
+                "process; cleaning up without signaling it.",
+                pid,
+            )
             self._paths.pid_file.unlink(missing_ok=True)
             self._paths.ready_file.unlink(missing_ok=True)
             return
@@ -437,6 +492,16 @@ class InferenceEngine:
             pid = read_pid_file(paths.pid_file)
             if pid is None or not pid_is_alive(pid):
                 logger.info("Engine is not running. Cleaning up any stale files.")
+                paths.pid_file.unlink(missing_ok=True)
+                paths.ready_file.unlink(missing_ok=True)
+                return True
+
+            if not _pid_is_engine(pid):
+                logger.warning(
+                    "PID %d from stale pid file is not a proxy_inference_engine "
+                    "process; cleaning up without signaling it.",
+                    pid,
+                )
                 paths.pid_file.unlink(missing_ok=True)
                 paths.ready_file.unlink(missing_ok=True)
                 return True

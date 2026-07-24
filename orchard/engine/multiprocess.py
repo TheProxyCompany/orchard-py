@@ -19,9 +19,14 @@ logger = logging.getLogger(__name__)
 def _pid_is_zombie(pid: int) -> bool:
     if platform != "darwin":
         return False
-    result = subprocess.run(
-        ["ps", "-o", "state=", "-p", str(pid)], capture_output=True, text=True
-    )
+    try:
+        result = subprocess.run(
+            ["ps", "-o", "state=", "-p", str(pid)], capture_output=True, text=True
+        )
+    except OSError:
+        # Forking ps fails under fd pressure (EMFILE during a request volley);
+        # a probe that could not run is no verdict on the pid.
+        return False
     if result.returncode != 0:
         return False
     return result.stdout.strip().startswith("Z")
@@ -210,9 +215,11 @@ def wait_for_engine_ready(
     pid_file: Path,
     startup_timeout: float,
     process_alive_check: Callable[[], bool] | None = None,
+    expected_pid: int | None = None,
 ) -> int:
     logger.info("Waiting for telemetry heartbeat from engine...")
     temp_sub_socket: pynng.Sub0 | None = None
+    foreign_pids: set[int] = set()
     try:
         temp_sub_socket = pynng.Sub0()
         telemetry_topic = ipc_endpoints.EVENT_TOPIC_PREFIX + b"telemetry"
@@ -232,7 +239,7 @@ def wait_for_engine_ready(
                 logger.warning(
                     "Keyboard interrupt received while waiting for telemetry heartbeat"
                 )
-                break
+                raise
             except pynng.Timeout:
                 continue
             if msg is None:
@@ -266,6 +273,22 @@ def wait_for_engine_ready(
                 )
                 continue
 
+            if expected_pid is not None and engine_pid != expected_pid:
+                # Another engine — typically a dying predecessor draining its
+                # last work — is still publishing on this IPC root. Recording
+                # its PID would orphan the engine we just launched and hand
+                # later sessions a poisoned pid file. Wait for our own.
+                if engine_pid not in foreign_pids:
+                    foreign_pids.add(engine_pid)
+                    logger.warning(
+                        "Ignoring telemetry heartbeat from foreign engine PID %d "
+                        "while waiting for launched PID %d; another engine is "
+                        "publishing on this IPC root.",
+                        engine_pid,
+                        expected_pid,
+                    )
+                continue
+
             write_pid_file(pid_file, engine_pid)
             logger.info(
                 "Received telemetry heartbeat. Engine PID %d recorded.",
@@ -284,5 +307,3 @@ def wait_for_engine_ready(
     finally:
         if temp_sub_socket:
             temp_sub_socket.close()
-
-    return -1
