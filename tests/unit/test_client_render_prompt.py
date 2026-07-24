@@ -1350,7 +1350,7 @@ def test_gpt_oss_formatter_renders_harmony_tool_history(tmp_path) -> None:
         in rendered
     )
     assert (
-        '<|start|>assistant<|channel|>commentary to=functions.lookup <|constrain|>json<|message|>{"query":"orchard"}<|call|>'
+        '<|start|>assistant<|channel|>commentary to=functions.lookup <|constrain|>json<|message|>{"query": "orchard"}<|call|>'
         in rendered
     )
     assert (
