@@ -134,8 +134,8 @@
     {
       "type": "response.output_token",
       "sequence_number": 15,
-      "token_id": 43708,
-      "content": ". The main"
+      "token_id": 41315,
+      "content": ". There"
     },
     {
       "type": "response.reasoning.delta",
@@ -143,13 +143,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": ". The main"
+      "delta": ". There"
     },
     {
       "type": "response.output_token",
       "sequence_number": 17,
-      "token_id": 1282,
-      "content": " object"
+      "token_id": 43789,
+      "content": "'s a"
     },
     {
       "type": "response.reasoning.delta",
@@ -157,13 +157,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " object"
+      "delta": "'s a"
     },
     {
       "type": "response.output_token",
       "sequence_number": 19,
-      "token_id": 316,
-      "content": " is"
+      "token_id": 5064,
+      "content": " bright"
     },
     {
       "type": "response.reasoning.delta",
@@ -171,13 +171,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " is"
+      "delta": " bright"
     },
     {
       "type": "response.output_token",
       "sequence_number": 21,
-      "token_id": 4644,
-      "content": " clearly"
+      "token_id": 1821,
+      "content": " red"
     },
     {
       "type": "response.reasoning.delta",
@@ -185,13 +185,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " clearly"
+      "delta": " red"
     },
     {
       "type": "response.output_token",
       "sequence_number": 23,
-      "token_id": 264,
-      "content": " a"
+      "token_id": 12913,
+      "content": " apple"
     },
     {
       "type": "response.reasoning.delta",
@@ -199,13 +199,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " a"
+      "delta": " apple"
     },
     {
       "type": "response.output_token",
       "sequence_number": 25,
-      "token_id": 1821,
-      "content": " red"
+      "token_id": 18579,
+      "content": " centered"
     },
     {
       "type": "response.reasoning.delta",
@@ -213,13 +213,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " red"
+      "delta": " centered"
     },
     {
       "type": "response.output_token",
       "sequence_number": 27,
-      "token_id": 12913,
-      "content": " apple"
+      "token_id": 43529,
+      "content": " in the middle"
     },
     {
       "type": "response.reasoning.delta",
@@ -227,13 +227,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " apple"
+      "delta": " in the middle"
     },
     {
       "type": "response.output_token",
       "sequence_number": 29,
-      "token_id": 18579,
-      "content": " centered"
+      "token_id": 41197,
+      "content": " of a"
     },
     {
       "type": "response.reasoning.delta",
@@ -241,13 +241,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " centered"
+      "delta": " of a"
     },
     {
       "type": "response.output_token",
       "sequence_number": 31,
-      "token_id": 41809,
-      "content": " against a"
+      "token_id": 6362,
+      "content": " plain"
     },
     {
       "type": "response.reasoning.delta",
@@ -255,13 +255,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " against a"
+      "delta": " plain"
     },
     {
       "type": "response.output_token",
       "sequence_number": 33,
-      "token_id": 6362,
-      "content": " plain"
+      "token_id": 1668,
+      "content": " white"
     },
     {
       "type": "response.reasoning.delta",
@@ -269,13 +269,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " plain"
+      "delta": " white"
     },
     {
       "type": "response.output_token",
       "sequence_number": 35,
-      "token_id": 1668,
-      "content": " white"
+      "token_id": 2695,
+      "content": " background"
     },
     {
       "type": "response.reasoning.delta",
@@ -283,13 +283,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " white"
+      "delta": " background"
     },
     {
       "type": "response.output_token",
       "sequence_number": 37,
-      "token_id": 2695,
-      "content": " background"
+      "token_id": 41462,
+      "content": ". So"
     },
     {
       "type": "response.reasoning.delta",
@@ -297,13 +297,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " background"
+      "delta": ". So"
     },
     {
       "type": "response.output_token",
       "sequence_number": 39,
-      "token_id": 34,
-      "content": "."
+      "token_id": 41190,
+      "content": ", the"
     },
     {
       "type": "response.reasoning.delta",
@@ -311,25 +311,95 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "."
+      "delta": ", the"
     },
     {
       "type": "response.output_token",
       "sequence_number": 41,
+      "token_id": 1432,
+      "content": " main"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 42,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " main"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 43,
+      "token_id": 1282,
+      "content": " object"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 44,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " object"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 45,
+      "token_id": 41216,
+      "content": " is the"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 46,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " is the"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 47,
+      "token_id": 12913,
+      "content": " apple"
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 48,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": " apple"
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 49,
+      "token_id": 34,
+      "content": "."
+    },
+    {
+      "type": "response.reasoning.delta",
+      "sequence_number": 50,
+      "item_id": "reasoning_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "."
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 51,
       "token_id": 3,
       "content": "<|md_reserved_2|>"
     },
     {
       "type": "response.reasoning.done",
-      "sequence_number": 42,
+      "sequence_number": 52,
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "text": "Okay, the image is pretty straightforward. The main object is clearly a red apple centered against a plain white background."
+      "text": "Okay, the image is pretty straightforward. There's a bright red apple centered in the middle of a plain white background. So, the main object is the apple."
     },
     {
       "type": "response.output_item.done",
-      "sequence_number": 43,
+      "sequence_number": 53,
       "output_index": 0,
       "item": {
         "type": "reasoning",
@@ -339,7 +409,7 @@
         "content": [
           {
             "type": "reasoning_text",
-            "text": "Okay, the image is pretty straightforward. The main object is clearly a red apple centered against a plain white background."
+            "text": "Okay, the image is pretty straightforward. There's a bright red apple centered in the middle of a plain white background. So, the main object is the apple."
           }
         ],
         "encrypted_content": null
@@ -347,13 +417,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 44,
+      "sequence_number": 54,
       "token_id": 14299,
       "content": "apple"
     },
     {
       "type": "response.output_item.added",
-      "sequence_number": 45,
+      "sequence_number": 55,
       "output_index": 1,
       "item": {
         "type": "message",
@@ -365,7 +435,7 @@
     },
     {
       "type": "response.content_part.added",
-      "sequence_number": 46,
+      "sequence_number": 56,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -378,7 +448,7 @@
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 47,
+      "sequence_number": 57,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -387,7 +457,7 @@
     },
     {
       "type": "response.output_text.done",
-      "sequence_number": 48,
+      "sequence_number": 58,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -396,7 +466,7 @@
     },
     {
       "type": "response.content_part.done",
-      "sequence_number": 49,
+      "sequence_number": 59,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -409,7 +479,7 @@
     },
     {
       "type": "response.output_item.done",
-      "sequence_number": 50,
+      "sequence_number": 60,
       "output_index": 1,
       "item": {
         "type": "message",
@@ -428,7 +498,7 @@
     },
     {
       "type": "response.completed",
-      "sequence_number": 51,
+      "sequence_number": 61,
       "response": {
         "id": "resp_0",
         "object": "response",
@@ -448,7 +518,7 @@
             "content": [
               {
                 "type": "reasoning_text",
-                "text": "Okay, the image is pretty straightforward. The main object is clearly a red apple centered against a plain white background."
+                "text": "Okay, the image is pretty straightforward. There's a bright red apple centered in the middle of a plain white background. So, the main object is the apple."
               }
             ],
             "encrypted_content": null
@@ -476,7 +546,7 @@
             "cached_tokens": 0
           },
           "output_tokens_details": {
-            "reasoning_tokens": 20
+            "reasoning_tokens": 25
           }
         }
       }

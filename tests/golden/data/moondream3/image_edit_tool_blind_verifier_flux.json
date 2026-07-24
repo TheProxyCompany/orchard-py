@@ -222,8 +222,8 @@
     {
       "type": "response.output_token",
       "sequence_number": 26,
-      "token_id": 22279,
-      "content": "Blue"
+      "token_id": 11485,
+      "content": "blue"
     },
     {
       "type": "response.output_item.added",
@@ -256,7 +256,7 @@
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
-      "delta": "Blue",
+      "delta": "blue",
       "logprobs": []
     },
     {
@@ -305,45 +305,30 @@
       "logprobs": []
     },
     {
-      "type": "response.output_token",
-      "sequence_number": 36,
-      "token_id": 34,
-      "content": "."
-    },
-    {
-      "type": "response.output_text.delta",
-      "sequence_number": 37,
-      "item_id": "msg_0",
-      "output_index": 1,
-      "content_index": 0,
-      "delta": ".",
-      "logprobs": []
-    },
-    {
       "type": "response.output_text.done",
-      "sequence_number": 38,
+      "sequence_number": 36,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
-      "text": "Blue circle, red square.",
+      "text": "blue circle, red square",
       "logprobs": []
     },
     {
       "type": "response.content_part.done",
-      "sequence_number": 39,
+      "sequence_number": 37,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
       "part": {
         "type": "output_text",
-        "text": "Blue circle, red square.",
+        "text": "blue circle, red square",
         "annotations": [],
         "logprobs": []
       }
     },
     {
       "type": "response.output_item.done",
-      "sequence_number": 40,
+      "sequence_number": 38,
       "output_index": 1,
       "item": {
         "type": "message",
@@ -353,7 +338,7 @@
         "content": [
           {
             "type": "output_text",
-            "text": "Blue circle, red square.",
+            "text": "blue circle, red square",
             "annotations": [],
             "logprobs": []
           }
@@ -362,7 +347,7 @@
     },
     {
       "type": "response.completed",
-      "sequence_number": 41,
+      "sequence_number": 39,
       "response": {
         "id": "resp_0",
         "object": "response",
@@ -395,7 +380,7 @@
             "content": [
               {
                 "type": "output_text",
-                "text": "Blue circle, red square.",
+                "text": "blue circle, red square",
                 "annotations": [],
                 "logprobs": []
               }
@@ -404,8 +389,8 @@
         ],
         "usage": {
           "input_tokens": 745,
-          "output_tokens": 6,
-          "total_tokens": 751,
+          "output_tokens": 5,
+          "total_tokens": 750,
           "input_tokens_details": {
             "cached_tokens": 0
           },
