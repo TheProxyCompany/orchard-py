@@ -98,6 +98,36 @@ def tojson(x, ensure_ascii=False, indent=None, separators=None, sort_keys=False)
     )
 
 
+def _normalize_tool_call_arguments(
+    conversation: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Parse string-form function.arguments into mappings before rendering.
+
+    Mirrors orchard-rs ChatFormatter::normalize_tool_calls so both clients
+    present tool-call arguments to templates as mappings.
+    """
+    normalized = []
+    for message in conversation:
+        tool_calls = message.get("tool_calls") if isinstance(message, dict) else None
+        if not isinstance(tool_calls, list):
+            normalized.append(message)
+            continue
+        calls = []
+        for call in tool_calls:
+            function = call.get("function") if isinstance(call, dict) else None
+            arguments = (
+                function.get("arguments") if isinstance(function, dict) else None
+            )
+            if isinstance(arguments, str) and arguments:
+                call = {
+                    **call,
+                    "function": {**function, "arguments": json.loads(arguments)},
+                }
+            calls.append(call)
+        normalized.append({**message, "tool_calls": calls})
+    return normalized
+
+
 class ChatFormatter:
     """
     Handles the application of chat templates to conversation histories.
@@ -174,8 +204,7 @@ class ChatFormatter:
             profile_dir = _profile_dirs().get(pantheon_profile, profile_dir)
         if not profile_dir.is_dir():
             raise ValueError(
-                f"Pantheon profile '{pantheon_profile}' not found at "
-                f"{profile_dir}"
+                f"Pantheon profile '{pantheon_profile}' not found at {profile_dir}"
             )
         self.profile_dir = profile_dir
 
@@ -236,6 +265,7 @@ class ChatFormatter:
         Returns:
             A single, fully formatted string ready for tokenization.
         """
+        conversation = _normalize_tool_call_arguments(conversation)
         context = {
             "interactions": conversation,
             "messages": conversation,

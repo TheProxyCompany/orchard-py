@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import base64
-import json
 import logging
 import re
 import struct
@@ -130,16 +129,8 @@ def _get_field(candidate: Any, key: str, default: Any = None) -> Any:
 
 
 def _parse_tool_calls(tool_calls: Any) -> list[dict[str, Any]]:
-    """Parse tool calls so that function.arguments is a dict, not a JSON string."""
-    parsed = []
-    for tc in tool_calls:
-        tc_dict = tc if isinstance(tc, dict) else tc.model_dump()
-        fn = tc_dict.get("function", {})
-        args = fn.get("arguments", "")
-        if isinstance(args, str) and args:
-            fn["arguments"] = json.loads(args)
-        parsed.append(tc_dict)
-    return parsed
+    """Coerce tool calls to plain dicts; apply_template parses string arguments."""
+    return [tc if isinstance(tc, dict) else tc.model_dump() for tc in tool_calls]
 
 
 def build_multimodal_messages(
@@ -203,7 +194,10 @@ def build_multimodal_messages(
             )
 
         parts: list[
-            _RenderableText | _RenderableImage | _RenderableAudio | _RenderableCapability
+            _RenderableText
+            | _RenderableImage
+            | _RenderableAudio
+            | _RenderableCapability
         ] = []
         for part_index, content_part in enumerate(content):
             part_type = _get_field(content_part, "type")
