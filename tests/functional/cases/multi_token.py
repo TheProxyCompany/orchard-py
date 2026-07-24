@@ -3,11 +3,12 @@ import json
 import httpx
 import pytest
 
+from tests.functional.cases._timeout import HTTP_TIMEOUT_S
+
 pytestmark = pytest.mark.asyncio
 
-async def test_chat_completion_multi_token_non_streaming(
-    live_server, text_model_id
-):
+
+async def test_chat_completion_multi_token_non_streaming(live_server, text_model_id):
     """
     Tests that the engine can correctly answer a simple question,
     verifying the RoPE offset logic is fixed.
@@ -24,7 +25,7 @@ async def test_chat_completion_multi_token_non_streaming(
         "stream": False,
     }
 
-    async with httpx.AsyncClient(timeout=180.0) as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
         response = await client.post(
             f"{server_url}/v1/chat/completions", json=request_payload
         )
@@ -78,9 +79,7 @@ async def test_chat_completion_multi_token_non_streaming(
     )
 
 
-async def test_chat_completion_multi_token_streaming(
-    live_server, text_model_id
-):
+async def test_chat_completion_multi_token_streaming(live_server, text_model_id):
     """
     Tests a multi-token, streaming chat completion request.
     Verifies that the system streams multiple tokens correctly.
@@ -101,7 +100,7 @@ async def test_chat_completion_multi_token_streaming(
     full_content = ""
     finish_reason = None
 
-    async with httpx.AsyncClient(timeout=180.0) as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
         async with client.stream(
             "POST",
             f"{server_url}/v1/chat/completions",

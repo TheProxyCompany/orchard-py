@@ -1,11 +1,12 @@
 import httpx
 import pytest
 
+from tests.functional.cases._timeout import HTTP_TIMEOUT_S
+
 pytestmark = pytest.mark.asyncio
 
-async def test_chat_completion_best_of_selects_top_n(
-    live_server, text_model_id
-):
+
+async def test_chat_completion_best_of_selects_top_n(live_server, text_model_id):
     """Ensure best_of fan-out returns only the top-n candidates while reflecting total work in usage."""
     server_url = live_server
     best_of = 3
@@ -25,7 +26,7 @@ async def test_chat_completion_best_of_selects_top_n(
         "best_of": best_of,
     }
 
-    async with httpx.AsyncClient(timeout=180.0) as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
         response = await client.post(
             f"{server_url}/v1/chat/completions", json=request_payload
         )
@@ -59,7 +60,7 @@ async def test_chat_completion_best_of_validation_less_than_n(
         "best_of": 1,
     }
 
-    async with httpx.AsyncClient(timeout=180.0) as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
         response = await client.post(
             f"{server_url}/v1/chat/completions", json=request_payload
         )
@@ -67,9 +68,7 @@ async def test_chat_completion_best_of_validation_less_than_n(
     assert response.status_code == 422
 
 
-async def test_chat_completion_best_of_streaming_disallowed(
-    live_server, text_model_id
-):
+async def test_chat_completion_best_of_streaming_disallowed(live_server, text_model_id):
     """Streaming responses should reject best_of fan-out."""
     server_url = live_server
     request_payload = {
@@ -80,7 +79,7 @@ async def test_chat_completion_best_of_streaming_disallowed(
         "best_of": 2,
     }
 
-    async with httpx.AsyncClient(timeout=180.0) as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
         response = await client.post(
             f"{server_url}/v1/chat/completions", json=request_payload
         )

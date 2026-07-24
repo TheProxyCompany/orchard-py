@@ -1,13 +1,14 @@
 import httpx
 import pytest
+
+from tests.functional.cases._timeout import HTTP_TIMEOUT_S
 from tests.helpers import parse_sse_events
 
 pytestmark = pytest.mark.asyncio
 
 SYSTEM_PROMPT_COMPLIANCE_SENTINEL = "7-4-7"
 SYSTEM_PROMPT_COMPLIANCE_INSTRUCTIONS = (
-    "You are a helpful assistant. End every response with the exact string "
-    "7-4-7."
+    "You are a helpful assistant. End every response with the exact string 7-4-7."
 )
 
 # ---------------------------------------------------------------------------
@@ -25,7 +26,7 @@ async def test_responses_non_streaming_string_input(live_server, text_model_id):
         "max_output_tokens": 32,
     }
 
-    async with httpx.AsyncClient(timeout=180.0) as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
         response = await client.post(f"{live_server}/v1/responses", json=payload)
 
     assert response.status_code == 200
@@ -72,7 +73,7 @@ async def test_responses_non_streaming_message_items(live_server, text_model_id)
         "max_output_tokens": 8,
     }
 
-    async with httpx.AsyncClient(timeout=180.0) as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
         response = await client.post(f"{live_server}/v1/responses", json=payload)
 
     assert response.status_code == 200
@@ -101,7 +102,7 @@ async def test_responses_echo_fields(live_server, text_model_id):
         "metadata": {"test_key": "test_value"},
     }
 
-    async with httpx.AsyncClient(timeout=180.0) as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
         response = await client.post(f"{live_server}/v1/responses", json=payload)
 
     assert response.status_code == 200
@@ -128,7 +129,7 @@ async def test_responses_streaming_event_sequence(live_server, text_model_id):
         "stream": True,
     }
 
-    async with httpx.AsyncClient(timeout=180.0) as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
         response = await client.post(
             f"{live_server}/v1/responses",
             json=payload,
@@ -170,7 +171,7 @@ async def test_responses_streaming_delta_accumulation(live_server, text_model_id
         "stream": True,
     }
 
-    async with httpx.AsyncClient(timeout=180.0) as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
         response = await client.post(
             f"{live_server}/v1/responses",
             json=payload,
@@ -202,7 +203,7 @@ async def test_responses_streaming_completed_snapshot(live_server, text_model_id
         "stream": True,
     }
 
-    async with httpx.AsyncClient(timeout=180.0) as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
         response = await client.post(
             f"{live_server}/v1/responses",
             json=payload,
@@ -244,7 +245,7 @@ async def test_responses_incomplete_non_streaming(live_server, text_model_id):
         "max_output_tokens": 1,
     }
 
-    async with httpx.AsyncClient(timeout=180.0) as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
         response = await client.post(f"{live_server}/v1/responses", json=payload)
 
     assert response.status_code == 200
@@ -265,7 +266,7 @@ async def test_responses_incomplete_streaming(live_server, text_model_id):
         "stream": True,
     }
 
-    async with httpx.AsyncClient(timeout=180.0) as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
         response = await client.post(
             f"{live_server}/v1/responses",
             json=payload,
@@ -299,7 +300,7 @@ async def test_responses_instructions(live_server, text_model_id):
         "max_output_tokens": 64,
     }
 
-    async with httpx.AsyncClient(timeout=180.0) as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
         response = await client.post(f"{live_server}/v1/responses", json=payload)
 
     assert response.status_code == 200

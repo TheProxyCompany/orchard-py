@@ -4,7 +4,10 @@ from collections import defaultdict
 import httpx
 import pytest
 
+from tests.functional.cases._timeout import HTTP_TIMEOUT_S
+
 pytestmark = pytest.mark.asyncio
+
 
 async def test_chat_completion_multi_candidate_non_streaming(
     live_server, text_model_id
@@ -24,7 +27,7 @@ async def test_chat_completion_multi_candidate_non_streaming(
         "n": candidate_count,
     }
 
-    async with httpx.AsyncClient(timeout=180.0) as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
         response = await client.post(
             f"{server_url}/v1/chat/completions", json=request_payload
         )
@@ -42,9 +45,7 @@ async def test_chat_completion_multi_candidate_non_streaming(
         assert choice["finish_reason"]
 
 
-async def test_chat_completion_multi_candidate_streaming(
-    live_server, text_model_id
-):
+async def test_chat_completion_multi_candidate_streaming(live_server, text_model_id):
     """Verify streaming multi-candidate responses can be reconstructed per candidate index."""
     server_url = live_server
     candidate_count = 3
@@ -67,7 +68,7 @@ async def test_chat_completion_multi_candidate_streaming(
     finish_reasons: dict[int, str] = {}
     saw_done = False
 
-    async with httpx.AsyncClient(timeout=180.0) as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
         async with client.stream(
             "POST", f"{server_url}/v1/chat/completions", json=request_payload
         ) as response:

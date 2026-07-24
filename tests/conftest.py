@@ -1,7 +1,9 @@
 import asyncio
 import logging
 import os
+import resource
 import socket
+import tempfile
 import threading
 from collections.abc import Generator
 from pathlib import Path
@@ -11,6 +13,17 @@ import httpx
 import pytest
 import pytest_asyncio
 import uvicorn
+
+# Tests must never operate in the default engine namespace: that namespace
+# belongs to whatever long-lived engine this machine runs (Proxy.app's Grand
+# Central engine in production), and the pre-test cleanup below force-stops
+# the namespace's engine. Unless the caller pinned a namespace explicitly
+# (pie_cycle.sh exports ORCHARD_CACHE_ROOT), give this session a private one.
+# This must happen before any orchard import: orchard.ipc.endpoints resolves
+# the IPC socket root at import time.
+if "ORCHARD_CACHE_ROOT" not in os.environ:
+    os.environ["ORCHARD_CACHE_ROOT"] = tempfile.mkdtemp(prefix="orchard-pytest-")
+
 from models import MODELS, Model
 
 from orchard.clients.client import Client
@@ -19,6 +32,14 @@ from orchard.server.app import create_app
 
 logger = logging.getLogger(__name__)
 dotenv.load_dotenv()
+
+# This one process holds every fd of a volley: httpx client sockets, the
+# uvicorn live_server's accepted sockets, and the engine IPC dispatcher.
+# macOS defaults the soft fd limit to 256, which an uncapped volley
+# (~2 fds per in-flight request) exhausts. Raise it to the platform cap.
+_soft, _hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+if _soft < 10240:
+    resource.setrlimit(resource.RLIMIT_NOFILE, (min(_hard, 10240), _hard))
 
 # These paths should be relative to the project root
 PROJECT_ROOT = Path(__file__).parent.parent

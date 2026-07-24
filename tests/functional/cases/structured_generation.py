@@ -3,7 +3,10 @@ import json
 import httpx
 import pytest
 
+from tests.functional.cases._timeout import HTTP_TIMEOUT_S
+
 pytestmark = pytest.mark.asyncio
+
 
 @pytest.mark.parametrize("temperature", [0.0])
 async def test_chat_completion_structured_json_response(
@@ -49,7 +52,7 @@ async def test_chat_completion_structured_json_response(
         },
     }
 
-    async with httpx.AsyncClient(timeout=180.0) as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
         response = await client.post(
             f"{server_url}/v1/chat/completions",
             json=payload,

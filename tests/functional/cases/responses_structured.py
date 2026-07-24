@@ -3,6 +3,8 @@ import json
 import httpx
 import pytest
 
+from tests.functional.cases._timeout import HTTP_TIMEOUT_S
+
 pytestmark = pytest.mark.asyncio
 
 # ---------------------------------------------------------------------------
@@ -37,7 +39,7 @@ async def test_responses_structured_json_schema(live_server, text_model_id):
         },
     }
 
-    async with httpx.AsyncClient(timeout=180.0) as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
         response = await client.post(f"{live_server}/v1/responses", json=payload)
 
     assert response.status_code == 200

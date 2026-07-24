@@ -1,6 +1,8 @@
 import httpx
 import pytest
 
+from tests.functional.cases._timeout import HTTP_TIMEOUT_S
+
 pytestmark = pytest.mark.asyncio
 
 
@@ -26,7 +28,7 @@ async def test_multi_candidate_determinism(live_server, any_model_id, batch_size
         "n": batch_size,
     }
 
-    async with httpx.AsyncClient(timeout=180.0) as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
         response = await client.post(
             f"{server_url}/v1/chat/completions", json=request_payload
         )
@@ -79,7 +81,7 @@ async def test_sequential_request_determinism(live_server, any_model_id):
     }
 
     async def make_request():
-        async with httpx.AsyncClient(timeout=180.0) as client:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
             response = await client.post(
                 f"{server_url}/v1/chat/completions", json=request_payload
             )

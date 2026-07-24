@@ -1,7 +1,10 @@
 import httpx
 import pytest
 
+from tests.functional.cases._timeout import HTTP_TIMEOUT_S
+
 pytestmark = pytest.mark.asyncio
+
 
 async def test_chat_completion_respects_stop_sequence(live_server, text_model_id):
     server_url = live_server
@@ -22,7 +25,7 @@ async def test_chat_completion_respects_stop_sequence(live_server, text_model_id
         "top_logprobs": 10,
     }
 
-    async with httpx.AsyncClient(timeout=180.0) as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
         response = await client.post(
             f"{server_url}/v1/chat/completions",
             json=payload,

@@ -14,6 +14,11 @@ N="${1:-5}"
 OUT_DIR="${2:-buckshot_gate_results}"
 mkdir -p "$OUT_DIR"
 
+# Under the full volley a single request can legitimately queue for 300s+;
+# size the per-request HTTP timeout above that so the client cap cannot
+# masquerade as an engine failure (tests/functional/cases/_timeout.py).
+export ORCHARD_TEST_HTTP_TIMEOUT_S="${ORCHARD_TEST_HTTP_TIMEOUT_S:-600}"
+
 for i in $(seq 1 "$N"); do
   log="$OUT_DIR/run_${i}.log"
   macmon_pid=""
