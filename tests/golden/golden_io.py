@@ -23,6 +23,7 @@ pinning the random value. Timestamps are dropped. Everything behavioral
 """
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -103,9 +104,28 @@ def assert_or_record(
         )
         return
 
-    if recorded == live:
+    # A turn holds one baseline or a list of blessed variants. Different GPU
+    # families resolve greedy near-ties differently (M2 vs M3 kernels), so a
+    # turn may carry one individually verified baseline per divergent device.
+    # Asserting stays strict — live must match a blessed variant exactly;
+    # adding a variant requires an explicit GOLDEN_ADD_VARIANT=1 run, and the
+    # addition is written only if the whole test passes.
+    variants = recorded if recorded and isinstance(recorded[0], list) else [recorded]
+    if any(v == live for v in variants):
         return
 
+    if os.environ.get("GOLDEN_ADD_VARIANT"):
+        _pending.setdefault(path, {})[turn] = [*variants, live]
+        print(
+            f"\n\033[1;36m[golden] staged variant baseline "
+            f"{template_type}/{scenario}/{turn} ({len(live)} events, "
+            f"{len(variants) + 1} variants) — written only if the test "
+            f"passes\033[0m",
+            flush=True,
+        )
+        return
+
+    recorded = variants[0]
     if len(recorded) != len(live):
         detail = f"event count: golden={len(recorded)} live={len(live)}"
     else:
