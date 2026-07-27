@@ -330,8 +330,8 @@
     {
       "type": "response.output_token",
       "sequence_number": 43,
-      "token_id": 7285,
-      "content": " location"
+      "token_id": 9276,
+      "content": " parameter"
     },
     {
       "type": "response.reasoning.delta",
@@ -339,13 +339,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " location"
+      "delta": " parameter"
     },
     {
       "type": "response.output_token",
       "sequence_number": 45,
-      "token_id": 9276,
-      "content": " parameter"
+      "token_id": 1395,
+      "content": " is"
     },
     {
       "type": "response.reasoning.delta",
@@ -353,13 +353,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " parameter"
+      "delta": " is"
     },
     {
       "type": "response.output_token",
       "sequence_number": 47,
-      "token_id": 2715,
-      "content": " should"
+      "token_id": 7285,
+      "content": " location"
     },
     {
       "type": "response.reasoning.delta",
@@ -367,13 +367,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " should"
+      "delta": " location"
     },
     {
       "type": "response.output_token",
       "sequence_number": 49,
-      "token_id": 1402,
-      "content": " be"
+      "token_id": 1058,
+      "content": ":"
     },
     {
       "type": "response.reasoning.delta",
@@ -381,7 +381,7 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " be"
+      "delta": ":"
     },
     {
       "type": "response.output_token",
@@ -484,8 +484,8 @@
     {
       "type": "response.output_token",
       "sequence_number": 65,
-      "token_id": 1278,
-      "content": " the"
+      "token_id": 1455,
+      "content": " that"
     },
     {
       "type": "response.reasoning.delta",
@@ -493,13 +493,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " the"
+      "delta": " that"
     },
     {
       "type": "response.output_token",
       "sequence_number": 67,
-      "token_id": 2254,
-      "content": " function"
+      "token_id": 1626,
+      "content": ".\n"
     },
     {
       "type": "response.reasoning.delta",
@@ -507,39 +507,25 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " function"
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 69,
-      "token_id": 1626,
-      "content": ".\n"
-    },
-    {
-      "type": "response.reasoning.delta",
-      "sequence_number": 70,
-      "item_id": "reasoning_0",
-      "output_index": 0,
-      "content_index": 0,
       "delta": ".\n"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 71,
+      "sequence_number": 69,
       "token_id": 13,
       "content": "</think>"
     },
     {
       "type": "response.reasoning.done",
-      "sequence_number": 72,
+      "sequence_number": 70,
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "text": "I need to get the weather in San Francisco. I'll use the get_weather tool. The location parameter should be \"San Francisco\". Let me call the function."
+      "text": "I need to get the weather in San Francisco. I'll use the get_weather tool. The parameter is location: \"San Francisco\". Let me call that."
     },
     {
       "type": "response.output_item.done",
-      "sequence_number": 73,
+      "sequence_number": 71,
       "output_index": 0,
       "item": {
         "type": "reasoning",
@@ -549,7 +535,7 @@
         "content": [
           {
             "type": "reasoning_text",
-            "text": "I need to get the weather in San Francisco. I'll use the get_weather tool. The location parameter should be \"San Francisco\". Let me call the function."
+            "text": "I need to get the weather in San Francisco. I'll use the get_weather tool. The parameter is location: \"San Francisco\". Let me call that."
           }
         ],
         "encrypted_content": null
@@ -557,55 +543,55 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 74,
+      "sequence_number": 72,
       "token_id": 14,
       "content": "<tool_call>"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 75,
+      "sequence_number": 73,
       "token_id": 1010,
       "content": "\n"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 76,
+      "sequence_number": 74,
       "token_id": 1060,
       "content": "<"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 77,
+      "sequence_number": 75,
       "token_id": 5165,
       "content": "function"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 78,
+      "sequence_number": 76,
       "token_id": 94314,
       "content": "=get"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 79,
+      "sequence_number": 77,
       "token_id": 1095,
       "content": "_"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 80,
+      "sequence_number": 78,
       "token_id": 45629,
       "content": "weather"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 81,
+      "sequence_number": 79,
       "token_id": 1561,
       "content": ">\n"
     },
     {
       "type": "response.output_item.added",
-      "sequence_number": 82,
+      "sequence_number": 80,
       "output_index": 1,
       "item": {
         "type": "function_call",
@@ -618,43 +604,43 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 83,
+      "sequence_number": 81,
       "token_id": 1060,
       "content": "<"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 84,
+      "sequence_number": 82,
       "token_id": 31960,
       "content": "parameter"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 85,
+      "sequence_number": 83,
       "token_id": 1061,
       "content": "="
     },
     {
       "type": "response.output_token",
-      "sequence_number": 86,
+      "sequence_number": 84,
       "token_id": 17611,
       "content": "location"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 87,
+      "sequence_number": 85,
       "token_id": 1561,
       "content": ">\n"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 88,
+      "sequence_number": 86,
       "token_id": 24619,
       "content": "San"
     },
     {
       "type": "response.function_call_arguments.delta",
-      "sequence_number": 89,
+      "sequence_number": 87,
       "item_id": "fc_0",
       "output_index": 1,
       "delta": "San",
@@ -662,13 +648,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 90,
+      "sequence_number": 88,
       "token_id": 12717,
       "content": " Francisco"
     },
     {
       "type": "response.function_call_arguments.delta",
-      "sequence_number": 91,
+      "sequence_number": 89,
       "item_id": "fc_0",
       "output_index": 1,
       "delta": " Francisco",
@@ -676,49 +662,49 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 92,
+      "sequence_number": 90,
       "token_id": 1010,
       "content": "\n"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 93,
+      "sequence_number": 91,
       "token_id": 1885,
       "content": "</"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 94,
+      "sequence_number": 92,
       "token_id": 31960,
       "content": "parameter"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 95,
+      "sequence_number": 93,
       "token_id": 1561,
       "content": ">\n"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 96,
+      "sequence_number": 94,
       "token_id": 1885,
       "content": "</"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 97,
+      "sequence_number": 95,
       "token_id": 5165,
       "content": "function"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 98,
+      "sequence_number": 96,
       "token_id": 1561,
       "content": ">\n"
     },
     {
       "type": "response.function_call_arguments.delta",
-      "sequence_number": 99,
+      "sequence_number": 97,
       "item_id": "fc_0",
       "output_index": 1,
       "delta": "{\"location\":\"San Francisco\"}",
@@ -726,14 +712,14 @@
     },
     {
       "type": "response.function_call_arguments.done",
-      "sequence_number": 100,
+      "sequence_number": 98,
       "item_id": "fc_0",
       "output_index": 1,
       "arguments": "{\"location\": \"San Francisco\"}"
     },
     {
       "type": "response.output_item.done",
-      "sequence_number": 101,
+      "sequence_number": 99,
       "output_index": 1,
       "item": {
         "type": "function_call",
@@ -746,13 +732,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 102,
+      "sequence_number": 100,
       "token_id": 15,
       "content": "</tool_call>"
     },
     {
       "type": "response.completed",
-      "sequence_number": 103,
+      "sequence_number": 101,
       "response": {
         "id": "resp_0",
         "object": "response",
@@ -772,7 +758,7 @@
             "content": [
               {
                 "type": "reasoning_text",
-                "text": "I need to get the weather in San Francisco. I'll use the get_weather tool. The location parameter should be \"San Francisco\". Let me call the function."
+                "text": "I need to get the weather in San Francisco. I'll use the get_weather tool. The parameter is location: \"San Francisco\". Let me call that."
               }
             ],
             "encrypted_content": null
@@ -794,7 +780,7 @@
             "cached_tokens": 0
           },
           "output_tokens_details": {
-            "reasoning_tokens": 35
+            "reasoning_tokens": 34
           }
         }
       }

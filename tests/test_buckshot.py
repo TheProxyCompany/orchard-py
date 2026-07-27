@@ -6,7 +6,7 @@ serial axis — models and suites — into the same gather, so the whole matrix
 becomes one continuous batch against the engine.
 
 Opt-in (it duplicates the per-model matrices): python -m pytest -m buckshot -q -s
-BUCKSHOT_WIDTH=N caps concurrent suites (0 = unbounded).
+Uncapped: all suites in flight at once.
 BUCKSHOT_SKIP=a,b excludes models by template_type.
 """
 
@@ -33,12 +33,9 @@ SUITE_TIMEOUT_S = 480
 
 async def test_buckshot_full_matrix(live_server, client, engine):
     fixtures = {"live_server": live_server, "client": client, "engine": engine}
-    # Width >= 4 (let alone unbounded, 21 suites / ~10 concurrent model
-    # schedulers) trips the macOS GPU watchdog: one command buffer hangs,
-    # recovery kills the rest of the engine. Width 2 is the proven-stable
-    # cap until the engine paces command buffers itself.
-    width = int(os.getenv("BUCKSHOT_WIDTH", "2"))
-    gate = asyncio.Semaphore(width if width > 0 else len(MODELS) * 2 + 1)
+    # Uncapped: every suite in flight at once, as fast as the engine goes.
+    width = len(MODELS) * 2 + 1
+    gate = asyncio.Semaphore(width)
     skip = {s for s in os.getenv("BUCKSHOT_SKIP", "").split(",") if s}
     models = [m for m in MODELS if m.template_type not in skip]
 
@@ -96,11 +93,12 @@ async def test_buckshot_full_matrix(live_server, client, engine):
         )
         return entries
 
-    # BUCKSHOT_PHASED=0 lets the pipeline suite join the volley instead of
-    # running the GPU exclusively first — for measuring overlap once the
-    # engine paces diffusion command buffers (MAX_OPS_PER_BUFFER) under the
-    # GPU watchdog.
-    phased = os.getenv("BUCKSHOT_PHASED", "1") != "0"
+    # The pipeline suite joins the volley by default: the engine now paces
+    # GPU work across model runtimes (Carbon span-budget buffer packing keeps
+    # every command buffer ~1.5ms so diffusion is preemptible beside chat
+    # decode, and the device-level commit governor bounds in-flight buffers).
+    # BUCKSHOT_PHASED=1 restores the old exclusive diffusion window for A/B.
+    phased = os.getenv("BUCKSHOT_PHASED", "0") != "0"
     wall_start = time.perf_counter()
     results = []
     if "pipeline" not in skip:
@@ -113,13 +111,13 @@ async def test_buckshot_full_matrix(live_server, client, engine):
         # silent abort (three full-matrix runs, 2026-07-10).
         for model_id in PIPELINE_TOOL_MODELS:
             await engine.load_models([model_id])
-        # The diffusion window runs the GPU exclusively. Chat decode beside
-        # active diffusion starves 3-10x (measured: nemotron_h golden 45s ->
-        # 241-254s, gemma4 golden 13s -> 155s), pushing first-token latency
-        # past the server's delta timeout — whole suites 502. Every type-1
-        # GPU-restart engine death on record also had diffusion + chat
-        # in flight together. Until the engine paces GPU work across model
-        # runtimes, the pipeline suite and the chat volley don't overlap.
+        # History: before Carbon paced command buffers, chat decode beside
+        # active diffusion starved 3-10x (measured: nemotron_h golden 45s ->
+        # 241-254s, gemma4 golden 13s -> 155s) and every type-1 GPU-restart
+        # engine death on record had diffusion + chat in flight together —
+        # unbounded diffusion buffers (up to ~527ms GPU span) were
+        # un-preemptible. Span-budget packing bounds them to ~1.5ms, which
+        # is what lets this suite overlap the volley.
         pipeline_job = run_suite(
             "golden",
             "pipeline",
