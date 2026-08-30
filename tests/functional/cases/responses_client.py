@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-from collections.abc import Iterator
 
 import pytest
 
@@ -10,6 +9,7 @@ from orchard.clients import Client
 from orchard.server.models.responses.output import ResponseObject
 from orchard.server.models.responses.tools import Function
 from tests.conftest import ALL_MODELS
+from tests.shared_owner import buckshot_phase
 
 pytestmark = pytest.mark.asyncio
 
@@ -199,38 +199,39 @@ async def test_client_responses_tool_result_continuation(client: Client) -> None
     assert result_1.tool_calls
     tool_call = result_1.tool_calls[0]
 
-    result_2 = await client.aresponses(
-        TOOL_MODEL_ID,
-        input=[
-            {
-                "type": "message",
-                "role": "system",
-                "content": "You are a helpful assistant with tool calling capabilities. "
-                "When you receive a tool call response, use the output to format an answer.",
-            },
-            {
-                "type": "message",
-                "role": "user",
-                "content": "What's the weather in San Francisco?",
-            },
-            {
-                "type": "function_call",
-                "call_id": tool_call.call_id,
-                "name": tool_call.name,
-                "arguments": tool_call.arguments,
-            },
-            {
-                "type": "function_call_output",
-                "call_id": tool_call.call_id,
-                "output": json.dumps(
-                    {"temperature": 65, "unit": "fahrenheit", "condition": "foggy"}
-                ),
-            },
-        ],
-        core_tools=[WEATHER_TOOL],
-        temperature=0.0,
-        max_output_tokens=128,
-    )
+    with buckshot_phase(1):
+        result_2 = await client.aresponses(
+            TOOL_MODEL_ID,
+            input=[
+                {
+                    "type": "message",
+                    "role": "system",
+                    "content": "You are a helpful assistant with tool calling capabilities. "
+                    "When you receive a tool call response, use the output to format an answer.",
+                },
+                {
+                    "type": "message",
+                    "role": "user",
+                    "content": "What's the weather in San Francisco?",
+                },
+                {
+                    "type": "function_call",
+                    "call_id": tool_call.call_id,
+                    "name": tool_call.name,
+                    "arguments": tool_call.arguments,
+                },
+                {
+                    "type": "function_call_output",
+                    "call_id": tool_call.call_id,
+                    "output": json.dumps(
+                        {"temperature": 65, "unit": "fahrenheit", "condition": "foggy"}
+                    ),
+                },
+            ],
+            core_tools=[WEATHER_TOOL],
+            temperature=0.0,
+            max_output_tokens=128,
+        )
     assert isinstance(result_2, ResponseObject)
     assert result_2.status.value == "completed"
     text = result_2.output_text.lower()
@@ -255,28 +256,34 @@ async def test_client_responses_instructions(client: Client, model_id: str) -> N
 
 @pytest.mark.parametrize("model_id", ALL_MODELS, ids=lambda m: m.split("/")[-1])
 async def test_client_responses_sync_wrapper(client: Client, model_id: str) -> None:
-    non_streaming = client.responses(
-        model_id,
-        input="Say hello in one short sentence.",
-        temperature=0.0,
-        reasoning=False,
-        max_output_tokens=32,
+    def run_non_streaming():
+        return client.responses(
+            model_id,
+            input="Say hello in one short sentence.",
+            temperature=0.0,
+            reasoning=False,
+            max_output_tokens=32,
+        )
+
+    def run_streaming():
+        return list(
+            client.responses(
+                model_id,
+                input="Count from 1 to 3.",
+                stream=True,
+                temperature=0.0,
+                reasoning=False,
+                max_output_tokens=32,
+            )
+        )
+
+    non_streaming, events = await asyncio.gather(
+        asyncio.to_thread(run_non_streaming),
+        asyncio.to_thread(run_streaming),
     )
     assert isinstance(non_streaming, ResponseObject)
     assert non_streaming.status.value == "completed"
     assert non_streaming.output_text
-
-    streaming = client.responses(
-        model_id,
-        input="Count from 1 to 3.",
-        stream=True,
-        temperature=0.0,
-        reasoning=False,
-        max_output_tokens=32,
-    )
-    assert isinstance(streaming, Iterator)
-
-    events = list(streaming)
     assert events
     assert events[0].type == "response.created"
     assert events[-1].type == "done"
@@ -284,20 +291,20 @@ async def test_client_responses_sync_wrapper(client: Client, model_id: str) -> N
 
 @pytest.mark.parametrize("model_id", ALL_MODELS, ids=lambda m: m.split("/")[-1])
 async def test_client_responses_text_helpers(client: Client, model_id: str) -> None:
-    async_chunks = [
-        chunk
-        async for chunk in client.aresponses_text(
-            model_id,
-            input="Write one short sentence about the sky.",
-            temperature=0.0,
-            reasoning=False,
-            max_output_tokens=32,
-        )
-    ]
-    assert "".join(async_chunks).strip()
+    async def collect_async_chunks():
+        return [
+            chunk
+            async for chunk in client.aresponses_text(
+                model_id,
+                input="Write one short sentence about the sky.",
+                temperature=0.0,
+                reasoning=False,
+                max_output_tokens=32,
+            )
+        ]
 
-    sync_chunks = await asyncio.to_thread(
-        lambda: list(
+    def collect_sync_chunks():
+        return list(
             client.responses_text(
                 model_id,
                 input="Write one short sentence about the ocean.",
@@ -306,5 +313,10 @@ async def test_client_responses_text_helpers(client: Client, model_id: str) -> N
                 max_output_tokens=32,
             )
         )
+
+    async_chunks, sync_chunks = await asyncio.gather(
+        collect_async_chunks(),
+        asyncio.to_thread(collect_sync_chunks),
     )
+    assert "".join(async_chunks).strip()
     assert "".join(sync_chunks).strip()

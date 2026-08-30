@@ -7,6 +7,7 @@ from collections.abc import Sequence
 import pytest
 
 from orchard.clients.client import Client
+from tests.shared_owner import buckshot_phase
 
 pytestmark = pytest.mark.asyncio
 
@@ -111,37 +112,32 @@ async def _synthesize_phrase(
 
 async def test_tts_to_speech_to_text_transcription(client: Client):
     # Every (tts_model, phrase) leg is independent, and within a leg the STT
-    # models are independent given the synthesized pcm. Run legs concurrently
-    # instead of 12 serial synth calls + 36 serial transcriptions. Cap 2:
-    # this suite shares the engine with a chat suite and the image chain —
-    # wider audio fan-out contributed to a GPU-watchdog engine death
-    # (2026-07-08 storm, exit 134).
+    # models are independent given the synthesized pcm. Launch all 12 synth
+    # calls together, then fan each completed leg into all three STT models.
     import asyncio
 
-    gate = asyncio.Semaphore(2)
-
     async def leg(tts_label, tts_model, tts_options, phrase):
-        async with gate:
+        print(
+            f"\n\033[1;33m━━━ {tts_label} · telephone · {phrase!r} ━━━\033[0m",
+            flush=True,
+        )
+        pcm = await _synthesize_phrase(client, tts_model, phrase, tts_options)
+        assert pcm, "TTS produced no audio samples"
+
+        async def check(stt_label, stt_model):
+            with buckshot_phase(1):
+                transcript = await client.audio.atranscribe(stt_model, pcm)
+            normalized = _normalize_transcript(transcript)
             print(
-                f"\n\033[1;33m━━━ {tts_label} · telephone · {phrase!r} ━━━\033[0m",
+                f"\n{tts_label} → {stt_label}: "
+                f"transcript={transcript!r} normalized={normalized!r}",
                 flush=True,
             )
-            pcm = await _synthesize_phrase(client, tts_model, phrase, tts_options)
-            assert pcm, "TTS produced no audio samples"
+            assert normalized == phrase
 
-            async def check(stt_label, stt_model):
-                transcript = await client.audio.atranscribe(stt_model, pcm)
-                normalized = _normalize_transcript(transcript)
-                print(
-                    f"\n{tts_label} → {stt_label}: "
-                    f"transcript={transcript!r} normalized={normalized!r}",
-                    flush=True,
-                )
-                assert normalized == phrase
-
-            await asyncio.gather(
-                *(check(stt_label, stt_model) for stt_label, stt_model in STT_MODELS)
-            )
+        await asyncio.gather(
+            *(check(stt_label, stt_model) for stt_label, stt_model in STT_MODELS)
+        )
 
     await asyncio.gather(
         *(

@@ -18,6 +18,10 @@ from huggingface_hub.errors import LocalEntryNotFoundError
 
 logger = logging.getLogger(__name__)
 
+_NUMBERED_SAFETENSORS_SHARD_RE = re.compile(
+    r"^(?P<prefix>.+)-(?P<index>\d+)-of-(?P<total>\d+)\.safetensors$"
+)
+
 __all__ = [
     "ModelResolutionError",
     "ModelResolver",
@@ -224,6 +228,35 @@ class ModelResolver:
 
     @staticmethod
     def _ensure_hf_weights_complete(model_dir: Path) -> None:
+        safetensors = sorted(model_dir.rglob("*.safetensors"))
+        numbered_shard_groups: dict[tuple[Path, str, int], set[int]] = {}
+        for path in safetensors:
+            match = _NUMBERED_SAFETENSORS_SHARD_RE.match(path.name)
+            if match is None:
+                continue
+            shard_index = int(match.group("index"))
+            shard_total = int(match.group("total"))
+            if shard_total < 1 or not 0 <= shard_index <= shard_total:
+                raise IncompleteSnapshotError(
+                    f"Cached HuggingFace snapshot '{model_dir}' has an invalid numbered "
+                    f"weight shard: {path}"
+                )
+            group = (path.parent, match.group("prefix"), shard_total)
+            numbered_shard_groups.setdefault(group, set()).add(shard_index)
+
+        for (parent, prefix, shard_total), present in numbered_shard_groups.items():
+            # Most repositories use 1..N where N is the shard count. Some,
+            # including gpt-oss, use 0..N where N is the final shard index.
+            first_index = 0 if 0 in present else 1
+            missing = sorted(set(range(first_index, shard_total + 1)) - present)
+            if missing:
+                raise IncompleteSnapshotError(
+                    f"Cached HuggingFace snapshot '{model_dir}' is missing numbered "
+                    f"weight shard(s) for '{parent / prefix}': "
+                    + ", ".join(str(index) for index in missing)
+                    + f" of {shard_total}"
+                )
+
         index_files = sorted(model_dir.rglob("*.safetensors.index.json"))
         if index_files:
             for index_file in index_files:
@@ -259,7 +292,6 @@ class ModelResolver:
                 )
             return
 
-        safetensors = sorted(model_dir.rglob("*.safetensors"))
         if safetensors:
             incomplete = [
                 path

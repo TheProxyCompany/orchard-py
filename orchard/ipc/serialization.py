@@ -202,6 +202,7 @@ def _build_request_payload(
         "request_type": _normalise_request_type(request_type),
         "request_channel_id": int(request_channel_id),
         "response_channel_id": int(response_channel_id),
+        "response_transport": "pull_v1",
     }
     metadata_prompts: list[dict[str, Any]] = []
     metadata["prompts"] = metadata_prompts

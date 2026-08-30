@@ -1,8 +1,8 @@
+import ctypes
 import json
 import logging
 import os
 import signal
-import subprocess
 import threading
 import time
 from collections.abc import Callable, Iterable
@@ -16,20 +16,56 @@ from orchard.ipc import endpoints as ipc_endpoints
 logger = logging.getLogger(__name__)
 
 
+_PROC_PIDT_SHORTBSDINFO = 13
+_SZOMB = 5
+
+
+class _ProcBSDShortInfo(ctypes.Structure):
+    _fields_ = [
+        ("pid", ctypes.c_uint32),
+        ("ppid", ctypes.c_uint32),
+        ("pgid", ctypes.c_uint32),
+        ("status", ctypes.c_uint32),
+        ("comm", ctypes.c_char * 16),
+        ("flags", ctypes.c_uint32),
+        ("uid", ctypes.c_uint32),
+        ("gid", ctypes.c_uint32),
+        ("ruid", ctypes.c_uint32),
+        ("rgid", ctypes.c_uint32),
+        ("svuid", ctypes.c_uint32),
+        ("svgid", ctypes.c_uint32),
+        ("reserved", ctypes.c_uint32),
+    ]
+
+
+if platform == "darwin":
+    _libproc = ctypes.CDLL("/usr/lib/libproc.dylib", use_errno=True)
+    _proc_pidinfo = _libproc.proc_pidinfo
+    _proc_pidinfo.argtypes = [
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_uint64,
+        ctypes.c_void_p,
+        ctypes.c_int,
+    ]
+    _proc_pidinfo.restype = ctypes.c_int
+else:
+    _proc_pidinfo = None
+
+
 def _pid_is_zombie(pid: int) -> bool:
-    if platform != "darwin":
+    if platform != "darwin" or _proc_pidinfo is None:
         return False
-    try:
-        result = subprocess.run(
-            ["ps", "-o", "state=", "-p", str(pid)], capture_output=True, text=True
-        )
-    except OSError:
-        # Forking ps fails under fd pressure (EMFILE during a request volley);
-        # a probe that could not run is no verdict on the pid.
-        return False
-    if result.returncode != 0:
-        return False
-    return result.stdout.strip().startswith("Z")
+
+    info = _ProcBSDShortInfo()
+    result = _proc_pidinfo(
+        pid,
+        _PROC_PIDT_SHORTBSDINFO,
+        0,
+        ctypes.byref(info),
+        ctypes.sizeof(info),
+    )
+    return result == ctypes.sizeof(info) and info.status == _SZOMB
 
 
 def pid_is_alive(pid: int) -> bool:

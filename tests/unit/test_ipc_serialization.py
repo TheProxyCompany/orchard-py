@@ -19,6 +19,8 @@ def test_empty_default_prompt_serializes_text_layout_segment() -> None:
         prompts=[{"prompt": ""}],
     )
 
-    prompt = _metadata(frame)["prompts"][0]
+    metadata = _metadata(frame)
+    assert metadata["response_transport"] == "pull_v1"
+    prompt = metadata["prompts"][0]
     assert prompt["text_size"] == 0
     assert prompt["layout_count"] == 1

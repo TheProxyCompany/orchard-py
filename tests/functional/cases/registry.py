@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import inspect
-import os
 import traceback
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from itertools import product
-from typing import Any
+from typing import Any, Protocol
 
 import pytest
 
@@ -75,6 +75,17 @@ _RUN_IN_THREAD = {
     responses_client.test_client_responses_sync_wrapper,
 }
 
+_REQUEST_PHASES = {
+    batching.test_chat_completion_batch_length_mismatch_returns_422: (),
+    best_of.test_chat_completion_best_of_validation_less_than_n: (),
+    best_of.test_chat_completion_best_of_streaming_disallowed: (),
+    determinism.test_sequential_request_determinism: (1, 1, 1),
+    responses_client.test_client_responses_sync_wrapper: (2,),
+    responses_client.test_client_responses_text_helpers: (2,),
+    responses_client.test_client_responses_tool_result_continuation: (1, 1),
+    responses_tools.test_responses_tool_result_continuation: (1, 1),
+}
+
 
 @dataclass(frozen=True)
 class FunctionalCase:
@@ -94,6 +105,10 @@ class FunctionalCase:
         if "client" in args or "engine" in args:
             return "client"
         raise ValueError(f"{self.id} does not declare a runnable test surface")
+
+    @property
+    def request_phases(self) -> tuple[int, ...]:
+        return _REQUEST_PHASES.get(self.function, (1,))
 
     def applies_to(self, model: Model) -> bool:
         args = self.argument_names
@@ -121,11 +136,7 @@ class FunctionalCase:
         for name in inspect.signature(self.function).parameters:
             if name in self.parameters:
                 kwargs[name] = self.parameters[name]
-            elif name in {"any_model_id", "model_id", "text_model_id"}:
-                kwargs[name] = model.checkpoint
-            elif name == "vision_model_id":
-                kwargs[name] = model.checkpoint
-            elif name == "moondream_model_id":
+            elif name in _MODEL_ARGUMENTS:
                 kwargs[name] = model.checkpoint
             else:
                 kwargs[name] = fixtures[name]
@@ -136,6 +147,12 @@ class FunctionalCase:
 class CaseFailure:
     case_id: str
     detail: str
+
+
+class CaseAdmission(Protocol):
+    async def admit(self, case_id: str) -> None: ...
+
+    def complete(self, case_id: str, *, skipped: bool = False) -> None: ...
 
 
 def collect_functional_cases() -> list[FunctionalCase]:
@@ -163,30 +180,28 @@ async def run_cases(
     cases: Iterable[FunctionalCase],
     fixtures: dict[str, Any],
     model: Model,
+    *,
+    admission: CaseAdmission | None = None,
+    case_prefix: str = "",
 ) -> tuple[list[CaseFailure], list[str]]:
     async def run_one(case: FunctionalCase) -> tuple[str, BaseException | None]:
+        admitted_id = f"{case_prefix}{case.id}"
+        skipped = False
+        if admission is not None:
+            await admission.admit(admitted_id)
         try:
             await case.run(fixtures, model)
         except pytest.skip.Exception as exc:
+            skipped = True
             return case.id, exc
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - aggregate every case failure
             return case.id, exc
+        finally:
+            if admission is not None:
+                admission.complete(admitted_id, skipped=skipped)
         return case.id, None
 
-    # CASES_WIDTH=N caps concurrent cases (0/unset = all at once). Diagnostic
-    # knob: intermittent garbage output appears only when enough same-model
-    # requests co-batch, so bisecting the width isolates the trigger.
-    width = int(os.getenv("CASES_WIDTH", "0"))
-    if width > 0:
-        gate = asyncio.Semaphore(width)
-
-        async def run_gated(case: FunctionalCase) -> tuple[str, BaseException | None]:
-            async with gate:
-                return await run_one(case)
-
-        results = await asyncio.gather(*(run_gated(case) for case in cases))
-    else:
-        results = await asyncio.gather(*(run_one(case) for case in cases))
+    results = await asyncio.gather(*(run_one(case) for case in cases))
 
     failures: list[CaseFailure] = []
     skipped: list[str] = []
@@ -252,5 +267,9 @@ def _run_function(function: Callable[..., Any], kwargs: dict[str, Any]) -> None:
 
 def _param_id(value: Any) -> str:
     if isinstance(value, str):
-        return value[:32].replace(" ", "_")
+        normalized = value.replace(" ", "_")
+        if len(normalized) <= 32:
+            return normalized
+        digest = hashlib.sha256(value.encode()).hexdigest()[:8]
+        return f"{normalized[:23]}-{digest}"
     return str(value)

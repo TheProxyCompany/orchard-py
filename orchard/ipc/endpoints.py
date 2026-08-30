@@ -3,6 +3,35 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+_IPC_SOCKET_PATH_MAX_BYTES = 103
+_LONGEST_SOCKET_NAME = "pie_response_ffffffffffffffff.ipc"
+_FNV1A64_OFFSET_BASIS = 0xCBF29CE484222325
+_FNV1A64_PRIME = 0x100000001B3
+
+
+def _fnv1a64(value: bytes) -> int:
+    digest = _FNV1A64_OFFSET_BASIS
+    for byte in value:
+        digest ^= byte
+        digest = (digest * _FNV1A64_PRIME) & 0xFFFFFFFFFFFFFFFF
+    return digest
+
+
+def _socket_path_fits(path: Path) -> bool:
+    return len(os.fsencode(path)) <= _IPC_SOCKET_PATH_MAX_BYTES
+
+
+def _bounded_ipc_root(candidate: Path) -> Path:
+    canonical = candidate.expanduser().resolve()
+    if _socket_path_fits(canonical / _LONGEST_SOCKET_NAME):
+        return canonical
+
+    digest = _fnv1a64(os.fsencode(canonical))
+    compact = Path("/tmp").resolve() / f"orchard-ipc-{os.getuid()}-{digest:016x}"
+    if not _socket_path_fits(compact / _LONGEST_SOCKET_NAME):
+        raise RuntimeError(f"Could not construct a bounded IPC root for {canonical}")
+    return compact
+
 
 def _resolve_ipc_root() -> Path:
     """
@@ -24,7 +53,9 @@ def _resolve_ipc_root() -> Path:
         )
         path = base / "com.theproxycompany" / "ipc"
 
-    path.mkdir(parents=True, exist_ok=True)
+    path = _bounded_ipc_root(path)
+    path.mkdir(mode=0o700, parents=True, exist_ok=True)
+    os.environ["ORCHARD_IPC_ROOT"] = os.fspath(path)
     return path
 
 
@@ -40,10 +71,19 @@ IPC_ROOT = _resolve_ipc_root()
 # Pattern: PUSH/PULL (Many clients PUSH, one engine PULLs)
 REQUEST_URL = _as_ipc_url(IPC_ROOT / "pie_requests.ipc")
 
-# The endpoint for receiving responses and broadcast events from the engine.
+# The endpoint for broadcast events and legacy response deltas from the engine.
 # Pattern: PUB/SUB (One engine PUBlishes, many clients SUBscribe)
-# Topics are used to route messages to the correct consumer.
 RESPONSE_URL = _as_ipc_url(IPC_ROOT / "pie_responses.ipc")
+
+
+def response_route_path(response_channel_id: int) -> Path:
+    """Return the dedicated flow-controlled response endpoint for one client."""
+    return IPC_ROOT / f"pie_response_{response_channel_id:x}.ipc"
+
+
+def response_route_url(response_channel_id: int) -> str:
+    return _as_ipc_url(response_route_path(response_channel_id))
+
 
 # The endpoint for synchronous management commands (e.g., load_model).
 # Pattern: REQ/REP (One client sends a REQ, one engine sends a REP)
@@ -51,8 +91,8 @@ MANAGEMENT_URL = _as_ipc_url(IPC_ROOT / "pie_management.ipc")
 
 # --- Topic Prefixes for the PUB/SUB Channel ---
 
-# Topic prefix for response deltas targeted at a specific client.
-# A client subscribes to b_RESPONSE_TOPIC_PREFIX + its_channel_id_hex.
+# Topic prefix for legacy response deltas targeted at a specific client.
+# New clients keep this subscription for compatibility with pre-pull_v1 engines.
 RESPONSE_TOPIC_PREFIX = b"resp:"
 
 # Topic prefix for global, broadcast events (e.g., engine_ready).
@@ -66,4 +106,6 @@ __all__ = [
     "REQUEST_URL",
     "RESPONSE_TOPIC_PREFIX",
     "RESPONSE_URL",
+    "response_route_path",
+    "response_route_url",
 ]

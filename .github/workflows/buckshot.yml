@@ -1,11 +1,8 @@
-name: Buckshot Gate
+name: Combined Buckshot Gate
 
 on:
   workflow_dispatch:
     inputs:
-      runs:
-        description: "Consecutive green runs required"
-        default: "5"
       pie_url:
         description: "Direct PIE release archive URL (empty = stable manifest latest)"
         default: ""
@@ -58,19 +55,20 @@ jobs:
             echo "PAL_METALLIB_PATH=$PIE_DIR/lib/pal.metallib" >> "$GITHUB_ENV"
           fi
 
-      - name: Run the gate
-        env:
-          ORCHARD_TEST_HTTP_TIMEOUT_S: "600"
+      - name: Run combined Orchard PY and RS Buckshot proof
         run: |
+          set -euo pipefail
           source .venv/bin/activate
-          bash scripts/buckshot_gate.sh "${{ github.event.inputs.runs || '5' }}" buckshot_gate_results
+          ROOT="$RUNNER_TEMP/company-buckshot"
+          rm -rf "$ROOT"
+          git clone --depth 1 "https://${{ secrets.GH_PAT }}@github.com/TheProxyCompany/The-Proxy-Company.git" "$ROOT"
+          git -C "$ROOT" submodule update --init orchard-rs Pane Trellis grand-central
+          rm -rf "$ROOT/orchard-py" "$ROOT/proxy-inference-engine"
+          ln -s "$GITHUB_WORKSPACE" "$ROOT/orchard-py"
+          mkdir -p "$ROOT/proxy-inference-engine"
+          ln -s "$PIE_LOCAL_BUILD" "$ROOT/proxy-inference-engine/release"
+          cd "$ROOT"
+          python scripts/buckshot_all_clients.py
 
       - name: Golden data must be untouched
         run: git diff --exit-code tests/golden/data
-
-      - name: Upload results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: buckshot-gate-results
-          path: buckshot_gate_results/

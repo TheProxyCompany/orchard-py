@@ -6,7 +6,7 @@ on:
 jobs:
   publish:
     runs-on: [self-hosted, terminal-0]
-    timeout-minutes: 15
+    timeout-minutes: 180
     env:
       PATH: /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
 
@@ -37,11 +37,25 @@ jobs:
           cd ../proxy-inference-engine
           ./scripts/build.sh -t Release
 
-      - name: Run full Orchard PY suite
+      - name: Run Orchard PY unit suite
         run: |
           source .venv/bin/activate
           uv pip install -e ".[dev]"
-          PIE_LOCAL_BUILD="$PWD/../proxy-inference-engine/release" python -m pytest tests/functional tests/golden tests/unit -v --tb=short -x
+          python -m pytest tests/unit -v --tb=short -x
+
+      - name: Run combined Orchard PY and RS Buckshot release proof
+        run: |
+          set -euo pipefail
+          source .venv/bin/activate
+          ROOT="$RUNNER_TEMP/company-buckshot"
+          rm -rf "$ROOT"
+          git clone --depth 1 "https://${{ secrets.GH_PAT }}@github.com/TheProxyCompany/The-Proxy-Company.git" "$ROOT"
+          git -C "$ROOT" submodule update --init orchard-rs Pane Trellis grand-central
+          rm -rf "$ROOT/orchard-py" "$ROOT/proxy-inference-engine"
+          ln -s "$GITHUB_WORKSPACE" "$ROOT/orchard-py"
+          ln -s "$(cd ../proxy-inference-engine && pwd)" "$ROOT/proxy-inference-engine"
+          cd "$ROOT"
+          python scripts/buckshot_all_clients.py
 
       - name: Bump version
         id: version

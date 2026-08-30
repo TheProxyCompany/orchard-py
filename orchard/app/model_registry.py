@@ -191,7 +191,7 @@ class ModelRegistry:
                     else:
                         return entry.state, canonical_id
 
-        resolved = self._resolver.resolve(requested_model_id)
+        resolved = await asyncio.to_thread(self._resolver.resolve, requested_model_id)
         if resolved.source == "local_source":
             resolved = await self._inspect_model_source(
                 requested_model_id, resolved, refresh=force_reload
@@ -609,8 +609,20 @@ class ModelRegistry:
 
         # Accepted: wait for model_loaded event via handle_model_loaded
         async with self._bound_lock():
-            entry = self._entries[canonical_id]
-            waiter = entry.activation_future
+            entry = self._entries.get(canonical_id)
+            state = entry.state if entry else None
+            waiter = entry.activation_future if entry else None
+            activation_error = entry.error if entry else None
+
+        # The dispatcher can receive model_loaded while the management socket
+        # is still delivering this accepted reply. In that valid ordering the
+        # event has already completed the caller's local waiter and cleared it.
+        if state == ModelLoadState.READY:
+            return
+        if state == ModelLoadState.FAILED:
+            raise RuntimeError(
+                activation_error or f"Model '{canonical_id}' failed to activate."
+            )
 
         if waiter is None:
             await self._mark_activation_failed(

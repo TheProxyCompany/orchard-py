@@ -1,10 +1,10 @@
 import json
 from collections import defaultdict
 
-import httpx
 import pytest
 
 from tests.functional.cases._timeout import HTTP_TIMEOUT_S
+from tests.local_http import local_async_client
 
 pytestmark = pytest.mark.asyncio
 
@@ -27,7 +27,7 @@ async def test_chat_completion_multi_candidate_non_streaming(
         "n": candidate_count,
     }
 
-    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
+    async with local_async_client(timeout=HTTP_TIMEOUT_S) as client:
         response = await client.post(
             f"{server_url}/v1/chat/completions", json=request_payload
         )
@@ -68,7 +68,7 @@ async def test_chat_completion_multi_candidate_streaming(live_server, text_model
     finish_reasons: dict[int, str] = {}
     saw_done = False
 
-    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
+    async with local_async_client(timeout=HTTP_TIMEOUT_S) as client:
         async with client.stream(
             "POST", f"{server_url}/v1/chat/completions", json=request_payload
         ) as response:

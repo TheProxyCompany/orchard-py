@@ -1,10 +1,9 @@
+import asyncio
 import base64
 import json
 from collections.abc import Sequence
 
 import pytest
-from tests.golden.golden_io import assert_or_record
-from tests.helpers import drain_stream, print_usage_summary, render_prompt_blue
 
 from orchard.clients.client import Client, ModalArtifact
 from orchard.server.models.responses import (
@@ -12,6 +11,9 @@ from orchard.server.models.responses import (
     OutputMessage,
     OutputStatus,
 )
+from tests.golden.golden_io import assert_or_record
+from tests.helpers import drain_stream, print_usage_summary, render_prompt_blue
+from tests.shared_owner import buckshot_phase
 
 pytestmark = pytest.mark.asyncio
 
@@ -98,7 +100,9 @@ async def _run_gemma_generate_image_call(
     assert turn["counts"]["response.created"] == 1
     assert turn["counts"]["response.in_progress"] == 1
     assert turn["counts"]["response.completed"] == 1
-    assert turn["added"].get("reasoning", 0) <= 1, "generator: expected at most one reasoning block"
+    assert turn["added"].get("reasoning", 0) <= 1, (
+        "generator: expected at most one reasoning block"
+    )
     if turn["added"].get("reasoning", 0):
         assert turn["counts"]["response.reasoning.done"] == 1
         assert turn["reasoning"].strip() == turn["reasoning_done"], (
@@ -111,12 +115,16 @@ async def _run_gemma_generate_image_call(
     assert turn["counts"]["response.function_call_arguments.done"] == 1
     assert len(turn["function_calls"]) == 1
 
-    opened = [item for item in turn["items_added"] if isinstance(item, OutputFunctionCall)]
+    opened = [
+        item for item in turn["items_added"] if isinstance(item, OutputFunctionCall)
+    ]
     assert len(opened) == 1, "generator: expected one function_call opened"
     call = turn["function_calls"][0]
     assert opened[0].name == "generate_image"
     assert opened[0].call_id == call.call_id
-    assert opened[0].arguments == "", "generator: function_call must open with empty arguments"
+    assert opened[0].arguments == "", (
+        "generator: function_call must open with empty arguments"
+    )
     assert opened[0].status == OutputStatus.IN_PROGRESS
     assert call.name == "generate_image"
     assert call.status == OutputStatus.COMPLETED
@@ -175,7 +183,9 @@ async def _generate_flux_image(client: Client, prompt: str) -> ModalArtifact:
     return artifact
 
 
-async def _edit_with_qwen_image_edit(client: Client, artifact: ModalArtifact) -> ModalArtifact:
+async def _edit_with_qwen_image_edit(
+    client: Client, artifact: ModalArtifact
+) -> ModalArtifact:
     artifacts = await client.images.aedit(
         QWEN_IMAGE_EDIT_MODEL,
         artifact.data,
@@ -205,9 +215,12 @@ async def test_image_tool_self_loop_and_blind_verifier(client: Client):
 
     generator, call, prompt = await _run_gemma_generate_image_call(client)
     assert_or_record("gemma4", "image_tool_self_loop", "turn1", generator["events"])
-    assert_or_record("gemma4", "image_tool_blind_verifier", "generator", generator["events"])
+    assert_or_record(
+        "gemma4", "image_tool_blind_verifier", "generator", generator["events"]
+    )
 
-    artifact = await _generate_ideogram_image(client, prompt)
+    with buckshot_phase(1):
+        artifact = await _generate_ideogram_image(client, prompt)
     image = _image_part(artifact)
 
     conversation = [
@@ -235,31 +248,14 @@ async def test_image_tool_self_loop_and_blind_verifier(client: Client):
         prefix_cache=False,
     )
     gen1 = generator["generated"] + (generator["stop_token"] or "")
-    await render_prompt_blue(client, GEMMA4_MODEL, prev_gen=gen1, **turn2_request)
-    stream = await client.aresponses(
-        GEMMA4_MODEL, stream=True, stream_tokens=True, **turn2_request
-    )
-    self_loop = await drain_stream(stream)
-    assert_or_record("gemma4", "image_tool_self_loop", "turn2", self_loop["events"])
 
-    assert self_loop["order"][0] == "response.created"
-    assert self_loop["order"][-1] == "done"
-    assert self_loop["counts"]["response.created"] == 1
-    assert self_loop["counts"]["response.in_progress"] == 1
-    assert self_loop["counts"]["response.completed"] == 1
-    assert self_loop["counts"].get("response.function_call_arguments.done", 0) == 0
-    assert self_loop["counts"]["response.output_text.done"] == 1
-    assert self_loop["content"] == self_loop["content_done"]
-    msg_open = [item for item in self_loop["items_added"] if isinstance(item, OutputMessage)]
-    msg_done = [item for item in self_loop["items_done"] if isinstance(item, OutputMessage)]
-    assert len(msg_open) == 1 and len(msg_done) == 1
-    assert msg_open[0].role == "assistant"
-    assert not msg_open[0].content
-    assert msg_open[0].status == OutputStatus.IN_PROGRESS
-    assert msg_done[0].status == OutputStatus.COMPLETED
-    assert "apple" in self_loop["content_done"].lower(), (
-        f"gemma4 did not ground on the generated image: {self_loop['content_done']!r}"
-    )
+    async def run_self_loop():
+        await render_prompt_blue(client, GEMMA4_MODEL, prev_gen=gen1, **turn2_request)
+        with buckshot_phase(2):
+            stream = await client.aresponses(
+                GEMMA4_MODEL, stream=True, stream_tokens=True, **turn2_request
+            )
+            return await drain_stream(stream)
 
     verifier_request = dict(
         input=[
@@ -267,7 +263,10 @@ async def test_image_tool_self_loop_and_blind_verifier(client: Client):
                 "type": "message",
                 "role": "user",
                 "content": [
-                    {"type": "input_text", "text": "What is in this image? Answer with the main object."},
+                    {
+                        "type": "input_text",
+                        "text": "What is in this image? Answer with the main object.",
+                    },
                     image,
                 ],
             }
@@ -277,13 +276,43 @@ async def test_image_tool_self_loop_and_blind_verifier(client: Client):
         reasoning={"effort": "medium"},
         prefix_cache=False,
     )
-    await render_prompt_blue(client, MOONDREAM3_MODEL, **verifier_request)
-    stream = await client.aresponses(
-        MOONDREAM3_MODEL, stream=True, stream_tokens=True, **verifier_request
+
+    async def run_verifier():
+        await render_prompt_blue(client, MOONDREAM3_MODEL, **verifier_request)
+        with buckshot_phase(2):
+            stream = await client.aresponses(
+                MOONDREAM3_MODEL, stream=True, stream_tokens=True, **verifier_request
+            )
+            return await drain_stream(stream)
+
+    self_loop, verifier = await asyncio.gather(run_self_loop(), run_verifier())
+    assert_or_record("gemma4", "image_tool_self_loop", "turn2", self_loop["events"])
+    assert self_loop["order"][0] == "response.created"
+    assert self_loop["order"][-1] == "done"
+    assert self_loop["counts"]["response.created"] == 1
+    assert self_loop["counts"]["response.in_progress"] == 1
+    assert self_loop["counts"]["response.completed"] == 1
+    assert self_loop["counts"].get("response.function_call_arguments.done", 0) == 0
+    assert self_loop["counts"]["response.output_text.done"] == 1
+    assert self_loop["content"] == self_loop["content_done"]
+    msg_open = [
+        item for item in self_loop["items_added"] if isinstance(item, OutputMessage)
+    ]
+    msg_done = [
+        item for item in self_loop["items_done"] if isinstance(item, OutputMessage)
+    ]
+    assert len(msg_open) == 1 and len(msg_done) == 1
+    assert msg_open[0].role == "assistant"
+    assert not msg_open[0].content
+    assert msg_open[0].status == OutputStatus.IN_PROGRESS
+    assert msg_done[0].status == OutputStatus.COMPLETED
+    assert "apple" in self_loop["content_done"].lower(), (
+        f"gemma4 did not ground on the generated image: {self_loop['content_done']!r}"
     )
-    verifier = await drain_stream(stream)
     print_usage_summary([generator, self_loop, verifier])
-    assert_or_record("moondream3", "image_tool_blind_verifier", "verifier", verifier["events"])
+    assert_or_record(
+        "moondream3", "image_tool_blind_verifier", "verifier", verifier["events"]
+    )
 
     assert verifier["order"][0] == "response.created"
     assert verifier["order"][-1] == "done"
@@ -304,10 +333,15 @@ async def test_image_tool_self_loop_and_blind_verifier_flux(client: Client):
     )
 
     generator, call, prompt = await _run_gemma_generate_image_call(client)
-    assert_or_record("gemma4", "image_tool_self_loop_flux", "turn1", generator["events"])
-    assert_or_record("gemma4", "image_tool_blind_verifier_flux", "generator", generator["events"])
+    assert_or_record(
+        "gemma4", "image_tool_self_loop_flux", "turn1", generator["events"]
+    )
+    assert_or_record(
+        "gemma4", "image_tool_blind_verifier_flux", "generator", generator["events"]
+    )
 
-    artifact = await _generate_flux_image(client, prompt)
+    with buckshot_phase(1):
+        artifact = await _generate_flux_image(client, prompt)
     image = _image_part(artifact)
 
     conversation = [
@@ -335,13 +369,47 @@ async def test_image_tool_self_loop_and_blind_verifier_flux(client: Client):
         prefix_cache=False,
     )
     gen1 = generator["generated"] + (generator["stop_token"] or "")
-    await render_prompt_blue(client, GEMMA4_MODEL, prev_gen=gen1, **turn2_request)
-    stream = await client.aresponses(
-        GEMMA4_MODEL, stream=True, stream_tokens=True, **turn2_request
-    )
-    self_loop = await drain_stream(stream)
-    assert_or_record("gemma4", "image_tool_self_loop_flux", "turn2", self_loop["events"])
 
+    async def run_self_loop():
+        await render_prompt_blue(client, GEMMA4_MODEL, prev_gen=gen1, **turn2_request)
+        with buckshot_phase(2):
+            stream = await client.aresponses(
+                GEMMA4_MODEL, stream=True, stream_tokens=True, **turn2_request
+            )
+            return await drain_stream(stream)
+
+    verifier_request = dict(
+        input=[
+            {
+                "type": "message",
+                "role": "user",
+                "content": [
+                    {
+                        "type": "input_text",
+                        "text": "What is in this image? Answer with the main object.",
+                    },
+                    image,
+                ],
+            }
+        ],
+        deterministic=True,
+        max_output_tokens=512,
+        reasoning={"effort": "medium"},
+        prefix_cache=False,
+    )
+
+    async def run_verifier():
+        await render_prompt_blue(client, MOONDREAM3_MODEL, **verifier_request)
+        with buckshot_phase(2):
+            stream = await client.aresponses(
+                MOONDREAM3_MODEL, stream=True, stream_tokens=True, **verifier_request
+            )
+            return await drain_stream(stream)
+
+    self_loop, verifier = await asyncio.gather(run_self_loop(), run_verifier())
+    assert_or_record(
+        "gemma4", "image_tool_self_loop_flux", "turn2", self_loop["events"]
+    )
     assert self_loop["order"][0] == "response.created"
     assert self_loop["order"][-1] == "done"
     assert self_loop["counts"]["response.created"] == 1
@@ -353,30 +421,10 @@ async def test_image_tool_self_loop_and_blind_verifier_flux(client: Client):
     assert "apple" in self_loop["content_done"].lower(), (
         f"gemma4 did not ground on the Flux-generated image: {self_loop['content_done']!r}"
     )
-
-    verifier_request = dict(
-        input=[
-            {
-                "type": "message",
-                "role": "user",
-                "content": [
-                    {"type": "input_text", "text": "What is in this image? Answer with the main object."},
-                    image,
-                ],
-            }
-        ],
-        deterministic=True,
-        max_output_tokens=512,
-        reasoning={"effort": "medium"},
-        prefix_cache=False,
-    )
-    await render_prompt_blue(client, MOONDREAM3_MODEL, **verifier_request)
-    stream = await client.aresponses(
-        MOONDREAM3_MODEL, stream=True, stream_tokens=True, **verifier_request
-    )
-    verifier = await drain_stream(stream)
     print_usage_summary([generator, self_loop, verifier])
-    assert_or_record("moondream3", "image_tool_blind_verifier_flux", "verifier", verifier["events"])
+    assert_or_record(
+        "moondream3", "image_tool_blind_verifier_flux", "verifier", verifier["events"]
+    )
 
     assert verifier["order"][0] == "response.created"
     assert verifier["order"][-1] == "done"
@@ -401,10 +449,14 @@ async def test_image_edit_tool_blind_verifier(client: Client):
         user=SHAPES_USER,
         required_prompt_terms=("red", "circle", "blue", "square"),
     )
-    assert_or_record("gemma4", "image_edit_tool_blind_verifier", "generator", generator["events"])
+    assert_or_record(
+        "gemma4", "image_edit_tool_blind_verifier", "generator", generator["events"]
+    )
 
-    source = await _generate_ideogram_image(client, prompt)
-    edited = await _edit_with_qwen_image_edit(client, source)
+    with buckshot_phase(1):
+        source = await _generate_ideogram_image(client, prompt)
+    with buckshot_phase(2):
+        edited = await _edit_with_qwen_image_edit(client, source)
     image = _image_part(edited)
 
     verifier_request = dict(
@@ -427,12 +479,15 @@ async def test_image_edit_tool_blind_verifier(client: Client):
         prefix_cache=False,
     )
     await render_prompt_blue(client, MOONDREAM3_MODEL, **verifier_request)
-    stream = await client.aresponses(
-        MOONDREAM3_MODEL, stream=True, stream_tokens=True, **verifier_request
-    )
-    verifier = await drain_stream(stream)
+    with buckshot_phase(3):
+        stream = await client.aresponses(
+            MOONDREAM3_MODEL, stream=True, stream_tokens=True, **verifier_request
+        )
+        verifier = await drain_stream(stream)
     print_usage_summary([generator, verifier])
-    assert_or_record("moondream3", "image_edit_tool_blind_verifier", "verifier", verifier["events"])
+    assert_or_record(
+        "moondream3", "image_edit_tool_blind_verifier", "verifier", verifier["events"]
+    )
 
     assert verifier["order"][0] == "response.created"
     assert verifier["order"][-1] == "done"
@@ -460,10 +515,17 @@ async def test_image_edit_tool_blind_verifier_flux(client: Client):
         user=SHAPES_USER,
         required_prompt_terms=("red", "circle", "blue", "square"),
     )
-    assert_or_record("gemma4", "image_edit_tool_blind_verifier_flux", "generator", generator["events"])
+    assert_or_record(
+        "gemma4",
+        "image_edit_tool_blind_verifier_flux",
+        "generator",
+        generator["events"],
+    )
 
-    source = await _generate_flux_image(client, prompt)
-    edited = await _edit_with_qwen_image_edit(client, source)
+    with buckshot_phase(1):
+        source = await _generate_flux_image(client, prompt)
+    with buckshot_phase(2):
+        edited = await _edit_with_qwen_image_edit(client, source)
     image = _image_part(edited)
 
     verifier_request = dict(
@@ -486,12 +548,18 @@ async def test_image_edit_tool_blind_verifier_flux(client: Client):
         prefix_cache=False,
     )
     await render_prompt_blue(client, MOONDREAM3_MODEL, **verifier_request)
-    stream = await client.aresponses(
-        MOONDREAM3_MODEL, stream=True, stream_tokens=True, **verifier_request
-    )
-    verifier = await drain_stream(stream)
+    with buckshot_phase(3):
+        stream = await client.aresponses(
+            MOONDREAM3_MODEL, stream=True, stream_tokens=True, **verifier_request
+        )
+        verifier = await drain_stream(stream)
     print_usage_summary([generator, verifier])
-    assert_or_record("moondream3", "image_edit_tool_blind_verifier_flux", "verifier", verifier["events"])
+    assert_or_record(
+        "moondream3",
+        "image_edit_tool_blind_verifier_flux",
+        "verifier",
+        verifier["events"],
+    )
 
     assert verifier["order"][0] == "response.created"
     assert verifier["order"][-1] == "done"

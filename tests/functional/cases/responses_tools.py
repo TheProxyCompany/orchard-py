@@ -1,10 +1,11 @@
 import json
 
-import httpx
 import pytest
 
 from tests.functional.cases._timeout import HTTP_TIMEOUT_S
 from tests.helpers import parse_sse_events
+from tests.local_http import local_async_client
+from tests.shared_owner import buckshot_phase
 
 pytestmark = pytest.mark.asyncio
 
@@ -52,7 +53,7 @@ async def test_responses_tool_call_non_streaming(live_server, text_model_id):
         "max_output_tokens": 128,
     }
 
-    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
+    async with local_async_client(timeout=HTTP_TIMEOUT_S) as client:
         response = await client.post(f"{live_server}/v1/responses", json=payload)
 
     assert response.status_code == 200
@@ -103,7 +104,7 @@ async def test_responses_tool_call_streaming(live_server, text_model_id):
         "stream": True,
     }
 
-    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
+    async with local_async_client(timeout=HTTP_TIMEOUT_S) as client:
         response = await client.post(
             f"{live_server}/v1/responses",
             json=payload,
@@ -174,7 +175,7 @@ async def test_responses_tool_result_continuation(live_server, text_model_id):
         "max_output_tokens": 128,
     }
 
-    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
+    async with local_async_client(timeout=HTTP_TIMEOUT_S) as client:
         resp1 = await client.post(f"{live_server}/v1/responses", json=payload_1)
 
     assert resp1.status_code == 200
@@ -219,8 +220,9 @@ async def test_responses_tool_result_continuation(live_server, text_model_id):
         "max_output_tokens": 128,
     }
 
-    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
-        resp2 = await client.post(f"{live_server}/v1/responses", json=payload_2)
+    with buckshot_phase(1):
+        async with local_async_client(timeout=HTTP_TIMEOUT_S) as client:
+            resp2 = await client.post(f"{live_server}/v1/responses", json=payload_2)
 
     assert resp2.status_code == 200
     data2 = resp2.json()

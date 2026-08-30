@@ -38,45 +38,120 @@ GET_WEATHER = _tool(
 )
 
 DISTRACTORS = [
-    _tool("get_time", "Get the current time in a location.",
-          {"location": {"type": "string"}}, ["location"]),
-    _tool("get_news", "Get the latest news headlines for a topic.",
-          {"topic": {"type": "string"}}, ["topic"]),
-    _tool("send_email", "Send an email to a recipient.",
-          {"to": {"type": "string"}, "subject": {"type": "string"}, "body": {"type": "string"}},
-          ["to", "subject", "body"]),
-    _tool("set_timer", "Set a countdown timer for a number of seconds.",
-          {"seconds": {"type": "integer"}}, ["seconds"]),
-    _tool("get_stock_price", "Get the current stock price for a ticker symbol.",
-          {"ticker": {"type": "string"}}, ["ticker"]),
-    _tool("translate_text", "Translate text into a target language.",
-          {"text": {"type": "string"}, "target_language": {"type": "string"}},
-          ["text", "target_language"]),
-    _tool("get_directions", "Get driving directions between two locations.",
-          {"origin": {"type": "string"}, "destination": {"type": "string"}},
-          ["origin", "destination"]),
-    _tool("create_calendar_event", "Create a calendar event.",
-          {"title": {"type": "string"}, "start": {"type": "string"}}, ["title", "start"]),
-    _tool("get_calendar_events", "List calendar events for a date.",
-          {"date": {"type": "string"}}, ["date"]),
-    _tool("play_music", "Play a song or playlist.",
-          {"query": {"type": "string"}}, ["query"]),
-    _tool("set_reminder", "Set a reminder at a given time.",
-          {"text": {"type": "string"}, "time": {"type": "string"}}, ["text", "time"]),
-    _tool("get_air_quality", "Get the air quality index for a location.",
-          {"location": {"type": "string"}}, ["location"]),
-    _tool("search_web", "Search the web for a query.",
-          {"query": {"type": "string"}}, ["query"]),
-    _tool("convert_currency", "Convert an amount between currencies.",
-          {"amount": {"type": "number"}, "from": {"type": "string"}, "to": {"type": "string"}},
-          ["amount", "from", "to"]),
-    _tool("get_sports_score", "Get the latest score for a team.",
-          {"team": {"type": "string"}}, ["team"]),
-    _tool("book_flight", "Book a flight between two cities.",
-          {"origin": {"type": "string"}, "destination": {"type": "string"}, "date": {"type": "string"}},
-          ["origin", "destination", "date"]),
-    _tool("get_traffic", "Get current traffic conditions for a location.",
-          {"location": {"type": "string"}}, ["location"]),
+    _tool(
+        "get_time",
+        "Get the current time in a location.",
+        {"location": {"type": "string"}},
+        ["location"],
+    ),
+    _tool(
+        "get_news",
+        "Get the latest news headlines for a topic.",
+        {"topic": {"type": "string"}},
+        ["topic"],
+    ),
+    _tool(
+        "send_email",
+        "Send an email to a recipient.",
+        {
+            "to": {"type": "string"},
+            "subject": {"type": "string"},
+            "body": {"type": "string"},
+        },
+        ["to", "subject", "body"],
+    ),
+    _tool(
+        "set_timer",
+        "Set a countdown timer for a number of seconds.",
+        {"seconds": {"type": "integer"}},
+        ["seconds"],
+    ),
+    _tool(
+        "get_stock_price",
+        "Get the current stock price for a ticker symbol.",
+        {"ticker": {"type": "string"}},
+        ["ticker"],
+    ),
+    _tool(
+        "translate_text",
+        "Translate text into a target language.",
+        {"text": {"type": "string"}, "target_language": {"type": "string"}},
+        ["text", "target_language"],
+    ),
+    _tool(
+        "get_directions",
+        "Get driving directions between two locations.",
+        {"origin": {"type": "string"}, "destination": {"type": "string"}},
+        ["origin", "destination"],
+    ),
+    _tool(
+        "create_calendar_event",
+        "Create a calendar event.",
+        {"title": {"type": "string"}, "start": {"type": "string"}},
+        ["title", "start"],
+    ),
+    _tool(
+        "get_calendar_events",
+        "List calendar events for a date.",
+        {"date": {"type": "string"}},
+        ["date"],
+    ),
+    _tool(
+        "play_music",
+        "Play a song or playlist.",
+        {"query": {"type": "string"}},
+        ["query"],
+    ),
+    _tool(
+        "set_reminder",
+        "Set a reminder at a given time.",
+        {"text": {"type": "string"}, "time": {"type": "string"}},
+        ["text", "time"],
+    ),
+    _tool(
+        "get_air_quality",
+        "Get the air quality index for a location.",
+        {"location": {"type": "string"}},
+        ["location"],
+    ),
+    _tool(
+        "search_web",
+        "Search the web for a query.",
+        {"query": {"type": "string"}},
+        ["query"],
+    ),
+    _tool(
+        "convert_currency",
+        "Convert an amount between currencies.",
+        {
+            "amount": {"type": "number"},
+            "from": {"type": "string"},
+            "to": {"type": "string"},
+        },
+        ["amount", "from", "to"],
+    ),
+    _tool(
+        "get_sports_score",
+        "Get the latest score for a team.",
+        {"team": {"type": "string"}},
+        ["team"],
+    ),
+    _tool(
+        "book_flight",
+        "Book a flight between two cities.",
+        {
+            "origin": {"type": "string"},
+            "destination": {"type": "string"},
+            "date": {"type": "string"},
+        },
+        ["origin", "destination", "date"],
+    ),
+    _tool(
+        "get_traffic",
+        "Get current traffic conditions for a location.",
+        {"location": {"type": "string"}},
+        ["location"],
+    ),
 ]
 
 TOOLS = [GET_WEATHER, *DISTRACTORS]
@@ -96,8 +171,7 @@ async def test_tool_selection(client: Client, model: Model):
     get_traffic, ... — several also take a `location`), the model picks
     get_weather with arguments {"location": "San Francisco"}, deterministically.
     """
-    if not model.tools:
-        return
+    assert model.tools, "tool selection was admitted for a model without tool support"
     reasoning = {"effort": "medium"} if model.thinking else None
     print(
         f"\n\033[1;33m━━━ {model.template_type} · tool selection · 1-of-18 ━━━\033[0m",
@@ -106,7 +180,11 @@ async def test_tool_selection(client: Client, model: Model):
 
     conversation = [
         {"type": "message", "role": "system", "content": SYSTEM},
-        {"type": "message", "role": "user", "content": "What's the weather in San Francisco?"},
+        {
+            "type": "message",
+            "role": "user",
+            "content": "What's the weather in San Francisco?",
+        },
     ]
 
     # One turn: forced tool call; the model must select get_weather.
@@ -138,28 +216,40 @@ async def test_tool_selection(client: Client, model: Model):
         assert reasoning_blocks == 1, "turn1: expected at most one reasoning block"
         assert turn1["counts"]["response.reasoning.done"] == 1
         assert turn1["counts"]["response.reasoning.delta"] >= 1
-        assert turn1["reasoning"].strip() == turn1["reasoning_done"], "turn1: reasoning deltas != reasoning.done"
+        assert turn1["reasoning"].strip() == turn1["reasoning_done"], (
+            "turn1: reasoning deltas != reasoning.done"
+        )
     else:
         assert turn1["counts"].get("response.reasoning.delta", 0) == 0
 
     # a forced tool turn produces no assistant message text
-    assert "response.output_text.delta" not in turn1["counts"], "turn1: leaked message text on a tool turn"
+    assert "response.output_text.delta" not in turn1["counts"], (
+        "turn1: leaked message text on a tool turn"
+    )
 
     # Exactly one tool call: not zero, not a fan-out across several tools.
-    assert turn1["added"]["function_call"] == 1, "turn1: expected exactly one function_call opened"
-    assert turn1["counts"]["response.function_call_arguments.done"] == 1, "turn1: expected one arguments.done"
+    assert turn1["added"]["function_call"] == 1, (
+        "turn1: expected exactly one function_call opened"
+    )
+    assert turn1["counts"]["response.function_call_arguments.done"] == 1, (
+        "turn1: expected one arguments.done"
+    )
     assert len(turn1["function_calls"]) == 1
     call = turn1["function_calls"][0]
 
     # The call opens with name + call_id known and empty arguments, streams args,
     # then closes completed — same lifecycle the desktop UI renders incrementally.
-    opened = [item for item in turn1["items_added"] if isinstance(item, OutputFunctionCall)]
+    opened = [
+        item for item in turn1["items_added"] if isinstance(item, OutputFunctionCall)
+    ]
     assert len(opened) == 1, "turn1: expected one function_call opened"
     assert opened[0].name == "get_weather", (
         f"{model.template_type}: selected the wrong tool out of 18: {opened[0].name!r}"
     )
     assert opened[0].call_id == call.call_id
-    assert opened[0].arguments == "", "turn1: function_call must open with empty arguments"
+    assert opened[0].arguments == "", (
+        "turn1: function_call must open with empty arguments"
+    )
     assert opened[0].status == OutputStatus.IN_PROGRESS
 
     # The selection: get_weather, not any of the 17 distractors.
@@ -169,7 +259,9 @@ async def test_tool_selection(client: Client, model: Model):
     )
     assert call.name not in distractor_names
     assert call.status == OutputStatus.COMPLETED
-    assert json.loads(call.arguments) == {"location": "San Francisco"}, f"ACTUAL-ARGS: {call.arguments!r}"
+    assert json.loads(call.arguments) == {"location": "San Francisco"}, (
+        f"ACTUAL-ARGS: {call.arguments!r}"
+    )
 
     # Per-argument field_path tagging: value-only, format-agnostic.
     assert turn1["field_args"] == {"location": "San Francisco"}, (

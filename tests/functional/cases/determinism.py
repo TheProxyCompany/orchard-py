@@ -1,7 +1,8 @@
-import httpx
 import pytest
 
 from tests.functional.cases._timeout import HTTP_TIMEOUT_S
+from tests.local_http import local_async_client
+from tests.shared_owner import buckshot_phase
 
 pytestmark = pytest.mark.asyncio
 
@@ -28,7 +29,7 @@ async def test_multi_candidate_determinism(live_server, any_model_id, batch_size
         "n": batch_size,
     }
 
-    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
+    async with local_async_client(timeout=HTTP_TIMEOUT_S) as client:
         response = await client.post(
             f"{server_url}/v1/chat/completions", json=request_payload
         )
@@ -81,7 +82,7 @@ async def test_sequential_request_determinism(live_server, any_model_id):
     }
 
     async def make_request():
-        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
+        async with local_async_client(timeout=HTTP_TIMEOUT_S) as client:
             response = await client.post(
                 f"{server_url}/v1/chat/completions", json=request_payload
             )
@@ -91,7 +92,8 @@ async def test_sequential_request_determinism(live_server, any_model_id):
     valid_responses = 0
     num_requests = 3
     for i in range(num_requests):
-        response = await make_request()
+        with buckshot_phase(i):
+            response = await make_request()
         assert response.status_code == 200
         response_data = response.json()
 

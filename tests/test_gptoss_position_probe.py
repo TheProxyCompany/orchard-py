@@ -10,8 +10,9 @@ Opt-in: GPTOSS_PROBE=1 python -m pytest tests/test_gptoss_position_probe.py -q -
 import collections
 import os
 
-import httpx
 import pytest
+
+from tests.local_http import local_async_client
 
 pytestmark = [
     pytest.mark.asyncio,
@@ -24,7 +25,7 @@ MODEL_ID = "openai/gpt-oss-20b"
 async def test_position_distribution(live_server):
     prefix = open("/tmp/gptoss_prefix.txt").read()
     counts = collections.Counter()
-    async with httpx.AsyncClient(timeout=180.0) as client:
+    async with local_async_client(timeout=180.0) as client:
         for _ in range(24):
             r = await client.post(
                 f"{live_server}/v1/completions",

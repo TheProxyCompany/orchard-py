@@ -74,12 +74,13 @@ MODELS = [
     ),  # MXFP4 expert weights
 ]
 
-# Modal tool models the pipeline suite activates. Hydrate them one at a
-# time on top of the resident chat matrix: concurrent hydration spikes
-# wired memory past the Metal limit (silent engine abort / failed requests).
+# Modal tool models the pipeline suite activates. Buckshot submits this full
+# set in one load request so model resolution, hydration, and activation are
+# exercised concurrently on top of the resident chat matrix.
 PIPELINE_TOOL_MODELS = [
     "ideogram-ai/ideogram-4-fp8",
     "black-forest-labs/FLUX.2-klein-4B",
+    "Qwen/Qwen-Image-Edit",
     "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice",
     "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice",
     "mlx-community/parakeet-tdt-0.6b-v3",

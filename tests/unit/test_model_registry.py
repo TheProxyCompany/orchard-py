@@ -114,6 +114,48 @@ def test_handle_model_loaded_updates_minimum_memory_bytes():
 
 
 @pytest.mark.asyncio
+async def test_accepted_reply_after_model_loaded_event_keeps_entry_ready(monkeypatch):
+    ctx = GlobalContext()
+    ipc_state = IPCState(ctx)
+    ipc_state.management_socket = _FakeManagementSocket({"status": "accepted"})
+    registry = ModelRegistry(ipc_state)
+    canonical_id = "ready/before-reply"
+    loop = asyncio.get_running_loop()
+    waiter = loop.create_future()
+    info = ModelInfo(
+        model_id=canonical_id,
+        model_path="/tmp/ready-before-reply",
+        formatter=object(),
+    )
+    registry._entries[canonical_id] = ModelEntry(
+        state=ModelLoadState.ACTIVATING,
+        info=info,
+        activation_future=waiter,
+        activation_loop=loop,
+    )
+
+    async def reply_after_event(socket, model_id: str) -> bytes:
+        del socket
+        registry.handle_model_loaded(
+            {"event": "model_loaded", "model_id": model_id}
+        )
+        return json.dumps({"status": "accepted"}).encode("utf-8")
+
+    monkeypatch.setattr(registry, "_recv_with_engine_liveness", reply_after_event)
+
+    await registry._send_load_model_command(
+        requested_id=canonical_id,
+        canonical_id=canonical_id,
+        info=info,
+    )
+    await asyncio.sleep(0)
+
+    assert registry._entries[canonical_id].state == ModelLoadState.READY
+    assert waiter.done()
+    assert waiter.exception() is None
+
+
+@pytest.mark.asyncio
 async def test_schedule_model_uses_ready_alias_before_local_source_inspection(tmp_path):
     ctx = GlobalContext()
     ipc_state = IPCState(ctx)
@@ -177,6 +219,38 @@ async def test_schedule_model_builds_local_formatters_concurrently(
     )
 
     assert len(started) == 2
+
+
+@pytest.mark.asyncio
+async def test_schedule_model_runs_blocking_resolver_off_event_loop(
+    monkeypatch, tmp_path
+):
+    ctx = GlobalContext()
+    ipc_state = IPCState(ctx)
+    registry = ModelRegistry(ipc_state)
+    event_loop_thread = threading.get_ident()
+    resolver_thread: int | None = None
+    model_path = tmp_path / "remote-model"
+    model_path.mkdir()
+
+    def fake_resolve(model_id: str) -> ResolvedModel:
+        nonlocal resolver_thread
+        resolver_thread = threading.get_ident()
+        return ResolvedModel(
+            canonical_id=model_id,
+            model_path=model_path,
+            source="hf_cache",
+        )
+
+    monkeypatch.setattr(registry._resolver, "resolve", fake_resolve)
+    monkeypatch.setattr(model_registry_module, "ChatFormatter", lambda _: object())
+
+    state, resolved_id = await registry.schedule_model("remote/model")
+
+    assert state == ModelLoadState.LOADING
+    assert resolved_id == "remote/model"
+    assert resolver_thread is not None
+    assert resolver_thread != event_loop_thread
 
 
 @pytest.mark.asyncio

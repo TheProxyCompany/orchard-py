@@ -14,6 +14,9 @@ import pytest
 import pytest_asyncio
 import uvicorn
 
+from tests.local_http import local_async_client
+from tests.shared_owner import shared_owner_enabled
+
 # Tests must never operate in the default engine namespace: that namespace
 # belongs to whatever long-lived engine this machine runs (Proxy.app's Grand
 # Central engine in production), and the pre-test cleanup below force-stops
@@ -24,11 +27,11 @@ import uvicorn
 if "ORCHARD_CACHE_ROOT" not in os.environ:
     os.environ["ORCHARD_CACHE_ROOT"] = tempfile.mkdtemp(prefix="orchard-pytest-")
 
-from models import MODELS, Model
-
 from orchard.clients.client import Client
 from orchard.engine.inference_engine import InferenceEngine
 from orchard.server.app import create_app
+
+from tests.models import MODELS, PIPELINE_TOOL_MODELS, Model
 
 logger = logging.getLogger(__name__)
 dotenv.load_dotenv()
@@ -62,23 +65,28 @@ SERVER_STARTUP_TIMEOUT_SECONDS = float(
     os.getenv("ORCHARD_TEST_SERVER_STARTUP_TIMEOUT_SECONDS", "120.0")
 )
 
-# Ensure we start with a clean slate in case a prior run crashed and left the engine up.
-try:
-    InferenceEngine.shutdown(timeout=30.0)
-    logger.info("Pre-test engine cleanup complete.")
-except RuntimeError as exc:
-    raise RuntimeError(
-        "Failed to stop existing engine before starting tests; manual cleanup required."
-    ) from exc
+# A combined Buckshot root owns the isolated namespace and keeps PIE registered
+# while both clients run. Standalone suites retain their defensive cleanup.
+if not shared_owner_enabled():
+    try:
+        InferenceEngine.shutdown(timeout=30.0)
+        logger.info("Pre-test engine cleanup complete.")
+    except RuntimeError as exc:
+        raise RuntimeError(
+            "Failed to stop existing engine before starting tests; manual cleanup required."
+        ) from exc
 
 
 @pytest.fixture(scope="session")
-def engine() -> Generator[InferenceEngine, None, None]:
+def engine(request: pytest.FixtureRequest) -> Generator[InferenceEngine, None, None]:
     """
     A session-scoped fixture that starts the PIE service using InferenceEngine,
     preloads models, and ensures clean shutdown.
     """
     logger.info("Setting up InferenceEngine for test session.")
+    load_models = ALL_MODELS
+    if any(item.get_closest_marker("buckshot") for item in request.session.items):
+        load_models = [*ALL_MODELS, *PIPELINE_TOOL_MODELS]
 
     engine_instance: InferenceEngine | None = None
     try:
@@ -86,7 +94,7 @@ def engine() -> Generator[InferenceEngine, None, None]:
             client_log_file=CLIENT_LOG_PATH,
             engine_log_file=ENGINE_LOG_PATH,
             startup_timeout=120.0,
-            load_models=ALL_MODELS,
+            load_models=load_models,
         )
         logger.info("Local Engine is ready. Yielding engine instance.")
         yield engine_instance
@@ -153,7 +161,7 @@ async def live_server(engine: InferenceEngine):
     def run_server() -> None:
         try:
             asyncio.run(server.serve())
-        except BaseException as exc:
+        except (OSError, RuntimeError, SystemExit) as exc:
             server_errors.append(exc)
 
     server_thread = threading.Thread(
@@ -164,7 +172,7 @@ async def live_server(engine: InferenceEngine):
     server_thread.start()
 
     try:
-        async with httpx.AsyncClient() as client:
+        async with local_async_client() as client:
             for _ in range(int(SERVER_STARTUP_TIMEOUT_SECONDS / 0.5)):
                 if not server_thread.is_alive():
                     detail = f": {server_errors[0]!r}" if server_errors else ""

@@ -48,8 +48,7 @@ async def test_reason_then_structured(client: Client, model: Model):
     Targets the Gemma-harmony / PSE non-termination class — the structured
     equality is exact, so a failing golden means the engine is wrong.
     """
-    if not model.thinking:
-        return
+    assert model.thinking, "reasoning case was admitted for a non-thinking model"
     reasoning = {"effort": "medium"}
     print(
         f"\n\033[1;33m━━━ {model.template_type} · reason → structured · single-turn ━━━\033[0m",
@@ -82,7 +81,9 @@ async def test_reason_then_structured(client: Client, model: Model):
     )
     turn1 = await drain_stream(stream)
     print_usage_summary([turn1])
-    assert_or_record(model.template_type, "reason_then_structured", "turn1", turn1["events"])
+    assert_or_record(
+        model.template_type, "reason_then_structured", "turn1", turn1["events"]
+    )
 
     assert turn1["order"][0] == "response.created"
     assert turn1["order"][-1] == "done"
@@ -92,19 +93,35 @@ async def test_reason_then_structured(client: Client, model: Model):
 
     # Exactly one reasoning block that terminates cleanly: deltas accumulate to
     # the .done text, and no control/template token leaks into the reasoning.
-    assert turn1["added"]["reasoning"] == 1, "turn1: expected exactly one reasoning block"
-    assert turn1["counts"]["response.reasoning.done"] == 1, "turn1: reasoning did not terminate cleanly"
+    assert turn1["added"]["reasoning"] == 1, (
+        "turn1: expected exactly one reasoning block"
+    )
+    assert turn1["counts"]["response.reasoning.done"] == 1, (
+        "turn1: reasoning did not terminate cleanly"
+    )
     assert turn1["counts"]["response.reasoning.delta"] >= 1
-    assert turn1["reasoning"].strip() == turn1["reasoning_done"], "turn1: reasoning deltas != reasoning.done"
-    assert "<|" not in turn1["reasoning"] and "</" not in turn1["reasoning"], "turn1: control leak in reasoning"
+    assert turn1["reasoning"].strip() == turn1["reasoning_done"], (
+        "turn1: reasoning deltas != reasoning.done"
+    )
+    assert "<|" not in turn1["reasoning"] and "</" not in turn1["reasoning"], (
+        "turn1: control leak in reasoning"
+    )
 
     # The structured answer comes back as one assistant message, no tool call.
-    assert turn1["counts"].get("response.function_call_arguments.done", 0) == 0, "turn1: unexpected tool call"
-    assert turn1["counts"]["response.output_text.done"] == 1, "turn1: expected one message"
-    assert turn1["content"] == turn1["content_done"], "turn1: content deltas != output_text.done"
+    assert turn1["counts"].get("response.function_call_arguments.done", 0) == 0, (
+        "turn1: unexpected tool call"
+    )
+    assert turn1["counts"]["response.output_text.done"] == 1, (
+        "turn1: expected one message"
+    )
+    assert turn1["content"] == turn1["content_done"], (
+        "turn1: content deltas != output_text.done"
+    )
 
     # message lifecycle the UI streams: opens empty, fills via deltas, closes completed.
-    msg_open = [item for item in turn1["items_added"] if isinstance(item, OutputMessage)]
+    msg_open = [
+        item for item in turn1["items_added"] if isinstance(item, OutputMessage)
+    ]
     msg_done = [item for item in turn1["items_done"] if isinstance(item, OutputMessage)]
     assert len(msg_open) == 1 and len(msg_done) == 1, "turn1: expected one message item"
     assert msg_open[0].role == "assistant"

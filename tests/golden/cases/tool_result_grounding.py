@@ -1,9 +1,6 @@
 import json
 
 import pytest
-from tests.golden.golden_io import assert_or_record
-from tests.helpers import drain_stream, print_usage_summary, render_prompt_blue
-from tests.models import Model
 
 from orchard.clients.client import Client
 from orchard.server.models.responses import (
@@ -11,6 +8,10 @@ from orchard.server.models.responses import (
     OutputMessage,
     OutputStatus,
 )
+from tests.golden.golden_io import assert_or_record
+from tests.helpers import drain_stream, print_usage_summary, render_prompt_blue
+from tests.models import Model
+from tests.shared_owner import buckshot_phase
 
 pytestmark = pytest.mark.asyncio
 
@@ -47,8 +48,9 @@ async def test_tool_result_grounding(client: Client, model: Model):
     not on its San Francisco weather prior (65°F, fog). A model that reports
     the prior is hallucinating over the tool, which this test fails.
     """
-    if not model.tools:
-        return
+    assert model.tools, (
+        "tool-result grounding was admitted for a model without tool support"
+    )
     reasoning = {"effort": "medium"} if model.thinking else None
     print(
         f"\n\033[1;33m━━━ {model.template_type} · tool-result grounding ━━━\033[0m",
@@ -57,7 +59,11 @@ async def test_tool_result_grounding(client: Client, model: Model):
 
     conversation = [
         {"type": "message", "role": "system", "content": SYSTEM},
-        {"type": "message", "role": "user", "content": "What's the weather in San Francisco?"},
+        {
+            "type": "message",
+            "role": "user",
+            "content": "What's the weather in San Francisco?",
+        },
     ]
 
     # Turn 1: reason, then call get_weather(location="San Francisco").
@@ -75,7 +81,9 @@ async def test_tool_result_grounding(client: Client, model: Model):
         model.checkpoint, stream=True, stream_tokens=True, **turn1_request
     )
     turn1 = await drain_stream(stream)
-    assert_or_record(model.template_type, "tool_result_grounding", "turn1", turn1["events"])
+    assert_or_record(
+        model.template_type, "tool_result_grounding", "turn1", turn1["events"]
+    )
 
     assert turn1["order"][0] == "response.created"
     assert turn1["order"][-1] == "done"
@@ -88,29 +96,43 @@ async def test_tool_result_grounding(client: Client, model: Model):
         assert reasoning_blocks == 1, "turn1: expected at most one reasoning block"
         assert turn1["counts"]["response.reasoning.done"] == 1
         assert turn1["counts"]["response.reasoning.delta"] >= 1
-        assert turn1["reasoning"].strip() == turn1["reasoning_done"], "turn1: reasoning deltas != reasoning.done"
+        assert turn1["reasoning"].strip() == turn1["reasoning_done"], (
+            "turn1: reasoning deltas != reasoning.done"
+        )
     else:
         assert turn1["counts"].get("response.reasoning.delta", 0) == 0
 
     # a tool turn produces no assistant message text
-    assert "response.output_text.delta" not in turn1["counts"], "turn1: leaked message text on a tool turn"
+    assert "response.output_text.delta" not in turn1["counts"], (
+        "turn1: leaked message text on a tool turn"
+    )
 
-    assert turn1["added"]["function_call"] == 1, "turn1: expected exactly one function_call opened"
-    assert turn1["counts"]["response.function_call_arguments.done"] == 1, "turn1: expected one arguments.done"
+    assert turn1["added"]["function_call"] == 1, (
+        "turn1: expected exactly one function_call opened"
+    )
+    assert turn1["counts"]["response.function_call_arguments.done"] == 1, (
+        "turn1: expected one arguments.done"
+    )
     assert len(turn1["function_calls"]) == 1
     call = turn1["function_calls"][0]
 
     # Pin the incremental tool-call lifecycle the desktop UI binds to: name +
     # call_id known at OPEN (args empty), full normalized args at DONE.
-    opened = [item for item in turn1["items_added"] if isinstance(item, OutputFunctionCall)]
+    opened = [
+        item for item in turn1["items_added"] if isinstance(item, OutputFunctionCall)
+    ]
     assert len(opened) == 1, "turn1: expected one function_call opened"
     assert opened[0].name == "get_weather"
     assert opened[0].call_id == call.call_id
-    assert opened[0].arguments == "", "turn1: function_call must open with empty arguments"
+    assert opened[0].arguments == "", (
+        "turn1: function_call must open with empty arguments"
+    )
     assert opened[0].status == OutputStatus.IN_PROGRESS
     assert call.name == "get_weather"
     assert call.status == OutputStatus.COMPLETED
-    assert json.loads(call.arguments) == {"location": "San Francisco"}, f"ACTUAL-ARGS: {call.arguments!r}"
+    assert json.loads(call.arguments) == {"location": "San Francisco"}, (
+        f"ACTUAL-ARGS: {call.arguments!r}"
+    )
 
     # Per-argument field_path tagging: value chunks carry the argument name,
     # structural boilerplate stays untagged. Value-only, format-agnostic.
@@ -121,7 +143,12 @@ async def test_tool_result_grounding(client: Client, model: Model):
 
     # Turn 2: feed the SURPRISING tool result back; the model must answer from it.
     conversation += [
-        {"type": "function_call", "call_id": call.call_id, "name": call.name, "arguments": turn1["args_done"]},
+        {
+            "type": "function_call",
+            "call_id": call.call_id,
+            "name": call.name,
+            "arguments": turn1["args_done"],
+        },
         {
             "type": "function_call_output",
             "call_id": call.call_id,
@@ -138,15 +165,16 @@ async def test_tool_result_grounding(client: Client, model: Model):
         prefix_cache=False,
     )
     gen1 = turn1["generated"] + (turn1["stop_token"] or "")
-    await render_prompt_blue(
-        client, model.checkpoint, prev_gen=gen1, **turn2_request
-    )
-    stream = await client.aresponses(
-        model.checkpoint, stream=True, stream_tokens=True, **turn2_request
-    )
-    turn2 = await drain_stream(stream)
+    await render_prompt_blue(client, model.checkpoint, prev_gen=gen1, **turn2_request)
+    with buckshot_phase(1):
+        stream = await client.aresponses(
+            model.checkpoint, stream=True, stream_tokens=True, **turn2_request
+        )
+        turn2 = await drain_stream(stream)
     print_usage_summary([turn1, turn2])
-    assert_or_record(model.template_type, "tool_result_grounding", "turn2", turn2["events"])
+    assert_or_record(
+        model.template_type, "tool_result_grounding", "turn2", turn2["events"]
+    )
 
     assert turn2["order"][0] == "response.created"
     assert turn2["order"][-1] == "done"
@@ -161,17 +189,29 @@ async def test_tool_result_grounding(client: Client, model: Model):
         assert reasoning_blocks == 1, "turn2: expected exactly one reasoning block"
         assert turn2["counts"]["response.reasoning.done"] == 1
         assert turn2["counts"]["response.reasoning.delta"] >= 1
-        assert turn2["reasoning"].strip() == turn2["reasoning_done"], "turn2: reasoning deltas != reasoning.done"
-        assert "<|" not in turn2["reasoning"] and "</" not in turn2["reasoning"], "turn2: control leak in reasoning"
+        assert turn2["reasoning"].strip() == turn2["reasoning_done"], (
+            "turn2: reasoning deltas != reasoning.done"
+        )
+        assert "<|" not in turn2["reasoning"] and "</" not in turn2["reasoning"], (
+            "turn2: control leak in reasoning"
+        )
     else:
         assert turn2["counts"].get("response.reasoning.delta", 0) == 0
 
-    assert turn2["counts"].get("response.function_call_arguments.done", 0) == 0, "turn2: unexpected tool call"
-    assert turn2["counts"]["response.output_text.done"] == 1, "turn2: expected one message"
-    assert turn2["content"] == turn2["content_done"], "turn2: content deltas != output_text.done"
+    assert turn2["counts"].get("response.function_call_arguments.done", 0) == 0, (
+        "turn2: unexpected tool call"
+    )
+    assert turn2["counts"]["response.output_text.done"] == 1, (
+        "turn2: expected one message"
+    )
+    assert turn2["content"] == turn2["content_done"], (
+        "turn2: content deltas != output_text.done"
+    )
 
     # message lifecycle the UI streams: opens empty, fills via deltas, closes completed.
-    msg_open = [item for item in turn2["items_added"] if isinstance(item, OutputMessage)]
+    msg_open = [
+        item for item in turn2["items_added"] if isinstance(item, OutputMessage)
+    ]
     msg_done = [item for item in turn2["items_done"] if isinstance(item, OutputMessage)]
     assert len(msg_open) == 1 and len(msg_done) == 1, "turn2: expected one message item"
     assert msg_open[0].role == "assistant"
@@ -182,8 +222,12 @@ async def test_tool_result_grounding(client: Client, model: Model):
     # The grounding assertion: the answer must carry the injected, surprising
     # values (9 / snow) and must NOT fall back to the SF-weather prior (65 / fog).
     answer = turn2["content_done"].lower()
-    assert "9" in answer, f"{model.template_type}: answer dropped the injected temperature: {answer!r}"
-    assert "snow" in answer, f"{model.template_type}: answer dropped the injected condition: {answer!r}"
+    assert "9" in answer, (
+        f"{model.template_type}: answer dropped the injected temperature: {answer!r}"
+    )
+    assert "snow" in answer, (
+        f"{model.template_type}: answer dropped the injected condition: {answer!r}"
+    )
     for prior in HALLUCINATED:
         assert prior not in answer, (
             f"{model.template_type}: answer leaked the hallucinated SF prior "

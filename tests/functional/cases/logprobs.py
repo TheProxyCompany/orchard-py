@@ -1,7 +1,7 @@
-import httpx
 import pytest
 
 from tests.functional.cases._timeout import HTTP_TIMEOUT_S
+from tests.local_http import local_async_client
 
 pytestmark = pytest.mark.asyncio
 
@@ -23,7 +23,7 @@ async def test_chat_completion_with_logprobs(live_server, text_model_id):
         "stream": False,
     }
 
-    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
+    async with local_async_client(timeout=HTTP_TIMEOUT_S) as client:
         response = await client.post(
             f"{server_url}/v1/chat/completions", json=request_payload
         )
@@ -89,7 +89,7 @@ async def test_chat_completion_without_logprobs(live_server, text_model_id):
         "stream": False,
     }
 
-    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
+    async with local_async_client(timeout=HTTP_TIMEOUT_S) as client:
         response = await client.post(
             f"{server_url}/v1/chat/completions", json=request_payload
         )
@@ -119,7 +119,7 @@ async def test_chat_completion_logprobs_streaming(live_server, text_model_id):
     }
 
     chunks = []
-    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
+    async with local_async_client(timeout=HTTP_TIMEOUT_S) as client:
         async with client.stream(
             "POST", f"{server_url}/v1/chat/completions", json=request_payload
         ) as response:

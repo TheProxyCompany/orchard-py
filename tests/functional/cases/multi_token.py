@@ -1,9 +1,9 @@
 import json
 
-import httpx
 import pytest
 
 from tests.functional.cases._timeout import HTTP_TIMEOUT_S
+from tests.local_http import local_async_client
 
 pytestmark = pytest.mark.asyncio
 
@@ -25,7 +25,7 @@ async def test_chat_completion_multi_token_non_streaming(live_server, text_model
         "stream": False,
     }
 
-    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
+    async with local_async_client(timeout=HTTP_TIMEOUT_S) as client:
         response = await client.post(
             f"{server_url}/v1/chat/completions", json=request_payload
         )
@@ -100,7 +100,7 @@ async def test_chat_completion_multi_token_streaming(live_server, text_model_id)
     full_content = ""
     finish_reason = None
 
-    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
+    async with local_async_client(timeout=HTTP_TIMEOUT_S) as client:
         async with client.stream(
             "POST",
             f"{server_url}/v1/chat/completions",

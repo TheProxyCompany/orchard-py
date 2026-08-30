@@ -70,6 +70,118 @@ def test_resolve_downloads_when_cached_snapshot_is_missing_a_shard(
     assert resolved.model_path == downloaded.resolve()
 
 
+def test_resolve_downloads_when_unindexed_numbered_shards_are_incomplete(
+    monkeypatch, tmp_path: Path
+) -> None:
+    repo_id = "moondream/moondream3-preview"
+    cached = tmp_path / "cached"
+    downloaded = tmp_path / "downloaded"
+    _write_common_model_files(cached, repo_id=repo_id)
+    _write_common_model_files(downloaded, repo_id=repo_id)
+
+    (cached / "model-00001-of-00004.safetensors").write_bytes(b"cached-shard")
+    for index in range(1, 5):
+        (downloaded / f"model-{index:05d}-of-00004.safetensors").write_bytes(
+            f"shard-{index}".encode()
+        )
+
+    calls: list[bool] = []
+
+    def fake_snapshot_download(
+        requested_repo_id: str, *, local_files_only: bool, allow_patterns: list[str]
+    ) -> str:
+        assert requested_repo_id == repo_id
+        calls.append(local_files_only)
+        return str(cached if local_files_only else downloaded)
+
+    monkeypatch.setattr(
+        "orchard.app.model_resolver.snapshot_download", fake_snapshot_download
+    )
+
+    resolved = ModelResolver().resolve(repo_id)
+
+    assert calls == [True, False]
+    assert resolved.source == "hf_hub"
+    assert resolved.model_path == downloaded.resolve()
+
+
+def test_resolve_accepts_zero_based_numbered_shards(
+    monkeypatch, tmp_path: Path
+) -> None:
+    repo_id = "openai/gpt-oss-20b"
+    cached = tmp_path / "cached"
+    _write_common_model_files(cached, repo_id=repo_id)
+    index_payload = {
+        "weight_map": {
+            f"model.layers.{index}.weight": f"model-{index:05d}-of-00002.safetensors"
+            for index in range(3)
+        }
+    }
+    (cached / "model.safetensors.index.json").write_text(
+        json.dumps(index_payload), encoding="utf-8"
+    )
+    for index in range(3):
+        (cached / f"model-{index:05d}-of-00002.safetensors").write_bytes(
+            f"shard-{index}".encode()
+        )
+
+    calls: list[bool] = []
+
+    def fake_snapshot_download(
+        requested_repo_id: str, *, local_files_only: bool, allow_patterns: list[str]
+    ) -> str:
+        assert requested_repo_id == repo_id
+        calls.append(local_files_only)
+        return str(cached)
+
+    monkeypatch.setattr(
+        "orchard.app.model_resolver.snapshot_download", fake_snapshot_download
+    )
+
+    resolved = ModelResolver().resolve(repo_id)
+
+    assert calls == [True]
+    assert resolved.source == "hf_cache"
+    assert resolved.model_path == cached.resolve()
+
+
+def test_resolve_downloads_when_zero_based_shards_have_a_gap(
+    monkeypatch, tmp_path: Path
+) -> None:
+    repo_id = "openai/gpt-oss-20b"
+    cached = tmp_path / "cached"
+    downloaded = tmp_path / "downloaded"
+    _write_common_model_files(cached, repo_id=repo_id)
+    _write_common_model_files(downloaded, repo_id=repo_id)
+    for index in (0, 2):
+        (cached / f"model-{index:05d}-of-00002.safetensors").write_bytes(
+            f"cached-shard-{index}".encode()
+        )
+    for index in range(3):
+        (downloaded / f"model-{index:05d}-of-00002.safetensors").write_bytes(
+            f"downloaded-shard-{index}".encode()
+        )
+
+    calls: list[bool] = []
+
+    def fake_snapshot_download(
+        requested_repo_id: str, *, local_files_only: bool, allow_patterns: list[str]
+    ) -> str:
+        assert requested_repo_id == repo_id
+        calls.append(local_files_only)
+        return str(cached if local_files_only else downloaded)
+
+    monkeypatch.setattr(
+        "orchard.app.model_resolver.snapshot_download", fake_snapshot_download
+    )
+
+    resolved = ModelResolver().resolve(repo_id)
+
+    assert calls == [True, False]
+    assert resolved.source == "hf_hub"
+    assert resolved.model_path == downloaded.resolve()
+
+
 def test_resolve_downloads_when_cached_single_file_snapshot_is_broken(
     monkeypatch, tmp_path: Path
 ) -> None:

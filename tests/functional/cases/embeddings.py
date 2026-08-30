@@ -3,16 +3,11 @@ import math
 import httpx
 import pytest
 
+from tests.local_http import local_async_client
+
 pytestmark = pytest.mark.asyncio
 
-_UNSUPPORTED_EMBEDDING_MODELS: dict[str, str] = {}
 REQUEST_TIMEOUT_S = 200.0
-
-
-def _mark_unsupported(model_id: str, detail: str) -> None:
-    reason = f"{model_id} does not currently support /v1/embeddings: {detail}"
-    _UNSUPPORTED_EMBEDDING_MODELS[model_id] = reason
-    pytest.skip(reason)
 
 
 def _assert_valid_embedding_response(response_data: dict, model_id: str) -> None:
@@ -29,22 +24,15 @@ def _assert_valid_embedding_response(response_data: dict, model_id: str) -> None
 
     embedding_vector = embedding_data["embedding"]
     assert isinstance(embedding_vector, list)
-    if not embedding_vector:
-        _mark_unsupported(model_id, "returned an empty embedding vector")
+    assert embedding_vector, f"{model_id} returned an empty embedding vector"
 
     for i, value in enumerate(embedding_vector):
         assert isinstance(value, int | float), f"Value at index {i} is not numeric"
         assert math.isfinite(value), f"Value at index {i} is not finite: {value}"
 
     usage = response_data["usage"]
-    if usage["prompt_tokens"] <= 0:
-        _mark_unsupported(model_id, "returned zero prompt tokens")
+    assert usage["prompt_tokens"] > 0, f"{model_id} returned zero prompt tokens"
     assert usage["total_tokens"] == usage["prompt_tokens"]
-
-
-def _skip_if_known_unsupported(model_id: str) -> None:
-    if model_id in _UNSUPPORTED_EMBEDDING_MODELS:
-        pytest.skip(_UNSUPPORTED_EMBEDDING_MODELS[model_id])
 
 
 def _extract_error_detail(response: httpx.Response) -> str:
@@ -63,9 +51,6 @@ def _parse_embedding_response(response: httpx.Response, model_id: str) -> dict:
         return response.json()
 
     detail = _extract_error_detail(response)
-    if response.status_code in {400, 404, 422, 500, 501, 503}:
-        _mark_unsupported(model_id, f"status {response.status_code}: {detail}")
-
     pytest.fail(
         f"Unexpected embeddings response for {model_id}: "
         f"{response.status_code} {detail}"
@@ -76,15 +61,15 @@ async def _post_embeddings(
     server_url: str, request_payload: dict, model_id: str
 ) -> httpx.Response:
     try:
-        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT_S) as client:
+        async with local_async_client(timeout=REQUEST_TIMEOUT_S) as client:
             return await client.post(f"{server_url}/v1/embeddings", json=request_payload)
     except httpx.HTTPError as exc:
-        _mark_unsupported(model_id, f"{type(exc).__name__}: {exc}")
+        pytest.fail(
+            f"Embeddings request failed for {model_id}: {type(exc).__name__}: {exc}"
+        )
 
 
 async def test_embeddings_non_infinite_values(live_server, text_model_id):
-    _skip_if_known_unsupported(text_model_id)
-
     server_url = live_server
     request_payload = {
         "model": text_model_id,
@@ -98,8 +83,6 @@ async def test_embeddings_non_infinite_values(live_server, text_model_id):
 
 
 async def test_embeddings_batch_input(live_server, text_model_id):
-    _skip_if_known_unsupported(text_model_id)
-
     server_url = live_server
     request_payload = {
         "model": text_model_id,
@@ -116,8 +99,6 @@ async def test_embeddings_batch_input(live_server, text_model_id):
 
 
 async def test_embeddings_vision_model_text_input(live_server, vision_model_id):
-    _skip_if_known_unsupported(vision_model_id)
-
     server_url = live_server
     request_payload = {
         "model": vision_model_id,

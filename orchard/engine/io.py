@@ -89,9 +89,15 @@ def close_sockets(ipc_state: IPCState | None) -> None:
     if ipc_state.response_socket:
         ipc_state.response_socket.close()
         ipc_state.response_socket = None
+    if ipc_state.event_socket:
+        ipc_state.event_socket.close()
+        ipc_state.event_socket = None
     if ipc_state.management_socket:
         ipc_state.management_socket.close()
         ipc_state.management_socket = None
+    if ipc_state.response_endpoint_path:
+        ipc_state.response_endpoint_path.unlink(missing_ok=True)
+        ipc_state.response_endpoint_path = None
 
 
 def initialize_sockets(
@@ -101,12 +107,20 @@ def initialize_sockets(
     ipc_state.request_socket = pynng.Push0()
     ipc_state.request_socket.recv_max_size = 0
     dial_with_retry(ipc_state.request_socket, ipc_endpoints.REQUEST_URL)
-    ipc_state.response_socket = pynng.Sub0()
-    ipc_state.response_socket.recv_buffer_size = 1024
+    ipc_state.response_endpoint_path = ipc_endpoints.response_route_path(
+        response_channel_id
+    )
+    ipc_state.response_endpoint_path.unlink(missing_ok=True)
+    ipc_state.response_socket = pynng.Pull0(
+        listen=ipc_endpoints.response_route_url(response_channel_id)
+    )
     ipc_state.response_socket.recv_max_size = 0
-    ipc_state.response_socket.subscribe(f"resp:{response_channel_id:x}".encode("ascii"))
-    ipc_state.response_socket.subscribe(ipc_endpoints.EVENT_TOPIC_PREFIX)
-    dial_with_retry(ipc_state.response_socket, ipc_endpoints.RESPONSE_URL)
+    ipc_state.event_socket = pynng.Sub0()
+    ipc_state.event_socket.recv_buffer_size = 1024
+    ipc_state.event_socket.recv_max_size = 0
+    ipc_state.event_socket.subscribe(f"resp:{response_channel_id:x}:".encode("ascii"))
+    ipc_state.event_socket.subscribe(ipc_endpoints.EVENT_TOPIC_PREFIX)
+    dial_with_retry(ipc_state.event_socket, ipc_endpoints.RESPONSE_URL)
     ipc_state.management_socket = pynng.Req0()
     ipc_state.management_socket.recv_max_size = 0
     dial_with_retry(ipc_state.management_socket, ipc_endpoints.MANAGEMENT_URL)
