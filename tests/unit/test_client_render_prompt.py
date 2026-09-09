@@ -325,7 +325,11 @@ def test_afmoe_trinity_formatter_renders_reasoning_and_json_tool_calls(
         [{"role": "user", "content": "Say hi."}],
         reasoning=False,
     )
-    assert non_reasoning.endswith("<|im_start|>assistant\n")
+    # Upstream Trinity always opens a think block; with reasoning off the profile
+    # prefills the closing marker so the model answers directly instead of opening
+    # "<think>" itself (which the suppression grammar then has to reject). An empty
+    # closed block was measured to make the model reason aloud in the visible reply.
+    assert non_reasoning.endswith("<|im_start|>assistant\n</think>\n\n")
 
 
 def test_granite_switch_profile_inserts_adapter_tokens(tmp_path) -> None:
