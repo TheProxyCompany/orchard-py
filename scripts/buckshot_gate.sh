@@ -12,7 +12,16 @@ set -uo pipefail
 
 N="${1:-5}"
 OUT_DIR="${2:-buckshot_gate_results}"
-mkdir -p "$OUT_DIR"
+if [[ ! "$N" =~ ^[1-9][0-9]*$ ]]; then
+  echo "Session count must be a positive integer: $N" >&2
+  exit 2
+fi
+
+# Keep relative results paths caller-relative, but collect this checkout's tests.
+mkdir -p "$OUT_DIR" || exit 1
+OUT_DIR="$(cd "$OUT_DIR" && pwd)" || exit 1
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)" || exit 1
+cd "$REPO_ROOT" || exit 1
 
 # Under the full volley a single request can legitimately queue for 300s+;
 # size the per-request HTTP timeout above that so the client cap cannot
