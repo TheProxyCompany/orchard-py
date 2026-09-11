@@ -24,8 +24,37 @@ def _resolve_ipc_root() -> Path:
         )
         path = base / "com.theproxycompany" / "ipc"
 
+    path = _bounded_ipc_root(path)
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+# Unix socket paths are limited to 103 bytes on macOS. The engine
+# (pie::utils::bounded_ipc_root, platform_utils.cpp) maps any IPC root whose
+# longest socket path would not fit onto /tmp/orchard-ipc-<uid>-<fnv1a64 of the
+# canonical root>. This mirrors that rule exactly so both sides meet on the
+# same sockets: a private cache root under $TMPDIR (what the test session and
+# containerized runs use) is already too long for the direct path.
+_IPC_SOCKET_PATH_MAX_BYTES = 103
+_LONGEST_SOCKET_NAME = "pie_response_ffffffffffffffff.ipc"
+
+
+def _fnv1a64(value: str) -> int:
+    digest = 0xCBF29CE484222325
+    for byte in value.encode("utf-8"):
+        digest ^= byte
+        digest = (digest * 0x100000001B3) & 0xFFFFFFFFFFFFFFFF
+    return digest
+
+
+def _bounded_ipc_root(candidate: Path) -> Path:
+    canonical = candidate.resolve()
+    if len(str(canonical / _LONGEST_SOCKET_NAME).encode("utf-8")) <= _IPC_SOCKET_PATH_MAX_BYTES:
+        return canonical
+    compact = Path("/tmp").resolve() / f"orchard-ipc-{os.getuid()}-{_fnv1a64(str(canonical)):016x}"
+    if len(str(compact / _LONGEST_SOCKET_NAME).encode("utf-8")) > _IPC_SOCKET_PATH_MAX_BYTES:
+        raise RuntimeError(f"Could not construct a bounded IPC root for {canonical}")
+    return compact
 
 
 def _as_ipc_url(path: Path) -> str:
