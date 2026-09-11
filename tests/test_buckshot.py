@@ -1,17 +1,14 @@
 """Buckshot: every model's functional + golden suite in one concurrent volley.
 
-The engine fixture already preloads the full matrix; the per-model suites
-already fire their cases in one asyncio.gather. This collapses the remaining
-serial axis — models and suites — into the same gather, so the whole matrix
-becomes one continuous batch against the engine.
+The engine fixture preloads the full chat matrix; the pipeline models are
+loaded on top, one at a time, before the first request. Then every suite is
+fired at the engine at once and the engine's own scheduling handles the load.
+Nothing is throttled, ordered, or excluded on the client side.
 
 Opt-in (it duplicates the per-model matrices): python -m pytest -m buckshot -q -s
-Uncapped: all suites in flight at once.
-BUCKSHOT_SKIP=a,b excludes models by template_type.
 """
 
 import asyncio
-import os
 import time
 
 import pytest
@@ -33,26 +30,18 @@ SUITE_TIMEOUT_S = 480
 
 async def test_buckshot_full_matrix(live_server, client, engine):
     fixtures = {"live_server": live_server, "client": client, "engine": engine}
-    # Uncapped: every suite in flight at once, as fast as the engine goes.
-    width = len(MODELS) * 2 + 1
-    gate = asyncio.Semaphore(width)
-    skip = {s for s in os.getenv("BUCKSHOT_SKIP", "").split(",") if s}
-    models = [m for m in MODELS if m.template_type not in skip]
 
     async def run_suite(suite, name, coro_factory):
-        async with gate:
-            start = time.perf_counter()
-            try:
-                failures = await asyncio.wait_for(coro_factory(), SUITE_TIMEOUT_S)
-                timed_out = False
-            except TimeoutError:
-                failures, timed_out = [], True
-            secs = time.perf_counter() - start
-            state = "TIMEOUT" if timed_out else f"{len(failures)} fail"
-            print(
-                f"[buckshot] {suite:11s} {name:15s} {secs:6.1f}s  {state}", flush=True
-            )
-            return (suite, name, secs, failures, timed_out)
+        start = time.perf_counter()
+        try:
+            failures = await asyncio.wait_for(coro_factory(), SUITE_TIMEOUT_S)
+            timed_out = False
+        except TimeoutError:
+            failures, timed_out = [], True
+        secs = time.perf_counter() - start
+        state = "TIMEOUT" if timed_out else f"{len(failures)} fail"
+        print(f"[buckshot] {suite:11s} {name:15s} {secs:6.1f}s  {state}", flush=True)
+        return (suite, name, secs, failures, timed_out)
 
     async def functional_suite(model: Model):
         failures, _skipped = await run_functional(
@@ -60,108 +49,36 @@ async def test_buckshot_full_matrix(live_server, client, engine):
         )
         return failures
 
-    # Keep giants apart: the semaphore serves jobs in creation order, and two
-    # giants sharing the width-2 window starve each other (measured twice:
-    # nemotron_h golden 45s solo -> 254s beside the pipeline suite at the
-    # tail, -> 241s beside it at the head). The pipeline suite goes first and
-    # owns one slot for ~230s; light suites cycle through the other slot;
-    # heavy chat suites run LAST, after the pipeline suite is done or nearly
-    # done, ordered so nemotron_h — the proven starvation victim — enters
-    # when the GPU is quietest.
-    TAIL = [
-        ("golden", "lfm2_5"),
-        ("golden", "afmoe"),
-        ("functional", "lfm2_5"),
-        ("golden", "nemotron_h"),
-    ]
+    # Loading is part of turning the engine on, not part of the volley:
+    # hydrating all the modal models at once on top of the resident chat
+    # matrix spikes wired memory past the Metal limit.
+    for model_id in PIPELINE_TOOL_MODELS:
+        await engine.load_models([model_id])
 
-    def suite_jobs():
-        entries = []
-        for m in models:
-            entries.append(
-                ("functional", m.template_type, lambda m=m: functional_suite(m))
-            )
-            entries.append(
-                (
-                    "golden",
-                    m.template_type,
-                    lambda m=m: run_golden(model_cases(), {"client": client}, m),
-                )
-            )
-        entries.sort(
-            key=lambda e: (TAIL.index((e[0], e[1])) if (e[0], e[1]) in TAIL else -1)
-        )
-        return entries
-
-    # The pipeline suite joins the volley by default: the engine now paces
-    # GPU work across model runtimes (Carbon span-budget buffer packing keeps
-    # every command buffer ~1.5ms so diffusion is preemptible beside chat
-    # decode, and the device-level commit governor bounds in-flight buffers).
-    # BUCKSHOT_PHASED=1 restores the old exclusive diffusion window for A/B.
-    phased = os.getenv("BUCKSHOT_PHASED", "0") != "0"
-    wall_start = time.perf_counter()
-    results = []
-    # BUCKSHOT_PIPELINE=audio|image restricts the modal pipelines to one family
-    # (diagnostic: which modal family carries the full-stampede GPU lockup).
-    pipeline_family = os.getenv("BUCKSHOT_PIPELINE") or None
-    if pipeline_family not in (None, "audio", "image"):
-        raise ValueError(f"BUCKSHOT_PIPELINE must be audio or image, got {pipeline_family!r}")
-    pipeline_models = [
-        m
-        for m in PIPELINE_TOOL_MODELS
-        if pipeline_family is None
-        or (pipeline_family == "image") == any(k in m for k in ("ideogram", "FLUX", "Image-Edit"))
-    ]
-    if "pipeline" not in skip:
-        # Preload MUST happen on an idle GPU, before the volley: activating
-        # diffusion/TTS models while chat decode is in flight trips the GPU
-        # watchdog and kills the engine (re-confirmed 2026-07-08 when this
-        # load was briefly moved inside the volley). Load them one at a time:
-        # hydrating all seven concurrently on top of the resident chat matrix
-        # spikes wired memory past the Metal limit and the engine dies with a
-        # silent abort (three full-matrix runs, 2026-07-10).
-        for model_id in pipeline_models:
-            await engine.load_models([model_id])
-        # History: before Carbon paced command buffers, chat decode beside
-        # active diffusion starved 3-10x (measured: nemotron_h golden 45s ->
-        # 241-254s, gemma4 golden 13s -> 155s) and every type-1 GPU-restart
-        # engine death on record had diffusion + chat in flight together —
-        # unbounded diffusion buffers (up to ~527ms GPU span) were
-        # un-preemptible. Span-budget packing bounds them to ~1.5ms, which
-        # is what lets this suite overlap the volley.
-        # BUCKSHOT_PREWARM=1 (diagnostic): run the pipeline suite once on the
-        # idle GPU first so every modal model has hydrated its weights, then
-        # run it again inside the volley. Separates "modal weights hydrating
-        # beside chat traffic" from "modal inference beside chat traffic":
-        # load_models registers a runtime, hydration happens on first request.
-        if os.getenv("BUCKSHOT_PREWARM", "0") != "0":
-            results.append(
-                await run_suite(
-                    "golden",
-                    "pipeline-prewarm",
-                    lambda: run_golden(pipeline_cases(pipeline_family), {"client": client}),
-                )
-            )
-        pipeline_job = run_suite(
+    jobs = [
+        run_suite(
             "golden",
             "pipeline",
-            lambda: run_golden(pipeline_cases(pipeline_family), {"client": client}),
+            lambda: run_golden(pipeline_cases(), {"client": client}),
         )
-        if phased:
-            results.append(await pipeline_job)
-            pipeline_job = None
-    else:
-        pipeline_job = None
-    jobs = [run_suite(suite, name, factory) for suite, name, factory in suite_jobs()]
-    if pipeline_job is not None:
-        jobs.insert(0, pipeline_job)
-    results += await asyncio.gather(*jobs)
+    ]
+    for m in MODELS:
+        jobs.append(
+            run_suite("functional", m.template_type, lambda m=m: functional_suite(m))
+        )
+        jobs.append(
+            run_suite(
+                "golden",
+                m.template_type,
+                lambda m=m: run_golden(model_cases(), {"client": client}, m),
+            )
+        )
+
+    wall_start = time.perf_counter()
+    results = await asyncio.gather(*jobs)
     wall = time.perf_counter() - wall_start
 
-    print(
-        f"\nBUCKSHOT wall: {wall:.1f}s "
-        f"({len(results)} suites, width={width}, skip={sorted(skip) or 'none'})"
-    )
+    print(f"\nBUCKSHOT wall: {wall:.1f}s ({len(results)} suites)")
     print(f"{'suite':11s} {'model':15s} {'secs':>6s}  result")
     for suite, name, secs, failures, timed_out in sorted(results, key=lambda r: -r[2]):
         state = "TIMEOUT" if timed_out else f"{len(failures)} fail"

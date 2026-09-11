@@ -71,7 +71,7 @@ def model_cases() -> list[GoldenCase]:
 
 def pipeline_cases(family: str | None = None) -> list[GoldenCase]:
     """Pipeline golden cases; ``family`` = "audio" or "image" narrows to one
-    modal family (used by the buckshot's BUCKSHOT_PIPELINE diagnostic)."""
+    modal family."""
     modules = {
         None: _PIPELINE_MODULES,
         "audio": [audio_telephone],
