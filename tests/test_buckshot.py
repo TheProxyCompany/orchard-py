@@ -101,6 +101,17 @@ async def test_buckshot_full_matrix(live_server, client, engine):
     phased = os.getenv("BUCKSHOT_PHASED", "0") != "0"
     wall_start = time.perf_counter()
     results = []
+    # BUCKSHOT_PIPELINE=audio|image restricts the modal pipelines to one family
+    # (diagnostic: which modal family carries the full-stampede GPU lockup).
+    pipeline_family = os.getenv("BUCKSHOT_PIPELINE") or None
+    if pipeline_family not in (None, "audio", "image"):
+        raise ValueError(f"BUCKSHOT_PIPELINE must be audio or image, got {pipeline_family!r}")
+    pipeline_models = [
+        m
+        for m in PIPELINE_TOOL_MODELS
+        if pipeline_family is None
+        or (pipeline_family == "image") == any(k in m for k in ("ideogram", "FLUX", "Image-Edit"))
+    ]
     if "pipeline" not in skip:
         # Preload MUST happen on an idle GPU, before the volley: activating
         # diffusion/TTS models while chat decode is in flight trips the GPU
@@ -109,7 +120,7 @@ async def test_buckshot_full_matrix(live_server, client, engine):
         # hydrating all seven concurrently on top of the resident chat matrix
         # spikes wired memory past the Metal limit and the engine dies with a
         # silent abort (three full-matrix runs, 2026-07-10).
-        for model_id in PIPELINE_TOOL_MODELS:
+        for model_id in pipeline_models:
             await engine.load_models([model_id])
         # History: before Carbon paced command buffers, chat decode beside
         # active diffusion starved 3-10x (measured: nemotron_h golden 45s ->
@@ -121,7 +132,7 @@ async def test_buckshot_full_matrix(live_server, client, engine):
         pipeline_job = run_suite(
             "golden",
             "pipeline",
-            lambda: run_golden(pipeline_cases(), {"client": client}),
+            lambda: run_golden(pipeline_cases(pipeline_family), {"client": client}),
         )
         if phased:
             results.append(await pipeline_job)

@@ -69,8 +69,15 @@ def model_cases() -> list[GoldenCase]:
     return _collect(_MODEL_MODULES)
 
 
-def pipeline_cases() -> list[GoldenCase]:
-    return _collect(_PIPELINE_MODULES)
+def pipeline_cases(family: str | None = None) -> list[GoldenCase]:
+    """Pipeline golden cases; ``family`` = "audio" or "image" narrows to one
+    modal family (used by the buckshot's BUCKSHOT_PIPELINE diagnostic)."""
+    modules = {
+        None: _PIPELINE_MODULES,
+        "audio": [audio_telephone],
+        "image": [image_tool_result_grounding],
+    }[family]
+    return _collect(modules)
 
 
 async def run_cases(
