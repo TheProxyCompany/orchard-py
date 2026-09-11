@@ -129,6 +129,19 @@ async def test_buckshot_full_matrix(live_server, client, engine):
         # unbounded diffusion buffers (up to ~527ms GPU span) were
         # un-preemptible. Span-budget packing bounds them to ~1.5ms, which
         # is what lets this suite overlap the volley.
+        # BUCKSHOT_PREWARM=1 (diagnostic): run the pipeline suite once on the
+        # idle GPU first so every modal model has hydrated its weights, then
+        # run it again inside the volley. Separates "modal weights hydrating
+        # beside chat traffic" from "modal inference beside chat traffic":
+        # load_models registers a runtime, hydration happens on first request.
+        if os.getenv("BUCKSHOT_PREWARM", "0") != "0":
+            results.append(
+                await run_suite(
+                    "golden",
+                    "pipeline-prewarm",
+                    lambda: run_golden(pipeline_cases(pipeline_family), {"client": client}),
+                )
+            )
         pipeline_job = run_suite(
             "golden",
             "pipeline",

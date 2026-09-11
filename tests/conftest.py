@@ -43,7 +43,9 @@ if _soft < 10240:
 
 # These paths should be relative to the project root
 PROJECT_ROOT = Path(__file__).parent.parent
-LOG_DIR = PROJECT_ROOT / "logs_test"  # Use a separate log directory for tests
+# ORCHARD_TEST_LOG_DIR lets two test sessions run side by side (device-wide
+# GPU diagnostics) without clobbering each other's engine log.
+LOG_DIR = Path(os.environ["ORCHARD_TEST_LOG_DIR"]) if os.environ.get("ORCHARD_TEST_LOG_DIR") else PROJECT_ROOT / "logs_test"
 
 if LOG_DIR.exists():
     import shutil
