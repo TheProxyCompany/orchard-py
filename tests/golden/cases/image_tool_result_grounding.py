@@ -1,5 +1,7 @@
 import base64
 import json
+import os
+from pathlib import Path
 from collections.abc import Sequence
 
 import pytest
@@ -208,6 +210,11 @@ async def test_image_tool_self_loop_and_blind_verifier(client: Client):
     assert_or_record("gemma4", "image_tool_blind_verifier", "generator", generator["events"])
 
     artifact = await _generate_ideogram_image(client, prompt)
+    if dump_dir := os.environ.get("ORCHARD_DUMP_ARTIFACTS"):
+        # Diagnostic: keep the generated image so two engine builds can be
+        # compared pixel-for-pixel when the downstream verifier golden drifts.
+        Path(dump_dir).mkdir(parents=True, exist_ok=True)
+        (Path(dump_dir) / "ideogram_blind_verifier.png").write_bytes(artifact.data)
     image = _image_part(artifact)
 
     conversation = [
