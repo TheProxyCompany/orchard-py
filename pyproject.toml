@@ -8,7 +8,6 @@ dependencies = [
     "pillow",
     "huggingface-hub",
     "fastapi[standard]",
-    "pydantic-settings",
     "jinja2",
     "sse_starlette",
     "filelock",
