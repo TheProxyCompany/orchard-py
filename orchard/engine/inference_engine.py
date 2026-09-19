@@ -49,7 +49,6 @@ _in_atexit = False
 
 
 _LOCK_TIMEOUT_S = 30.0
-_DEFAULT_ENGINE_PORT = 8000
 
 
 def _process_executable_path(pid: int) -> Path | None:

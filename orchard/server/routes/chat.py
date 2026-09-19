@@ -49,21 +49,9 @@ chat_router = APIRouter()
 
 
 def _dedupe_stop_sequences(raw_stop: list[str] | str | None) -> list[str]:
-    if not raw_stop:
-        return []
-
     if isinstance(raw_stop, str):
-        candidates = [raw_stop]
-    else:
-        candidates = [item for item in raw_stop if item]
-
-    seen: set[str] = set()
-    unique: list[str] = []
-    for seq in candidates:
-        if seq not in seen:
-            seen.add(seq)
-            unique.append(seq)
-    return unique
+        raw_stop = [raw_stop]
+    return list(dict.fromkeys(item for item in raw_stop or [] if item))
 
 
 @chat_router.post(
