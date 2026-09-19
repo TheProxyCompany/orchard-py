@@ -290,19 +290,7 @@ class Client:
 
     def cancel_request(self, request_id: int) -> dict[str, Any]:
         """Synchronous wrapper for canceling an in-flight PIE request."""
-        if (
-            not self._sync_loop
-            or not self._sync_thread
-            or not self._sync_thread.is_alive()
-        ):
-            self._start_sync_event_loop()
-
-        assert self._sync_loop, "Sync loop not initialized"
-        future = asyncio.run_coroutine_threadsafe(
-            self.acancel_request(request_id),
-            self._sync_loop,
-        )
-        return future.result()
+        return self._sync_submit(self.acancel_request(request_id))
 
     async def acancel_model_load(self, model_id: str) -> dict | None:
         """Cancel an in-progress PIE model load or activation."""
@@ -310,19 +298,7 @@ class Client:
 
     def cancel_model_load(self, model_id: str) -> dict | None:
         """Synchronous wrapper for canceling an in-progress model load."""
-        if (
-            not self._sync_loop
-            or not self._sync_thread
-            or not self._sync_thread.is_alive()
-        ):
-            self._start_sync_event_loop()
-
-        assert self._sync_loop, "Sync loop not initialized"
-        future = asyncio.run_coroutine_threadsafe(
-            self.acancel_model_load(model_id),
-            self._sync_loop,
-        )
-        return future.result()
+        return self._sync_submit(self.acancel_model_load(model_id))
 
     async def _cancel_request_for_cleanup(self, request_id: int) -> None:
         try:
@@ -757,19 +733,9 @@ class Client:
         *,
         stream: bool = False,
     ) -> list[ClientDelta] | Iterator[ClientDelta]:
-        if (
-            not self._sync_loop
-            or not self._sync_thread
-            or not self._sync_thread.is_alive()
-        ):
-            self._start_sync_event_loop()
-
-        assert self._sync_loop, "Sync loop not initialized"
-        future = asyncio.run_coroutine_threadsafe(
-            self.aprefill_task(model_id, text, task_name, stream=stream),
-            self._sync_loop,
+        result = self._sync_submit(
+            self.aprefill_task(model_id, text, task_name, stream=stream)
         )
-        result = future.result()
         if isinstance(result, AsyncIterator):
             return self._sync_iterator_bridge(result)
         return result
@@ -818,19 +784,7 @@ class Client:
         texts: list[str],
         task_name: str,
     ) -> list[list[ClientDelta]]:
-        if (
-            not self._sync_loop
-            or not self._sync_thread
-            or not self._sync_thread.is_alive()
-        ):
-            self._start_sync_event_loop()
-
-        assert self._sync_loop, "Sync loop not initialized"
-        future = asyncio.run_coroutine_threadsafe(
-            self.aprefill_task_batch(model_id, texts, task_name),
-            self._sync_loop,
-        )
-        return future.result()
+        return self._sync_submit(self.aprefill_task_batch(model_id, texts, task_name))
 
     def _build_responses_request(
         self,
@@ -909,19 +863,7 @@ class Client:
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Synchronous wrapper for `arender_prompt()`."""
-        if (
-            not self._sync_loop
-            or not self._sync_thread
-            or not self._sync_thread.is_alive()
-        ):
-            self._start_sync_event_loop()
-
-        assert self._sync_loop, "Sync loop not initialized"
-        future = asyncio.run_coroutine_threadsafe(
-            self.arender_prompt(model_id, messages, **kwargs),
-            self._sync_loop,
-        )
-        return future.result()
+        return self._sync_submit(self.arender_prompt(model_id, messages, **kwargs))
 
     async def arender_responses_prompt(
         self,
@@ -982,19 +924,7 @@ class Client:
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Synchronous wrapper for `arender_responses_prompt()`."""
-        if (
-            not self._sync_loop
-            or not self._sync_thread
-            or not self._sync_thread.is_alive()
-        ):
-            self._start_sync_event_loop()
-
-        assert self._sync_loop, "Sync loop not initialized"
-        future = asyncio.run_coroutine_threadsafe(
-            self.arender_responses_prompt(model_id, **kwargs),
-            self._sync_loop,
-        )
-        return future.result()
+        return self._sync_submit(self.arender_responses_prompt(model_id, **kwargs))
 
     async def achat(
         self,
@@ -1271,21 +1201,9 @@ class Client:
             - Streaming (single or batched): Iterator[ClientDelta]
               (use delta.prompt_index to demultiplex batched streams)
         """
-        # We need a running event loop in a background thread
-        if (
-            not self._sync_loop
-            or not self._sync_thread
-            or not self._sync_thread.is_alive()
-        ):
-            self._start_sync_event_loop()
-
-        assert self._sync_loop, "Sync loop not initialized"
-        future = asyncio.run_coroutine_threadsafe(
-            self.achat(model_id, messages, stream=stream, **kwargs),
-            self._sync_loop,
+        result = self._sync_submit(
+            self.achat(model_id, messages, stream=stream, **kwargs)
         )
-
-        result = future.result()
 
         if stream and isinstance(result, AsyncIterator):
             # If streaming, the result is an async generator. We need to wrap it
@@ -1312,19 +1230,7 @@ class Client:
             `resp = client.responses("llama3", input="hi")`
             `for event in client.responses("llama3", input="hi", stream=True): ...`
         """
-        if (
-            not self._sync_loop
-            or not self._sync_thread
-            or not self._sync_thread.is_alive()
-        ):
-            self._start_sync_event_loop()
-
-        assert self._sync_loop, "Sync loop not initialized"
-        future = asyncio.run_coroutine_threadsafe(
-            self.aresponses(model_id, **kwargs),
-            self._sync_loop,
-        )
-        result = future.result()
+        result = self._sync_submit(self.aresponses(model_id, **kwargs))
 
         if isinstance(result, AsyncIterator):
             return self._sync_iterator_bridge(result)
