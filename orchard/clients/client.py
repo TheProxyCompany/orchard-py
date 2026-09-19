@@ -119,16 +119,6 @@ class AudioClient:
             return self._client._sync_iterator_bridge(result)
         return result
 
-    async def asynthesize(
-        self, *args: Any, **kwargs: Any
-    ) -> list[ModalArtifact] | AsyncIterator[ClientDelta]:
-        return await self.agenerate(*args, **kwargs)
-
-    def synthesize(
-        self, *args: Any, **kwargs: Any
-    ) -> list[ModalArtifact] | Iterator[ClientDelta]:
-        return self.generate(*args, **kwargs)
-
     async def atranscribe(
         self,
         model_id: str,
@@ -293,20 +283,6 @@ class Client:
         self._sync_loop: asyncio.AbstractEventLoop | None = None
         self._sync_thread: threading.Thread | None = None
         self._sync_start_lock = threading.Lock()
-
-    def resolve_capabilities(self, model_id: str) -> dict[str, int]:
-        """Resolve control token capabilities for a model into token IDs."""
-        info = self._model_registry.ensure_ready_sync(model_id)
-        capabilities = info.capabilities or {}
-        resolved: dict[str, int] = {}
-        for name, token_ids in capabilities.items():
-            if isinstance(token_ids, list | tuple) and token_ids:
-                resolved[name] = int(token_ids[0])
-            elif isinstance(token_ids, int | float):
-                resolved[name] = int(token_ids)
-            else:
-                raise TypeError(f"Unsupported capability token format for '{name}'.")
-        return resolved
 
     async def acancel_request(self, request_id: int) -> dict[str, Any]:
         """Cancel an in-flight PIE request by request id."""
