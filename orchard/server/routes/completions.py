@@ -189,6 +189,7 @@ async def handle_completion_request(
         response_data = await gather_non_streaming_batch_response(
             current_request_id,
             response_queue,
+            ipc_state,
             fanout_counts,
             final_candidate_counts,
         )
