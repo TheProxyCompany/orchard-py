@@ -1784,29 +1784,8 @@ class Client:
     async def _asubmit_request(
         self, request_id: int, model_id: str, messages: list[dict], **kwargs: Any
     ):
-        """Prepares and submits the request over the pynng IPC channel."""
-        info = await self._model_registry.get_info(model_id)
-        engine_model_id = info.model_id
-        prompt_payload, _ = self._prepare_prompt_payload(
-            model_id=engine_model_id,
-            model_path=info.model_path,
-            formatter=info.formatter,
-            messages=messages,
-            **kwargs,
-        )
-        response_channel_id = self._ipc_state.response_channel_id or request_id
-        logger.debug(
-            f"Submitting request {request_id} for model {engine_model_id} with response channel id: {response_channel_id}"
-        )
-        request_bytes = _build_request_payload(
-            request_id=request_id,
-            model_id=engine_model_id,
-            model_path=info.model_path,
-            request_type="generation",
-            response_channel_id=response_channel_id,
-            prompts=[prompt_payload],
-        )
-        await self._ipc_state.send_request(request_bytes)
+        """Prepares and submits a single-conversation request."""
+        await self._asubmit_request_batch(request_id, model_id, [messages], **kwargs)
 
     async def _asubmit_request_batch(
         self,
