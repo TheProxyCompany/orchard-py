@@ -33,7 +33,13 @@ jobs:
       - name: Clone and build PIE
         run: |
           rm -rf ../proxy-inference-engine
-          git clone --depth 1 --recurse-submodules "https://${{ secrets.GH_PAT }}@github.com/TheProxyCompany/proxy-inference-engine.git" ../proxy-inference-engine
+          # The URL rewrite makes the token cover PIE's private submodules as well.
+          # Without it they fall back to the runner's keychain, which a runner
+          # service cannot read (error -25308), and the clone fails.
+          git -c credential.helper= \
+            -c url."https://${{ secrets.GH_PAT }}@github.com/".insteadOf="https://github.com/" \
+            clone --depth 1 --recurse-submodules --shallow-submodules \
+            "https://github.com/TheProxyCompany/proxy-inference-engine.git" ../proxy-inference-engine
           cd ../proxy-inference-engine
           ./scripts/build.sh -t Release
 
