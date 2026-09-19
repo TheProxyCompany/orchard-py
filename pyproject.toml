@@ -59,23 +59,6 @@ extend-select = [
 # Tests exercise private seams deliberately.
 "tests/**" = ["SLF001"]
 
-[tool.mypy]
-python_version = "3.11"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-
-[tool.black]
-line-length = 100
-target-version = [
-    "py311",
-]
-
-[tool.isort]
-profile = "black"
-line_length = 100
-
 [tool.pytest.ini_options]
 pythonpath = [
     "tests",
