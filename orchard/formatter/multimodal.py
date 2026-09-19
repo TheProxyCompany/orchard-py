@@ -48,49 +48,36 @@ class _RenderableText:
         return self._text
 
 
-class _RenderableImage:
-    """Placeholder wrapper that renders as empty text and reports `type=image`."""
+class _RenderablePlaceholder:
+    """Media or capability part: renders as empty text and reports its `type` to Jinja."""
 
+    __slots__ = ()
+    _TYPE = ""
+
+    def __getitem__(self, key: str) -> str:
+        if key == "type":
+            return self._TYPE
+        raise KeyError(key)
+
+    def __str__(self) -> str:
+        return ""
+
+
+class _RenderableImage(_RenderablePlaceholder):
     __slots__ = ()
     _TYPE = "image"
 
-    def __getitem__(self, key: str) -> str:
-        if key == "type":
-            return self._TYPE
-        raise KeyError(key)
 
-    def __str__(self) -> str:
-        return ""
-
-
-class _RenderableAudio:
-    """Placeholder wrapper that renders as empty text and reports `type=audio`."""
-
+class _RenderableAudio(_RenderablePlaceholder):
     __slots__ = ()
     _TYPE = "audio"
 
-    def __getitem__(self, key: str) -> str:
-        if key == "type":
-            return self._TYPE
-        raise KeyError(key)
 
-    def __str__(self) -> str:
-        return ""
-
-
-class _RenderableCapability:
-    """Placeholder wrapper for capability inputs (coord, size). Renders as empty."""
+class _RenderableCapability(_RenderablePlaceholder):
+    """Capability inputs (coord, size)."""
 
     __slots__ = ()
     _TYPE = "capability"
-
-    def __getitem__(self, key: str) -> str:
-        if key == "type":
-            return self._TYPE
-        raise KeyError(key)
-
-    def __str__(self) -> str:
-        return ""
 
 
 def _decode_image_payload(data_url: str) -> bytes:
