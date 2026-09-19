@@ -75,7 +75,6 @@ class IPCState:
         self.active_request_queues: dict[int, QueueRegistration] = {}
 
         self.request_id_counter: int = 0
-        self.dispatcher_task: asyncio.Task | None = None
         self._request_id_lock = threading.Lock()
         self.response_topic_prefix: bytes = b""
         self.response_topic_prefix_len: int = 0
