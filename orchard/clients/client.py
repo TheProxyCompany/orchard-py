@@ -438,17 +438,14 @@ class Client:
                 self._close_request(request_id)
 
     @staticmethod
+    def _raise_on_error_delta(deltas: list[ClientDelta], default: str) -> None:
+        for delta in deltas:
+            if delta.error_message or (delta.finish_reason or "").lower() == "error":
+                raise InferenceError(delta.error_message or delta.content or default)
+
+    @staticmethod
     def _modal_artifacts_from_deltas(deltas: list[ClientDelta]) -> list[ModalArtifact]:
-        error_message = next(
-            (
-                delta.error_message or delta.content or "Modal artifact request failed."
-                for delta in deltas
-                if delta.error_message or (delta.finish_reason or "").lower() == "error"
-            ),
-            None,
-        )
-        if error_message is not None:
-            raise InferenceError(error_message)
+        Client._raise_on_error_delta(deltas, "Modal artifact request failed.")
 
         artifacts: list[ModalArtifact] = []
         for delta in deltas:
@@ -508,19 +505,7 @@ class Client:
                     on_cancel=lambda: self._cancel_request_for_cleanup(request_id),
                 )
             ]
-            error_message = next(
-                (
-                    delta.error_message
-                    or delta.content
-                    or "Transcription request failed."
-                    for delta in deltas
-                    if delta.error_message
-                    or (delta.finish_reason or "").lower() == "error"
-                ),
-                None,
-            )
-            if error_message is not None:
-                raise InferenceError(error_message)
+            self._raise_on_error_delta(deltas, "Transcription request failed.")
             return "".join(delta.content or "" for delta in deltas)
         finally:
             self._close_request(request_id)
@@ -1412,16 +1397,7 @@ class Client:
         return reasoning, tool_calls
 
     def _aggregate_response(self, deltas: list[ClientDelta]) -> ClientResponse:
-        error_message = next(
-            (
-                delta.error_message or delta.content or "Inference request failed."
-                for delta in deltas
-                if delta.error_message or (delta.finish_reason or "").lower() == "error"
-            ),
-            None,
-        )
-        if error_message is not None:
-            raise InferenceError(error_message)
+        self._raise_on_error_delta(deltas, "Inference request failed.")
 
         aggregated_text = self._aggregate_message_text(deltas)
         finish_reason = next(
