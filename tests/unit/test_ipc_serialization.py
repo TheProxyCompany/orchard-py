@@ -22,3 +22,16 @@ def test_empty_default_prompt_serializes_text_layout_segment() -> None:
     prompt = _metadata(frame)["prompts"][0]
     assert prompt["text_size"] == 0
     assert prompt["layout_count"] == 1
+
+
+def test_every_request_asks_for_the_lossless_response_route() -> None:
+    frame = _build_request_payload(
+        request_id=1,
+        model_id="test-model",
+        model_path="/tmp/test-model",
+        request_type="embedding",
+        response_channel_id=7,
+        prompts=[{"prompt": "hello"}],
+    )
+
+    assert _metadata(frame)["response_transport"] == "pull_v1"
