@@ -28,6 +28,8 @@ from orchard.ipc.serialization import _build_request_payload
 
 STALL_S = 1.5
 DELTAS_PER_SECOND = 4000
+CHANNEL = 0xA1B2C3
+OTHER_CHANNEL = 0xA1B2C4
 
 
 class StandInEngine:
@@ -136,16 +138,18 @@ def ipc_root(monkeypatch):
         yield root
 
 
+# These fixtures are not called `engine` and `client`: conftest.py has fixtures
+# by those names that start the real engine and load every model.
 @pytest.fixture
-def engine(ipc_root):
-    stand_in = StandInEngine()
-    yield stand_in
-    stand_in.close()
+def stand_in(ipc_root):
+    engine = StandInEngine()
+    yield engine
+    engine.close()
 
 
 @pytest.fixture
-def client(engine):
-    started = Client(0xA1B2C3)
+def ipc_client(stand_in):
+    started = Client(CHANNEL)
     yield started
     started.close()
 
@@ -181,17 +185,20 @@ def hold_the_receiver_once(monkeypatch, *, after: int, seconds: float) -> None:
 
 
 @pytest.mark.asyncio
-async def test_deltas_reach_their_own_request_queue_in_order(engine, client):
-    first = await client.request(1)
-    second = await client.request(2)
-    requests = [engine.receive_request(), engine.receive_request()]
+async def test_deltas_reach_their_own_request_queue_in_order(stand_in, ipc_client):
+    first = await ipc_client.request(1)
+    second = await ipc_client.request(2)
+    requests = [stand_in.receive_request(), stand_in.receive_request()]
 
     def interleave() -> None:
         for _ in range(100):
             for request in requests:
-                engine.answer(request, 3)
+                stand_in.answer(request, 3)
 
     await asyncio.to_thread(interleave)
+
+    # Both requests were answered over the client's one endpoint.
+    assert list(stand_in.routes) == [CHANNEL]
 
     for queue in (first, second):
         numbers = [
@@ -202,13 +209,18 @@ async def test_deltas_reach_their_own_request_queue_in_order(engine, client):
 
 
 @pytest.mark.asyncio
-async def test_a_receiver_that_stalls_loses_no_deltas(monkeypatch, engine, client):
+async def test_a_receiver_that_stalls_loses_no_deltas(
+    monkeypatch, stand_in, ipc_client
+):
+    """Over publish/subscribe, which is what a request got before it asked for
+    the route, this same stall loses 2,776 of the 4,000 deltas and the stream
+    still ends normally."""
     hold_the_receiver_once(monkeypatch, after=200, seconds=STALL_S)
-    queue = await client.request(1)
-    request = engine.receive_request()
+    queue = await ipc_client.request(1)
+    request = stand_in.receive_request()
     count = DELTAS_PER_SECOND  # one second of deltas, most of it inside the stall
 
-    sender = asyncio.to_thread(engine.answer, request, count, paced=True)
+    sender = asyncio.to_thread(stand_in.answer, request, count, paced=True)
     numbers, _ = await asyncio.gather(numbers_received(queue), sender)
 
     lost = count - len(numbers)
@@ -221,7 +233,7 @@ async def test_an_engine_without_the_route_is_still_heard_and_reported(
     ipc_root, caplog
 ):
     engine = StandInEngine(knows_pull_route=False)
-    client = Client(0xA1B2C3)
+    client = Client(CHANNEL)
     try:
         queue = await client.request(1)
         with caplog.at_level(logging.WARNING, logger=ipc_dispatch.__name__):
@@ -237,43 +249,45 @@ async def test_an_engine_without_the_route_is_still_heard_and_reported(
 
 @pytest.mark.asyncio
 async def test_two_clients_with_the_same_request_ids_hear_only_their_own(
-    engine, client
+    stand_in, ipc_client
 ):
-    other = Client(0xA1B2C4)
+    other = Client(OTHER_CHANNEL)
     try:
-        mine = await client.request(1)
+        mine = await ipc_client.request(1)
         theirs = await other.request(1)
         requests = {
             r["response_channel_id"]: r
-            for r in (engine.receive_request(), engine.receive_request())
+            for r in (stand_in.receive_request(), stand_in.receive_request())
         }
 
-        await asyncio.to_thread(engine.answer, requests[0xA1B2C3], 40)
-        await asyncio.to_thread(engine.answer, requests[0xA1B2C4], 60)
+        await asyncio.to_thread(stand_in.answer, requests[CHANNEL], 40)
+        await asyncio.to_thread(stand_in.answer, requests[OTHER_CHANNEL], 60)
 
         assert await numbers_received(mine) == list(range(40))
         assert await numbers_received(theirs) == list(range(60))
         assert mine.empty() and theirs.empty()
+        # Each client was answered over an endpoint of its own.
+        assert sorted(stand_in.routes) == [CHANNEL, OTHER_CHANNEL]
     finally:
         other.close()
 
 
-def test_closing_the_sockets_removes_the_endpoint(engine, client):
-    endpoint = endpoints.response_pull_path(0xA1B2C3)
+def test_closing_the_sockets_removes_the_endpoint(ipc_client):
+    endpoint = endpoints.response_pull_path(CHANNEL)
     assert endpoint.exists()
 
-    client.close()
+    ipc_client.close()
 
-    assert client.state.response_pull_socket is None
+    assert ipc_client.state.response_pull_socket is None
     assert not endpoint.exists()
 
 
-def test_the_endpoint_is_removed_when_the_close_is_skipped(engine, client):
-    endpoint = endpoints.response_pull_path(0xA1B2C3)
+def test_the_endpoint_is_removed_when_the_close_is_skipped(ipc_client):
+    endpoint = endpoints.response_pull_path(CHANNEL)
     assert endpoint.exists()
 
     # All that runs at interpreter exit, where closing NNG sockets can deadlock.
-    InferenceEngine._request_dispatcher_shutdown(client.ctx)
+    InferenceEngine._request_dispatcher_shutdown(ipc_client.ctx)
 
-    assert client.state.response_pull_socket is not None
+    assert ipc_client.state.response_pull_socket is not None
     assert not endpoint.exists()
