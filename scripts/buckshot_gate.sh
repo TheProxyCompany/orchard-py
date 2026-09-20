@@ -11,6 +11,8 @@
 # lives (tests/conftest.py, tests/gpu_lease.py), so a run waits for any other
 # lease holder and the lease is free again between runs. This script does not
 # hold it itself; a wrapper that does must export PROXY_GPU_LEASE_HELD=1.
+# A run's wall time and its failure record start when it got the lease, and
+# the wait before that is recorded on its own (lease_wait_s in results.jsonl).
 #
 # Usage: scripts/buckshot_gate.sh [N] [results_dir]
 set -uo pipefail
@@ -54,11 +56,13 @@ record_tenants() { # $1 = file to write
 # Every lockup recorded so far errored exactly 19 command buffers device-wide,
 # so fewer than 19 under our engine's pid means another process held the rest:
 # any other pid in this list was a GPU tenant at the moment of the lockup, even
-# if it has exited by now. The window is the whole run, not the last few
-# minutes: a hung suite is only declared after its 480 s timeout, so the lockup
-# behind a red run can be that old. (`log` records its own command line, which
+# if it has exited by now. The window is the whole time the run held the GPU
+# lease, not the last few minutes: a hung suite is only declared after its
+# 480 s timeout, so the lockup behind a red run can be that old. It does not
+# reach back into the wait for the lease: GPU errors from then belong to the
+# session the run queued behind. (`log` records its own command line, which
 # contains the string we search for; the predicate leaves that out.)
-record_gpu_errors() { # $1 = file to append to, $2 = run start "YYYY-MM-DD HH:MM:SS"
+record_gpu_errors() { # $1 = file to append to, $2 = window start "YYYY-MM-DD HH:MM:SS"
   {
     echo "== GPU error callbacks since $2: count, process[pid], kind, first seen"
     /usr/bin/log show --start "$2" --style compact \
@@ -82,9 +86,9 @@ record_gpu_errors() { # $1 = file to append to, $2 = run start "YYYY-MM-DD HH:MM
 for i in $(seq 1 "$N"); do
   log="$OUT_DIR/run_${i}.log"
   # Keep each run's engine log (and any hang sample) next to its results:
-  # tests/conftest.py wipes its log directory at session start, so without a
-  # per-run directory run N+1 erases the engine-side record of run N, and the
-  # workflow uploads only the results directory.
+  # tests/conftest.py wipes its log directory before it starts the engine, so
+  # without a per-run directory run N+1 erases the engine-side record of run N,
+  # and the workflow uploads only the results directory.
   export ORCHARD_TEST_LOG_DIR="$(cd "$OUT_DIR" && pwd)/run_${i}_logs"
   # Taken before pytest starts, so before any wait for the GPU lease: a session
   # listed here may be the holder this run then waited for (the waiting line
@@ -100,7 +104,23 @@ for i in $(seq 1 "$N"); do
   start=$(date +%s)
   python -m pytest -m buckshot -q -s 2>&1 | tee "$log"
   status=${PIPESTATUS[0]}
-  wall=$(( $(date +%s) - start ))
+  ended=$(date +%s)
+  wall=$(( ended - start ))
+
+  # The run may have spent most of that waiting for the GPU lease, and what the
+  # GPU did meanwhile is the lease holder's. The session prints "[gpu-lease]
+  # acquired <time>" once it holds the lease (tests/conftest.py); the wall time
+  # and the failure record count from there. lease_wait_s runs from launching
+  # pytest to that line, so it is a few seconds of startup when nobody held
+  # the lease. Without the line (the run took no lease: a wrapper holds it, or
+  # PROXY_GPU_LEASE=0; or it died first) everything counts from the run's start.
+  held_from="$(grep -m 1 -o '\[gpu-lease\] acquired [0-9-]\{10\} [0-9:]\{8\}' "$log" | cut -d ' ' -f 3-)"
+  lease_wait=null
+  if [ -n "$held_from" ] && held_from_s=$(date -j -f '%Y-%m-%d %H:%M:%S' "$held_from" +%s 2>/dev/null); then
+    lease_wait=$(( held_from_s - start ))
+    wall=$(( ended - held_from_s ))
+  fi
+  held_from="${held_from:-$run_started}"
 
   if [ -n "$macmon_pid" ]; then
     kill "$macmon_pid" 2>/dev/null || true
@@ -110,19 +130,19 @@ for i in $(seq 1 "$N"); do
 
   if [ "$status" -ne 0 ]; then
     record_tenants "$OUT_DIR/run_${i}_tenants_failure.txt"
-    record_gpu_errors "$OUT_DIR/run_${i}_tenants_failure.txt" "$run_started"
-    # The system's own report of each GPU restart during the run.
+    record_gpu_errors "$OUT_DIR/run_${i}_tenants_failure.txt" "$held_from"
+    # The system's own report of each GPU restart while the run held the lease.
     mkdir -p "$ORCHARD_TEST_LOG_DIR"
     find /Library/Logs/DiagnosticReports -maxdepth 1 -name 'gpuEvent-*' \
-      -newer "$OUT_DIR/run_${i}_tenants_start.txt" \
+      -newermt "$held_from" \
       -exec cp {} "$ORCHARD_TEST_LOG_DIR/" \; 2>/dev/null || true
   fi
 
   python - "$OUT_DIR/results.jsonl" "$i" "$wall" "$status" "$log" \
-    "$ORCHARD_TEST_LOG_DIR/engine.test.log" <<'PY'
+    "$ORCHARD_TEST_LOG_DIR/engine.test.log" "$lease_wait" <<'PY'
 import json, re, sys
 
-out, run, wall, status, log, engine_log = sys.argv[1:]
+out, run, wall, status, log, engine_log, lease_wait = sys.argv[1:]
 suites = []
 for line in open(log):
     m = re.match(r"\[buckshot\] (\S+)\s+(\S+)\s+([\d.]+)s\s+(.*)", line.strip())
@@ -147,8 +167,11 @@ except FileNotFoundError:
     pass
 shown = "no engine log" if freeze_waits is None else freeze_waits
 print(f"GATE run {run}: GPU-wide freezes (acquisition waits >= 400 ms): {shown}")
+if lease_wait != "null":
+    print(f"GATE run {run}: held the GPU lease {lease_wait}s after launch")
 record = {
     "run": int(run),
+    "lease_wait_s": json.loads(lease_wait),
     "wall_s": int(wall),
     "longest_suite_s": longest,
     "stopwatch_gap_s": int(wall) - longest,
