@@ -272,6 +272,25 @@ async def test_two_clients_with_the_same_request_ids_hear_only_their_own(
         other.close()
 
 
+@pytest.mark.parametrize(
+    ("channel_id", "name"),
+    [
+        (0x1A2B3C, "pie_response_1a2b3c.ipc"),
+        # No padding, and a leading zero nibble is not printed.
+        (0x0ABC, "pie_response_abc.ipc"),
+        # Lowercase, all 16 digits of a (pid << 32) | random id.
+        (0xFFFFFFFF00000001, "pie_response_ffffffff00000001.ipc"),
+        (0xDEADBEEFCAFEF00D, "pie_response_deadbeefcafef00d.ipc"),
+    ],
+)
+def test_the_endpoint_has_the_name_the_engine_dials(ipc_root, channel_id, name):
+    """Literal names, because the stand-in engine above dials whatever
+    response_pull_path returns. PIE formats "{}{:x}{}" with "pie_response_" and
+    ".ipc" (transport.cpp get_response_route, ipc/constants.hpp); a client that
+    listens under any other name is never dialled and every request times out."""
+    assert endpoints.response_pull_path(channel_id) == ipc_root / name
+
+
 def test_closing_the_sockets_removes_the_endpoint(ipc_client):
     endpoint = endpoints.response_pull_path(CHANNEL)
     assert endpoint.exists()
