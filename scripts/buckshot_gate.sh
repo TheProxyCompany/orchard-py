@@ -4,8 +4,8 @@
 # Runs the full buckshot matrix N times, each in a fresh pytest session (fresh
 # engine process, full hydration), aborting on the first red. A single failure
 # resets the streak by definition — rerun the whole gate. Per-run wall clock,
-# per-suite timings, and (when macmon is present) an energy sample stream are
-# written to the results directory.
+# per-suite timings, the engine log, and (when macmon is present) an energy
+# sample stream are written to the results directory.
 #
 # Usage: scripts/buckshot_gate.sh [N] [results_dir]
 set -uo pipefail
@@ -21,6 +21,11 @@ export ORCHARD_TEST_HTTP_TIMEOUT_S="${ORCHARD_TEST_HTTP_TIMEOUT_S:-600}"
 
 for i in $(seq 1 "$N"); do
   log="$OUT_DIR/run_${i}.log"
+  # Keep each run's engine log (and any hang sample) next to its results:
+  # tests/conftest.py wipes its log directory at session start, so without a
+  # per-run directory run N+1 erases the engine-side record of run N, and the
+  # workflow uploads only the results directory.
+  export ORCHARD_TEST_LOG_DIR="$(cd "$OUT_DIR" && pwd)/run_${i}_logs"
   macmon_pid=""
   if command -v macmon >/dev/null 2>&1; then
     macmon pipe -i 1000 > "$OUT_DIR/run_${i}_energy.jsonl" 2>/dev/null &
