@@ -191,6 +191,7 @@ async def handle_completion_request(
             response_queue,
             fanout_counts,
             final_candidate_counts,
+            released_text=model_info.releases_held_text,
         )
 
         completion_choices = _convert_chat_choices(response_data["choices"])

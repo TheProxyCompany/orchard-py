@@ -6,7 +6,9 @@ from tests.functional.cases._timeout import HTTP_TIMEOUT_S
 pytestmark = pytest.mark.asyncio
 
 
-async def test_chat_completion_respects_stop_sequence(live_server, text_model_id):
+async def test_chat_completion_respects_stop_sequence(
+    live_server, engine, text_model_id
+):
     server_url = live_server
     payload = {
         "model": text_model_id,
@@ -42,9 +44,16 @@ async def test_chat_completion_respects_stop_sequence(live_server, text_model_id
     normalized = content.lower()
     assert "red" in normalized
     assert "white" in normalized
-    # The stop sequence ends the reply and is not part of it: the engine's
-    # text stream leaves it out, and only the decoded tokens spell it.
-    assert "blue" not in normalized
+    model_info = engine.model_registry().get_if_ready(text_model_id)
+    assert model_info is not None
+    if model_info.releases_held_text:
+        # The stop sequence ends the reply and is not part of it: the engine's
+        # text stream leaves it out, and only the decoded tokens spell it.
+        assert "blue" not in normalized
+    else:
+        # Against an engine without released_text the route still reads the
+        # decoded tokens where it did, and they spell the stop sequence.
+        assert normalized.endswith("blue")
 
     assert choice.get("finish_reason", "").lower() == "stop"
     print(content)

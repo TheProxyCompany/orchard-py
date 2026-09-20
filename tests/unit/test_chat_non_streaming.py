@@ -28,6 +28,8 @@ async def test_non_streaming_engine_error_without_indexes_fails_immediately() ->
 
     with pytest.raises(InferenceError, match="Engine process disconnected"):
         await asyncio.wait_for(
-            gather_non_streaming_batch_response(1, queue, _IpcStub(), [1], [1]),
+            gather_non_streaming_batch_response(
+                1, queue, _IpcStub(), [1], [1], released_text=True
+            ),
             timeout=0.2,
         )
