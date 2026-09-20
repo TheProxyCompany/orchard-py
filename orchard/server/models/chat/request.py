@@ -35,6 +35,18 @@ class ChatMessage(BaseModel):
         default_factory=list,
         description="The tool calls that were made in the message.",
     )
+    reasoning_content: str | None = Field(
+        default=None,
+        description="The think-block text of an assistant message.",
+    )
+    generation: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "What the model generated for an assistant message: "
+            "{'model': canonical model id, 'tokens': token ids, 'thinking': bool}. "
+            "Send it back unchanged on later turns."
+        ),
+    )
 
     @model_serializer
     def serialize_model(self) -> dict[str, Any]:
@@ -47,6 +59,10 @@ class ChatMessage(BaseModel):
             result["tool_calls"] = [
                 tool_call.model_dump() for tool_call in self.tool_calls
             ]
+        if self.reasoning_content is not None:
+            result["reasoning_content"] = self.reasoning_content
+        if self.generation is not None:
+            result["generation"] = self.generation
 
         return result
 

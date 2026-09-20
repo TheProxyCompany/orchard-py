@@ -4,7 +4,7 @@ import logging
 import os
 import random
 from collections import defaultdict
-from collections.abc import AsyncIterable
+from collections.abc import AsyncIterable, Sequence
 from contextlib import AsyncExitStack
 from typing import Any
 
@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
 
+from orchard.clients.replay import splice_replays, take_replays
 from orchard.defaults import MAX_GENERATED_TOKENS
 from orchard.ipc.serialization import _build_request_payload
 from orchard.ipc.utils import (
@@ -110,11 +111,15 @@ async def handle_completion_request(
         )
 
     prompt_payloads: list[dict[str, Any]] = []
+    thinking_flags: list[bool] = []
     reasoning_inputs = request.get_normalized_field("reasoning")
     for instance in normalized_instances:
-        messages_as_dicts = [
-            msg.model_dump(exclude_none=True) for msg in instance.messages
-        ]
+        # Replies this model generated earlier in the conversation are sent as their
+        # token ids when the engine takes token segments.
+        messages_as_dicts, replays = take_replays(
+            [msg.model_dump(exclude_none=True) for msg in instance.messages],
+            canonical_id if model_info.takes_token_segments() else None,
+        )
         core_tools_payload = (
             [tool.to_dict() for tool in instance.tools] if instance.tools else None
         )
@@ -133,6 +138,7 @@ async def handle_completion_request(
             DEFAULT_BOOLEAN_REASONING_EFFORT if default_reasoning else None
         )
         reasoning_flag = reasoning_effort is not None and native_reasoning
+        thinking_flags.append(reasoning_flag)
         prompt_text = formatter.apply_template(
             messages_as_dicts,
             reasoning=reasoning_flag,
@@ -170,10 +176,11 @@ async def handle_completion_request(
         )
         repetition_penalty = float(generation_defaults.get("repetition_penalty", 1.0))
 
-        conversation_bytes = prompt_text.encode("utf-8")
-        layout: list[dict[str, Any]] = [
-            {"type": "text", "length": len(conversation_bytes)}
-        ]
+        prompt_text, layout, token_segments = splice_replays(
+            prompt_text,
+            [{"type": "text", "length": len(prompt_text.encode("utf-8"))}],
+            replays,
+        )
 
         payload: dict[str, Any] = {
             "prompt": prompt_text,
@@ -202,6 +209,7 @@ async def handle_completion_request(
             "response_format_json": response_format_str,
             "image_buffers": [],
             "layout": layout,
+            "token_segments": token_segments,
             "num_candidates": instance.best_of,
             "best_of": instance.best_of,
             "final_candidates": instance.final_candidates,
@@ -264,6 +272,8 @@ async def handle_completion_request(
                         ipc_state,
                         request.model,
                         total_expected_sequences,
+                        canonical_id,
+                        thinking_flags,
                     ):
                         yield chunk
                     request_completed = True
@@ -282,6 +292,8 @@ async def handle_completion_request(
             ipc_state,
             fanout_counts,
             final_candidate_counts,
+            canonical_id,
+            thinking_flags,
         )
         usage = ChatCompletionUsage(
             input_tokens=response_data["prompt_tokens"],
@@ -330,14 +342,23 @@ async def gather_non_streaming_batch_response(
     ipc_state: IPCStateDep,
     prompt_fanout_counts: list[int],
     prompt_final_counts: list[int],
+    generation_model: str | None = None,
+    thinking_flags: Sequence[bool] = (),
 ) -> dict[str, Any]:
-    """Collects deltas for all sequences belonging to a parent request."""
+    """Collects deltas for all sequences belonging to a parent request.
+
+    `generation_model` is the canonical id of the model asked and `thinking_flags`
+    the thinking mode each prompt was rendered with: given a model, every returned
+    message carries a `generation` record made of both and the reply's token ids.
+    """
 
     total_expected = sum(prompt_fanout_counts)
     prompt_states: list[list[dict[str, Any]]] = [
         [
             {
                 "content": "",
+                "reasoning": {},
+                "tokens": [],
                 "finish_reason": "unknown",
                 "completion_tokens": 0,
                 "logprobs_entries": [],
@@ -461,6 +482,21 @@ async def gather_non_streaming_batch_response(
                         if span_deltas and content_field.startswith(joined)
                         else joined
                     )
+                    # Reasoning-item spans are the reply's think block, aggregated as
+                    # Client._aggregate_structured_items does.
+                    for event in state_events:
+                        if event.get("item_type") != "reasoning":
+                            continue
+                        identifier = str(event.get("identifier") or "reasoning")
+                        if event.get("event_type") == "content_delta":
+                            state["reasoning"][identifier] = state["reasoning"].get(
+                                identifier, ""
+                            ) + str(event.get("delta", ""))
+                        elif (
+                            event.get("event_type") == "item_completed"
+                            and "value" in event
+                        ):
+                            state["reasoning"][identifier] = str(event["value"])
                     if not state.get("saw_state_events"):
                         state["saw_state_events"] = True
                         # Anything accumulated before the first state event is
@@ -490,6 +526,7 @@ async def gather_non_streaming_batch_response(
 
                 tokens = delta.get("tokens", [])
                 state["completion_tokens"] += len(tokens)
+                state["tokens"].extend(tokens)
 
                 if top_logprobs_data := delta.get("top_logprobs"):
                     top_logprobs_list: list[ChatCompletionLogProbs] = []
@@ -673,7 +710,7 @@ async def gather_non_streaming_batch_response(
     choices: list[ChatCompletionChoice] = []
     single_prompt = len(prompt_states) == 1
     running_index = 0
-    for _, selected_entries in enumerate(selections):
+    for prompt_idx, selected_entries in enumerate(selections):
         for rank_within_prompt, (_, _, candidate_state) in enumerate(selected_entries):
             logprobs_object = None
             if candidate_state["logprobs_entries"]:
@@ -690,10 +727,28 @@ async def gather_non_streaming_batch_response(
             choice_index = rank_within_prompt if single_prompt else running_index
             running_index += 1
 
+            reasoning = [
+                value
+                for _, value in sorted(candidate_state["reasoning"].items())
+                if value
+            ]
+            generation = None
+            if generation_model is not None and candidate_state["tokens"]:
+                generation = {
+                    "model": generation_model,
+                    "tokens": candidate_state["tokens"],
+                    "thinking": thinking_flags[prompt_idx],
+                }
+
             choices.append(
                 ChatCompletionChoice(
                     index=choice_index,
-                    message=ChatMessage(role="assistant", content=choice_content),
+                    message=ChatMessage(
+                        role="assistant",
+                        content=choice_content,
+                        reasoning_content="\n".join(reasoning) if reasoning else None,
+                        generation=generation,
+                    ),
                     finish_reason=candidate_state["finish_reason"],
                     logprobs=logprobs_object,
                 )
@@ -713,6 +768,8 @@ async def stream_response_generator(
     ipc_state: IPCStateDep,
     model_name: str,
     expected_sequences: int,
+    generation_model: str,
+    thinking_flags: list[bool],
 ) -> AsyncIterable[dict[str, str]]:
     """
     Generates Server-Sent Events (SSE) from the response queue.
@@ -720,8 +777,12 @@ async def stream_response_generator(
     This generator handles streaming responses from the C++ engine, converting
     them to OpenAI-compatible SSE format. It ensures proper cleanup of resources
     even in case of errors or client disconnections.
+
+    Each candidate's final chunk carries the complete `generation` record of its
+    reply (see `gather_non_streaming_batch_response`).
     """
     completion_tokens_by_candidate: defaultdict[tuple[int, int], int] = defaultdict(int)
+    tokens_by_candidate: defaultdict[tuple[int, int], list[int]] = defaultdict(list)
     completed_sequences: set[int] = set()
     completed_candidate_slots: set[tuple[int, int]] = set()
     remaining_sequences = expected_sequences
@@ -766,6 +827,7 @@ async def stream_response_generator(
 
                 token_list = delta_dict.get("tokens", [])
                 completion_tokens_by_candidate[candidate_key] += len(token_list)
+                tokens_by_candidate[candidate_key].extend(token_list)
 
                 yield {"data": chunk.model_dump_json(exclude_none=True)}
 
@@ -786,9 +848,18 @@ async def stream_response_generator(
                         completed_candidate_slots.add(candidate_key)
                         remaining_sequences -= 1
 
+                    generation = None
+                    if tokens_by_candidate[candidate_key]:
+                        generation = {
+                            "model": generation_model,
+                            "tokens": tokens_by_candidate[candidate_key],
+                            "thinking": thinking_flags[prompt_index],
+                        }
                     final_chunk_choice = ChatCompletionChunkChoice(
                         index=candidate_index,
-                        delta=ChatMessage(role=None, content=None),
+                        delta=ChatMessage(
+                            role=None, content=None, generation=generation
+                        ),
                         finish_reason=finish_reason,
                         logprobs=None,
                     )
