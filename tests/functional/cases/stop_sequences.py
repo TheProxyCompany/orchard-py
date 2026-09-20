@@ -42,9 +42,9 @@ async def test_chat_completion_respects_stop_sequence(live_server, text_model_id
     normalized = content.lower()
     assert "red" in normalized
     assert "white" in normalized
-    assert "blue" in normalized
-
-    assert normalized.endswith("blue")
+    # The stop sequence ends the reply and is not part of it: the engine's
+    # text stream leaves it out, and only the decoded tokens spell it.
+    assert "blue" not in normalized
 
     assert choice.get("finish_reason", "").lower() == "stop"
     print(content)

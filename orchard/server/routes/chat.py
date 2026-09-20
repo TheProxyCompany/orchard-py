@@ -444,34 +444,29 @@ async def gather_non_streaming_batch_response(
                         delta.get("finish_reason"),
                     )
                 if state_events:
-                    # Message content_delta spans are the ground truth for
-                    # chat content: each span appears exactly once, so joining
+                    # Message content_delta spans are the only source of chat
+                    # content: each span appears exactly once, so joining
                     # them survives coalesced deltas, and reasoning-item spans
                     # (whose text the wire mirrors into top-level content)
                     # stay out of message content. Every candidate carries
                     # state events (forked candidates clone their steppers),
                     # so all candidates assemble through this branch.
-                    span_deltas = [
+                    #
+                    # Top-level content is the decoded text of the sampled
+                    # tokens and is never mixed in. The span stream holds back
+                    # text that could still become a stop sequence and hands
+                    # it over in a later delta, the final one when the reply
+                    # is cut off; content that runs ahead of the spans would
+                    # say that text twice (" the E" next to the span " the ",
+                    # then the released "E"), and it spells the stop sequence
+                    # the spans leave out.
+                    delta_content = "".join(
                         str(event.get("delta", ""))
                         for event in state_events
                         if (
                             event.get("event_type") == "content_delta"
                             and event.get("item_type") == "message"
                         )
-                    ]
-                    # Top-level content is used only when it extends the span
-                    # join: a stop matched mid-token ships its tail solely in
-                    # content (the span holds the pre-match prefix). A
-                    # span-less delta's content is reasoning text or the raw
-                    # stop text and must stay excluded; a coalesced delta's
-                    # content covers only the last tick and must lose to the
-                    # joined spans.
-                    joined = "".join(span_deltas)
-                    content_field = delta.get("content") or ""
-                    delta_content = (
-                        content_field
-                        if span_deltas and content_field.startswith(joined)
-                        else joined
                     )
                     if not state.get("saw_state_events"):
                         state["saw_state_events"] = True
@@ -530,7 +525,13 @@ async def gather_non_streaming_batch_response(
                             )
                         )
 
-                    chosen_token_str = delta_content
+                    # The entry describes the sampled token, whose text is
+                    # top-level content; a span can hold part of it back or
+                    # carry text of an earlier token. A delta that adds
+                    # nothing to the message keeps its empty entry.
+                    chosen_token_str = (
+                        (delta.get("content") or "") if delta_content else ""
+                    )
                     chosen_token_logprob = -999.0
                     for item in top_logprobs_data:
                         if (
