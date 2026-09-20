@@ -300,6 +300,7 @@ class InferenceEngine:
                     self._cleanup_failed_launch()
                     raise
 
+        launched = launched_fresh
         try:
             self._init_context_and_register()
         except Exception:
@@ -329,8 +330,11 @@ class InferenceEngine:
                 except BaseException:
                     self._cleanup_failed_launch()
                     raise
+            launched = True
             self._init_context_and_register()
 
+        if launched and global_context.ipc_state:
+            global_context.ipc_state.launched_engine = True
         self._lease_active = True
 
     def _init_context_and_register(self) -> None:

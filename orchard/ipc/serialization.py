@@ -29,12 +29,13 @@ _REQUEST_TYPE_CODES = {
     "image_generation": 9,
 }
 
-# Every request asks for the engine's flow-controlled response route by this
-# name: the engine then pushes the deltas to the client's own endpoint
+# A request asks for the engine's flow-controlled response route by this name:
+# the engine then pushes the deltas to the client's own endpoint
 # (endpoints.response_pull_path) and waits for a client that falls behind.
 # Publish/subscribe, the engine's route for a request without this field, drops
 # the oldest queued deltas instead, with no error on either side. An engine
-# that predates the field ignores it and publishes as before.
+# that predates the field ignores it and publishes as before. Whether a request
+# may ask is IPCState.lossless_responses.
 RESPONSE_TRANSPORT = "pull_v1"
 
 __all__ = ["RESPONSE_TRANSPORT", "_build_request_payload"]
@@ -194,6 +195,7 @@ def _build_request_payload(
     model_path: str,
     request_type: str | int,
     response_channel_id: int,
+    lossless_responses: bool,
     prompts: Sequence[Mapping[str, Any]],
     request_channel_id: int = 0,
     parent_request_id: int | None = None,
@@ -210,8 +212,9 @@ def _build_request_payload(
         "request_type": _normalise_request_type(request_type),
         "request_channel_id": int(request_channel_id),
         "response_channel_id": int(response_channel_id),
-        "response_transport": RESPONSE_TRANSPORT,
     }
+    if lossless_responses:
+        metadata["response_transport"] = RESPONSE_TRANSPORT
     metadata_prompts: list[dict[str, Any]] = []
     metadata["prompts"] = metadata_prompts
 

@@ -20,6 +20,7 @@ import pytest
 
 from orchard.app import ipc_dispatch
 from orchard.app.ipc_dispatch import IPCDispatcher, IPCState, QueueRegistration
+from orchard.app.model_registry import ModelRegistry
 from orchard.engine import io as engine_io
 from orchard.engine.global_context import GlobalContext
 from orchard.engine.inference_engine import InferenceEngine
@@ -74,6 +75,14 @@ class StandInEngine:
                     max(0.0, start + number / DELTAS_PER_SECOND - time.monotonic())
                 )
 
+    def publish_event(self, name: str, payload: dict) -> None:
+        self.published.send(
+            endpoints.EVENT_TOPIC_PREFIX
+            + name.encode()
+            + b"\x00"
+            + json.dumps(payload).encode()
+        )
+
     def close(self) -> None:
         for socket in (
             self.requests,
@@ -85,12 +94,17 @@ class StandInEngine:
 
 
 class Client:
-    """The engine client's IPC half, started the way InferenceEngine starts it."""
+    """The engine client's IPC half, started the way InferenceEngine starts it.
 
-    def __init__(self, channel_id: int) -> None:
+    `launched_engine` is what InferenceEngine records when this process
+    launched the engine itself, as opposed to attaching to a running one."""
+
+    def __init__(self, channel_id: int, *, launched_engine: bool) -> None:
         self.ctx = GlobalContext()
         self.state = self.ctx.ipc_state = IPCState(self.ctx)
+        self.ctx.model_registry = ModelRegistry(self.state)
         self.state.response_channel_id = channel_id
+        self.state.launched_engine = launched_engine
         engine_io.initialize_sockets(self.state, channel_id)
         self.ctx.dispatcher_thread = threading.Thread(
             target=lambda: asyncio.run(IPCState.run_ipc_listener(self.state)),
@@ -110,6 +124,7 @@ class Client:
                 model_path="/tmp/test-model",
                 request_type="generation",
                 response_channel_id=self.state.response_channel_id,
+                lossless_responses=self.state.lossless_responses,
                 prompts=[{"prompt": "hello"}],
             )
         )
@@ -149,7 +164,14 @@ def stand_in(ipc_root):
 
 @pytest.fixture
 def ipc_client(stand_in):
-    started = Client(CHANNEL)
+    started = Client(CHANNEL, launched_engine=True)
+    yield started
+    started.close()
+
+
+@pytest.fixture
+def shared_engine_client(stand_in):
+    started = Client(CHANNEL, launched_engine=False)
     yield started
     started.close()
 
@@ -233,7 +255,7 @@ async def test_an_engine_without_the_route_is_still_heard_and_reported(
     ipc_root, caplog
 ):
     engine = StandInEngine(knows_pull_route=False)
-    client = Client(CHANNEL)
+    client = Client(CHANNEL, launched_engine=True)
     try:
         queue = await client.request(1)
         with caplog.at_level(logging.WARNING, logger=ipc_dispatch.__name__):
@@ -248,10 +270,79 @@ async def test_an_engine_without_the_route_is_still_heard_and_reported(
 
 
 @pytest.mark.asyncio
+async def test_what_a_reaping_engine_publishes_is_delivered_without_the_warning(
+    ipc_root, caplog
+):
+    # An engine that advertises lossless_responses publishes only what it
+    # could not push to the endpoint, such as the error for a failed dial.
+    engine = StandInEngine(knows_pull_route=False)
+    client = Client(CHANNEL, launched_engine=False)
+    client.state.engine_advertises_lossless = True
+    try:
+        queue = await client.request(1)
+        with caplog.at_level(logging.WARNING, logger=ipc_dispatch.__name__):
+            await asyncio.to_thread(engine.answer, engine.receive_request(), 5)
+            assert await numbers_received(queue) == list(range(5))
+    finally:
+        client.close()
+        engine.close()
+
+    assert not [r for r in caplog.records if "publish/subscribe" in r.getMessage()]
+
+
+@pytest.mark.asyncio
+async def test_an_engine_this_process_launched_is_asked_for_the_route(
+    stand_in, ipc_client
+):
+    # No capability was ever advertised: launching the engine is enough.
+    queue = await ipc_client.request(1)
+    request = stand_in.receive_request()
+
+    assert request["response_transport"] == "pull_v1"
+    await asyncio.to_thread(stand_in.answer, request, 5)
+    assert await numbers_received(queue) == list(range(5))
+
+
+@pytest.mark.asyncio
+async def test_a_shared_engine_is_asked_for_the_route_once_it_advertises_it(
+    stand_in, shared_engine_client
+):
+    client = shared_engine_client
+
+    # The request on main, answered where main's requests are answered.
+    queue = await client.request(1)
+    request = stand_in.receive_request()
+    assert "response_transport" not in request
+    await asyncio.to_thread(stand_in.answer, request, 50)
+    assert await numbers_received(queue) == list(range(50))
+    assert stand_in.routes == {}
+
+    # Publish/subscribe does not queue for a subscriber it has not seen yet.
+    deadline = time.monotonic() + 5.0
+    while not client.state.engine_advertises_lossless:
+        assert time.monotonic() < deadline, "the model_loaded event never arrived"
+        stand_in.publish_event(
+            "model_loaded",
+            {
+                "model_id": "m",
+                "capabilities": {"answer": [3], "lossless_responses": [1]},
+            },
+        )
+        await asyncio.sleep(0.01)
+
+    queue = await client.request(2)
+    request = stand_in.receive_request()
+    assert request["response_transport"] == "pull_v1"
+    await asyncio.to_thread(stand_in.answer, request, 50)
+    assert await numbers_received(queue) == list(range(50))
+    assert list(stand_in.routes) == [CHANNEL]
+
+
+@pytest.mark.asyncio
 async def test_two_clients_with_the_same_request_ids_hear_only_their_own(
     stand_in, ipc_client
 ):
-    other = Client(OTHER_CHANNEL)
+    other = Client(OTHER_CHANNEL, launched_engine=True)
     try:
         mine = await ipc_client.request(1)
         theirs = await other.request(1)

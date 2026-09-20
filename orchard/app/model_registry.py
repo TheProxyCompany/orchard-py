@@ -620,6 +620,10 @@ class ModelRegistry:
 
     def update_capabilities(self, model_id: str, capabilities: dict | None) -> None:
         """Update persisted capabilities for a given model."""
+        # Both a load_model reply and a model_loaded event come through here,
+        # before the caller that waits for the model is woken, so its first
+        # request already knows what the engine advertises.
+        self._ipc_state.note_engine_capabilities(capabilities)
         if not capabilities:
             return
 

@@ -18,6 +18,7 @@ def test_prefill_task_request_payload_serializes_task_name() -> None:
         model_path="/tmp/privacy-filter",
         request_type="prefill_task",
         response_channel_id=9,
+        lossless_responses=False,
         prompts=[
             {
                 "prompt_bytes": b"email me at jack@example.com",
@@ -42,6 +43,7 @@ def test_prefill_task_batch_request_payload_serializes_prompt_indices() -> None:
         model_path="/tmp/privacy-filter",
         request_type="prefill_task",
         response_channel_id=9,
+        lossless_responses=False,
         prompts=[
             {
                 "prompt_bytes": b"email me at jack@example.com",

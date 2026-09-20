@@ -260,6 +260,7 @@ async def handle_completion_request(
             model_path=model_path,
             request_type="generation",
             response_channel_id=response_channel_id,
+            lossless_responses=ipc_state.lossless_responses,
             prompts=prompt_payloads,
         )
         await ipc_state.send_request(request_bytes)

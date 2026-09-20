@@ -97,3 +97,29 @@ def test_socket_close_waits_for_inflight_ops_to_drain():
 
     assert order == ["op_done", "closed"]
     assert ipc_state.request_socket is None
+
+
+@pytest.mark.parametrize(
+    ("capabilities", "advertised"),
+    [
+        # The engine writes every capability as a list of integers.
+        ({"lossless_responses": [1]}, True),
+        ({"lossless_responses": 1}, True),
+        ({"lossless_responses": [0]}, False),
+        ({"lossless_responses": []}, False),
+        ({"lossless_responses": "1"}, False),
+        ({"lossless_responses": True}, False),
+        ({"answer": [1]}, False),
+        (None, False),
+    ],
+)
+def test_only_lossless_responses_with_value_one_counts_as_advertised(
+    capabilities, advertised
+):
+    ipc_state = IPCState(GlobalContext())
+    assert not ipc_state.lossless_responses
+
+    ipc_state.note_engine_capabilities(capabilities)
+
+    assert ipc_state.engine_advertises_lossless is advertised
+    assert ipc_state.lossless_responses is advertised

@@ -24,6 +24,9 @@ logger = logging.getLogger(__name__)
 EVENT_TOPIC_PREFIX = b"__PIE_EVENT__:"
 ENGINE_LIVENESS_POLL_INTERVAL_S = 5.0
 RESPONSE_RECV_TIMEOUT_MS = 1000
+# The capability an engine lists, with value 1, once it reaps stalled response
+# routes with an explicit error and reports a response endpoint it cannot reach.
+LOSSLESS_RESPONSES_CAPABILITY = "lossless_responses"
 
 
 class IPCDispatcher:
@@ -85,6 +88,18 @@ class IPCState:
         self.shutdown_requested: bool = False
         self._warned_published_deltas: bool = False
 
+        # Whether requests may ask for the lossless response route. On that
+        # route the engine keeps a socket, a thread and a queue per client,
+        # and an engine that does not reap them leaks all three, with the
+        # undelivered deltas, for every client process that goes away, until
+        # it stops. So a request asks only when the engine advertises the
+        # capability "lossless_responses" with value 1 (it reaps a stalled
+        # route with an explicit error and reports an endpoint it cannot
+        # reach), or when this process launched the engine itself, which
+        # bounds the leak to this one client for the life of that engine.
+        self.launched_engine: bool = False
+        self.engine_advertises_lossless: bool = False
+
         # Monotonic time of the last engine message that proves generation or
         # activation progress (any response delta, model_loaded/_load_failed).
         # Written by the dispatcher thread, read by delta waiters; a float
@@ -98,6 +113,21 @@ class IPCState:
         self._inflight_drained.set()
 
         self.global_context = weakref.ref(global_context)
+
+    @property
+    def lossless_responses(self) -> bool:
+        return self.launched_engine or self.engine_advertises_lossless
+
+    def note_engine_capabilities(self, capabilities: Any) -> None:
+        """Reads a load_model reply's or a model_loaded event's capabilities
+        (name to a list of integers) for "lossless_responses": 1."""
+        if not isinstance(capabilities, dict):
+            return
+        value = capabilities.get(LOSSLESS_RESPONSES_CAPABILITY)
+        if isinstance(value, list | tuple):
+            value = value[0] if value else None
+        if type(value) is int and value == 1:
+            self.engine_advertises_lossless = True
 
     @property
     def management_lock(self) -> asyncio.Lock:
@@ -310,14 +340,16 @@ class IPCState:
             )
 
     def handle_published_response_delta(self, msg_bytes: bytes) -> None:
-        """A delta that arrived over publish/subscribe: the engine ignored the
-        requested response route, so it predates it."""
-        if not self._warned_published_deltas:
+        """A delta that arrived over publish/subscribe: the request did not ask
+        for the lossless route, or the engine predates it. An engine that
+        advertises lossless_responses publishes only what it could not push."""
+        if not self._warned_published_deltas and not self.engine_advertises_lossless:
             self._warned_published_deltas = True
             logger.warning(
                 "The engine answers over publish/subscribe, which drops response "
-                "deltas without an error when this client falls behind. Run "
-                "`orchard upgrade` for an engine with the lossless response route."
+                "deltas without an error when this client falls behind: it does "
+                "not advertise lossless_responses. `orchard upgrade` installs the "
+                "newest engine."
             )
         self.handle_response_delta(msg_bytes)
 
