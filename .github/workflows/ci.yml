@@ -33,9 +33,27 @@ jobs:
           brew list rust || brew install rust
 
       - name: Clone and build PIE
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           rm -rf ../proxy-inference-engine
-          git clone --depth 1 --recurse-submodules "https://${{ secrets.GH_PAT }}@github.com/TheProxyCompany/proxy-inference-engine.git" ../proxy-inference-engine
+          # PIE's private submodules need the token as well, and Carbon is listed
+          # as git@github.com:, so that form is rewritten to https first. Without
+          # this they fall back to the runner's keychain, which a runner service
+          # cannot read (error -25308), or to the machine's ssh key.
+          # The token travels as a header in environment config: that reaches the
+          # submodule clones, stays out of every argument list (a token inside a
+          # rewritten URL is handed to git-remote-https as an argument) and is
+          # never written to .git/config.
+          auth=$(printf 'x-access-token:%s' "$GH_PAT" | base64 | tr -d '\n')
+          echo "::add-mask::$auth"
+          GIT_CONFIG_COUNT=3 \
+            GIT_CONFIG_KEY_0=credential.helper GIT_CONFIG_VALUE_0= \
+            GIT_CONFIG_KEY_1=url.https://github.com/.insteadOf GIT_CONFIG_VALUE_1=git@github.com: \
+            GIT_CONFIG_KEY_2=http.https://github.com/.extraheader \
+            GIT_CONFIG_VALUE_2="Authorization: Basic $auth" \
+            git clone --depth 1 --recurse-submodules --shallow-submodules \
+            "https://github.com/TheProxyCompany/proxy-inference-engine.git" ../proxy-inference-engine
           cd ../proxy-inference-engine
           ./scripts/build.sh -t Release
 
