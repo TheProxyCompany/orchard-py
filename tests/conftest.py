@@ -3,9 +3,11 @@ import contextlib
 import logging
 import os
 import resource
+import shutil
 import socket
 import tempfile
 import threading
+import time
 from collections.abc import Generator
 from pathlib import Path
 
@@ -17,8 +19,8 @@ import uvicorn
 
 # Tests must never operate in the default engine namespace: that namespace
 # belongs to whatever long-lived engine this machine runs (Proxy.app's Grand
-# Central engine in production), and the pre-test cleanup below force-stops
-# the namespace's engine. Unless the caller pinned a namespace explicitly
+# Central engine in production), and the engine fixture's pre-test cleanup
+# force-stops the namespace's engine. Unless the caller pinned a namespace explicitly
 # (pie_cycle.sh exports ORCHARD_CACHE_ROOT), give this session a private one.
 # This must happen before any orchard import: orchard.ipc.endpoints resolves
 # the IPC socket root at import time.
@@ -53,11 +55,8 @@ LOG_DIR = (
     else PROJECT_ROOT / "logs_test"
 )
 
-if LOG_DIR.exists():
-    import shutil
-
-    shutil.rmtree(LOG_DIR)
-
+# Only created here. It is emptied in the engine fixture, once the GPU lease is
+# held: until then another session's live logs may be in it.
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 SERVER_LOG_PATH = LOG_DIR / "python_server.test.log"
@@ -69,15 +68,6 @@ ALL_MODELS = [m.checkpoint for m in MODELS]
 SERVER_STARTUP_TIMEOUT_SECONDS = float(
     os.getenv("ORCHARD_TEST_SERVER_STARTUP_TIMEOUT_SECONDS", "120.0")
 )
-
-# Ensure we start with a clean slate in case a prior run crashed and left the engine up.
-try:
-    InferenceEngine.shutdown(timeout=30.0)
-    logger.info("Pre-test engine cleanup complete.")
-except RuntimeError as exc:
-    raise RuntimeError(
-        "Failed to stop existing engine before starting tests; manual cleanup required."
-    ) from exc
 
 
 @pytest.fixture(scope="session")
@@ -95,7 +85,28 @@ def engine(request: pytest.FixtureRequest) -> Generator[InferenceEngine, None, N
     what = " ".join(["orchard-py pytest", *request.config.invocation_params.args])
     capture = request.config.pluginmanager.getplugin("capturemanager")
     with capture.global_and_fixture_disabled() if capture else contextlib.nullcontext():
-        hold_gpu_lease(what)
+        if hold_gpu_lease(what) is not None:
+            # scripts/buckshot_gate.sh reads this line: what it records about a
+            # run starts here, not while the run was still waiting its turn.
+            acquired = time.strftime("%Y-%m-%d %H:%M:%S")
+            print(f"[gpu-lease] acquired {acquired}", flush=True)
+
+    # Ensure we start with a clean slate in case a prior run crashed and left
+    # the engine up. Only now, with the lease held, and never at import: a
+    # session that is about to wait for the lease would first stop the lease
+    # holder's engine (sessions can share a pinned ORCHARD_CACHE_ROOT) and
+    # delete its logs, and a unit-test session would do both without ever
+    # taking the lease.
+    try:
+        InferenceEngine.shutdown(timeout=30.0)
+        logger.info("Pre-test engine cleanup complete.")
+    except RuntimeError as exc:
+        raise RuntimeError(
+            "Failed to stop existing engine before starting tests; manual cleanup required."
+        ) from exc
+    if LOG_DIR.exists():
+        shutil.rmtree(LOG_DIR)
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
 
     logger.info("Setting up InferenceEngine for test session.")
 

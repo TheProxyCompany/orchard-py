@@ -1,9 +1,12 @@
 """The GPU lease (tests/gpu_lease.py) serializes sessions on one machine.
 
-Stub sessions only: each is a subprocess that takes the lease on a temp path
-and then holds it until its stdin closes. No engine, no GPU.
+Stub sessions only, no engine and no GPU. The helper's sessions are
+subprocesses that take the lease on a temp path and hold it until their stdin
+closes. The fixture's sessions are pytest subprocesses that load
+tests/conftest.py with the lease and the engine class replaced by recorders.
 """
 
+import json
 import os
 import re
 import select
@@ -116,3 +119,121 @@ def test_opt_out_does_not_block(tmp_path: Path) -> None:
             assert first.poll() is None, "the holder exited early: nothing was proved"
         finally:
             first.kill()
+
+
+# Loaded with -p ahead of tests/conftest.py. Each event is written with whether
+# another session's engine log is still in the log directory at that moment.
+RECORDERS = """
+import json
+import os
+import sys
+from pathlib import Path
+
+import orchard.engine.inference_engine as engine_module
+
+EVENTS = Path(__file__).with_name("events.jsonl")
+OTHER_LOG = Path(os.environ["ORCHARD_TEST_LOG_DIR"]) / "engine.test.log"
+
+
+def record(event):
+    with EVENTS.open("a") as f:
+        f.write(json.dumps([event, OTHER_LOG.exists()]) + "\\n")
+
+
+class RecordedEngine:
+    def __init__(self, **kwargs):
+        record("engine constructed")
+
+    def close(self):
+        pass
+
+    @staticmethod
+    def shutdown(timeout=15.0):
+        record("running engine stopped")
+        return True
+
+
+def recorded_lease(what):
+    print("the waiting line goes here", file=sys.stderr, flush=True)
+    record("lease requested: " + what)
+    return 0
+
+
+engine_module.InferenceEngine = RecordedEngine  # before conftest imports it
+import conftest
+
+conftest.hold_gpu_lease = recorded_lease
+"""
+
+FIXTURE_TESTS = """
+def test_with_the_engine(engine):
+    pass
+
+
+def test_without_an_engine():
+    pass
+"""
+
+
+def _pytest_session(
+    tmp_path: Path, test: str
+) -> tuple[list[list], Path, subprocess.CompletedProcess]:
+    (tmp_path / "lease_recorders.py").write_text(RECORDERS)
+    (tmp_path / "test_fixture.py").write_text(FIXTURE_TESTS)
+    other_log = tmp_path / "logs" / "engine.test.log"
+    other_log.parent.mkdir()
+    other_log.write_text("the engine log of a session that holds the lease\n")
+    done = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            *("-p", "lease_recorders", "-p", "conftest", "-p", "no:cacheprovider"),
+            "-q",
+            f"test_fixture.py::{test}",
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+        env=_env(
+            PYTHONPATH=os.pathsep.join([str(tmp_path), HELPER_DIR]),
+            # Whatever the recorders miss must find no engine and no real logs.
+            ORCHARD_CACHE_ROOT=str(tmp_path / "cache"),
+            ORCHARD_TEST_LOG_DIR=str(other_log.parent),
+        ),
+    )
+    assert done.returncode == 0, done.stdout + done.stderr
+    events = tmp_path / "events.jsonl"
+    lines = events.read_text().splitlines() if events.exists() else []
+    return [json.loads(line) for line in lines], other_log, done
+
+
+def test_engine_fixture_takes_the_lease_before_it_touches_anything(
+    tmp_path: Path,
+) -> None:
+    events, _, done = _pytest_session(tmp_path, "test_with_the_engine")
+    lease, *rest = events
+    assert lease[0].startswith("lease requested: orchard-py pytest -p "), events
+    # The other session's engine and its log outlive the wait for the lease,
+    # and the clean slate is there before this session's engine is.
+    assert [lease[1], *rest] == [
+        True,
+        ["running engine stopped", True],
+        ["engine constructed", False],
+    ]
+    # Both reach the terminal or the CI log under the default output capture:
+    # whatever the lease prints while it waits, and the line the gate reads.
+    assert "the waiting line goes here" in done.stderr
+    acquired_line = r"\[gpu-lease\] acquired \d{4}-\d\d-\d\d \d\d:\d\d:\d\d$"
+    assert re.search(acquired_line, done.stdout, re.MULTILINE), done.stdout
+
+
+def test_session_without_the_engine_takes_no_lease_and_stops_nothing(
+    tmp_path: Path,
+) -> None:
+    events, other_log, done = _pytest_session(tmp_path, "test_without_an_engine")
+    assert events == []
+    assert other_log.exists()
+    assert "[gpu-lease]" not in done.stdout
