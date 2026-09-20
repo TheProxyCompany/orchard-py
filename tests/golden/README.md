@@ -33,10 +33,12 @@ load `Qwen/Qwen-Image-Edit` on demand. It rewrites only `data/gemma4/image_*`
 and `data/moondream3/image_*` (the audio case records nothing).
 
 Two things to watch while re-recording. Greedy was dropped once before
-(4c7400c, July): qwen3_5 then reasoned up to the token cap without answering.
-The model's recommended penalties still apply under greedy now (they did not
-then), but if a thinking model loops, its cases fail, nothing is written, and
-that is a finding to bring back rather than record around. And
+(4c7400c, July), whose message says qwen3_5's golden "ran away unbounded" under
+it. The model's recommended penalties still apply under greedy now (they did
+not then: temperature 0 rode on the default lane, which has none), but nothing
+here was run against an engine. If a thinking model loops, its cases fail,
+nothing is written, and that is a finding to bring back rather than record
+around. And
 `llama3/tool_chaining/turn3` carries two blessed per-device variants; a
 re-record leaves one, so the other device family needs `GOLDEN_ADD_VARIANT=1`
 again if it still resolves a near-tie differently.
