@@ -5,10 +5,11 @@ import inspect
 import traceback
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, ClassVar
 
 import pytest
 
+from tests.golden.golden_io import collect_drift
 from tests.models import Model
 
 from . import (
@@ -22,7 +23,6 @@ from . import (
     tool_result_grounding,
     tool_selection,
 )
-
 
 _MODEL_MODULES = [
     multi_tool,
@@ -40,6 +40,36 @@ _PIPELINE_MODULES = [
 ]
 
 
+class GreedyClient:
+    """The client every golden case gets: its Responses calls decode greedily.
+
+    ``deterministic=True`` alone is not greedy: the client resolves it to the
+    model's *recommended* sampling with ``rng_seed=11`` (temperature 1.0 for
+    gpt-oss and gemma-4), so the recorded token is ``argmax(logprob/T + seeded
+    noise)`` and a near-tie flips on any kernel change. An explicit temperature
+    of 0 makes the engine take the plain argmax and skip top-p/top-k/min-p;
+    ``deterministic`` stays on for the engine's reproducible scheduling. Pinned
+    here, on ``aresponses`` and its rendered-prompt preview, whatever the case
+    passes. Image and audio calls pass through untouched.
+    """
+
+    SAMPLING: ClassVar[dict[str, Any]] = {"temperature": 0.0, "deterministic": True}
+
+    def __init__(self, client: Any) -> None:
+        self._client = client
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._client, name)
+
+    async def aresponses(self, model_id: str, **kwargs: Any) -> Any:
+        return await self._client.aresponses(model_id, **{**kwargs, **self.SAMPLING})
+
+    async def arender_responses_prompt(self, model_id: str, **kwargs: Any) -> Any:
+        return await self._client.arender_responses_prompt(
+            model_id, **{**kwargs, **self.SAMPLING}
+        )
+
+
 @dataclass(frozen=True)
 class GoldenCase:
     id: str
@@ -50,13 +80,17 @@ class GoldenCase:
         for name in inspect.signature(self.function).parameters:
             if name == "model":
                 kwargs[name] = model
+            elif name == "client":
+                kwargs[name] = GreedyClient(fixtures[name])
             else:
                 kwargs[name] = fixtures[name]
 
-        if inspect.iscoroutinefunction(self.function):
-            await self.function(**kwargs)
-            return
-        await asyncio.to_thread(self.function, **kwargs)
+        # Every turn of the case is compared, and drifted turns fail it at the end.
+        with collect_drift():
+            if inspect.iscoroutinefunction(self.function):
+                await self.function(**kwargs)
+            else:
+                await asyncio.to_thread(self.function, **kwargs)
 
 
 @dataclass(frozen=True)
@@ -119,5 +153,7 @@ def _collect(modules: Iterable[Any]) -> list[GoldenCase]:
         scenario = module.__name__.rsplit(".", 1)[-1]
         for name, function in sorted(vars(module).items()):
             if name.startswith("test_") and callable(function):
-                cases.append(GoldenCase(f"{scenario}.{name.removeprefix('test_')}", function))
+                cases.append(
+                    GoldenCase(f"{scenario}.{name.removeprefix('test_')}", function)
+                )
     return cases
