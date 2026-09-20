@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import logging
 import os
 import resource
@@ -24,6 +25,7 @@ import uvicorn
 if "ORCHARD_CACHE_ROOT" not in os.environ:
     os.environ["ORCHARD_CACHE_ROOT"] = tempfile.mkdtemp(prefix="orchard-pytest-")
 
+from gpu_lease import hold_gpu_lease
 from models import MODELS, Model
 
 from orchard.clients.client import Client
@@ -45,7 +47,11 @@ if _soft < 10240:
 PROJECT_ROOT = Path(__file__).parent.parent
 # ORCHARD_TEST_LOG_DIR lets two test sessions run side by side (device-wide
 # GPU diagnostics) without clobbering each other's engine log.
-LOG_DIR = Path(os.environ["ORCHARD_TEST_LOG_DIR"]) if os.environ.get("ORCHARD_TEST_LOG_DIR") else PROJECT_ROOT / "logs_test"
+LOG_DIR = (
+    Path(os.environ["ORCHARD_TEST_LOG_DIR"])
+    if os.environ.get("ORCHARD_TEST_LOG_DIR")
+    else PROJECT_ROOT / "logs_test"
+)
 
 if LOG_DIR.exists():
     import shutil
@@ -75,11 +81,22 @@ except RuntimeError as exc:
 
 
 @pytest.fixture(scope="session")
-def engine() -> Generator[InferenceEngine, None, None]:
+def engine(request: pytest.FixtureRequest) -> Generator[InferenceEngine, None, None]:
     """
     A session-scoped fixture that starts the PIE service using InferenceEngine,
     preloads models, and ensures clean shutdown.
     """
+    # One heavy GPU tenant at a time on this machine (tests/gpu_lease.py).
+    # Every engine a test session starts comes from this fixture, so the lease
+    # is taken here, before the engine exists, and held until pytest exits.
+    # Not at import: unit-test sessions load this conftest too, never reach
+    # this fixture, and must not queue behind a GPU run. Capture is lifted so
+    # the waiting line reaches the terminal or the CI log while we block.
+    what = " ".join(["orchard-py pytest", *request.config.invocation_params.args])
+    capture = request.config.pluginmanager.getplugin("capturemanager")
+    with capture.global_and_fixture_disabled() if capture else contextlib.nullcontext():
+        hold_gpu_lease(what)
+
     logger.info("Setting up InferenceEngine for test session.")
 
     engine_instance: InferenceEngine | None = None
