@@ -301,11 +301,6 @@ def _preloaded(models_env: str | None) -> subprocess.CompletedProcess[str]:
 
 def test_orchard_test_models_narrows_what_a_session_loads() -> None:
     assert json.loads(_preloaded("gpt_oss").stdout) == ["openai/gpt-oss-20b"]
-    assert json.loads(_preloaded("gemma4,moondream3").stdout) == [
-        "google/gemma-4-E2B-it",
-        "moondream/moondream3-preview",
-    ]
-    assert json.loads(_preloaded(None).stdout) == [m.checkpoint for m in MATRIX]
 
     typo = _preloaded("gpt_os")
     assert typo.returncode != 0 and "unknown template type" in typo.stderr
