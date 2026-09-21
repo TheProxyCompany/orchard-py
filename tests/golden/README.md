@@ -1,13 +1,15 @@
 # Golden path
 
-## NOTES (greedy decoding: the suite is red until re-recorded)
+## NOTES (greedy decoding: the chat models are re-recorded, the image files are not)
 
-Every case now decodes greedily (see "Sampling"). The files under `data/` were
-recorded with seeded sampling at each model's recommended temperature, so they
-no longer describe what the suite asks the engine for: **expect this suite to
-be red until each model is re-recorded against the final engine build.** The
-one exception should be `granite_switch`, whose recommended temperature already
-was 0, so its requests are unchanged.
+Every case now decodes greedily (see "Sampling"). The ten chat models were
+re-recorded under it on 2026-09-21, one at a time with only that model loaded,
+against the engine's integration build (proxy-inference-engine
+`gate-candidate`, 2ed81fff). `granite_switch` came back byte for byte: its
+recommended temperature already was 0, so its requests did not change. **The
+image files (`data/gemma4/image_*`, `data/moondream3/image_*`) were not
+re-recorded**: they still hold the seeded-sampling recordings, so expect
+`test_golden_pipeline_cases` to be red until `pipeline` (below) is run.
 
 Re-record one model at a time, with only that model loaded, each in its own
 fresh engine namespace, and review the git diff of `data/<template_type>/`
@@ -28,13 +30,13 @@ and `data/moondream3/image_*` (the audio case records nothing).
 Two things to watch while re-recording. Greedy was dropped once before
 (4c7400c, July), whose message says qwen3_5's golden "ran away unbounded" under
 it. The model's recommended penalties still apply under greedy now (they did
-not then: temperature 0 rode on the default lane, which has none), but nothing
-here was run against an engine. If a thinking model loops, its cases fail,
-nothing is written, and that is a finding to bring back rather than record
-around. And
-`llama3/tool_chaining/turn3` carries two blessed per-device variants; a
-re-record leaves one, so the other device family needs `GOLDEN_ADD_VARIANT=1`
-again if it still resolves a near-tie differently.
+not then: temperature 0 rode on the default lane, which has none), and in the
+2026-09-21 re-record no model looped: every turn ended by itself. If a thinking
+model loops on a later build, its cases fail, nothing is written, and that is a
+finding to bring back rather than record around. And
+`llama3/tool_chaining/turn3` carried two blessed per-device variants; the
+re-record was made on an M3 Ultra and left one, so the M2 Ultra needs
+`GOLDEN_ADD_VARIANT=1` again if it still resolves a near-tie differently.
 
 ## What this is
 
