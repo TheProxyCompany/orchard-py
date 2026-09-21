@@ -469,25 +469,19 @@ async def gather_non_streaming_batch_response(
                     ]
                     joined = "".join(span_deltas)
                     if released_text:
-                        # The spans are the whole message. They hold back text
-                        # that could still become a stop sequence and hand it
-                        # over in a later delta, the final one when the reply
-                        # is cut off. Top-level content, the decoded text of
-                        # the sampled tokens, runs ahead of them: mixed in, it
-                        # says that text twice (" the E" next to the span
-                        # " the ", then the released "E") and spells the stop
-                        # sequence the spans leave out.
+                        # The spans are the whole message. Top-level content runs ahead
+                        # of them and spells the stop sequence they leave out; see
+                        # ModelInfo.releases_held_text.
                         delta_content = joined
                     else:
-                        # An engine without released_text never hands over
-                        # text it held when the reply was cut off, so this
-                        # stays what it was: top-level content is used when it
-                        # extends the span join (the held tail of a token
-                        # ships solely in content). A span-less delta's
-                        # content is reasoning text or the raw stop text and
-                        # must stay excluded; a coalesced delta's content
-                        # covers only the last tick and must lose to the
-                        # joined spans.
+                        # Engines without released_text: main's rule, unchanged; delete
+                        # with the capability.
+                        # Top-level content is used only when it extends the span join:
+                        # a stop matched mid-token ships its tail solely in content (the
+                        # span holds the pre-match prefix). A span-less delta's content
+                        # is reasoning text or the raw stop text and must stay excluded;
+                        # a coalesced delta's content covers only the last tick and must
+                        # lose to the joined spans.
                         content_field = delta.get("content") or ""
                         delta_content = (
                             content_field
@@ -748,14 +742,9 @@ async def gather_non_streaming_batch_response(
 class _StreamedMessageText:
     """What the stream shows of each delta of one candidate.
 
-    The rule of ``gather_non_streaming_batch_response``, applied while the
-    deltas arrive: a candidate that carries state events is its message
-    ``content_delta`` spans, so reasoning text, markers and a stop sequence
-    stay out and held text appears once, when a span hands it over (the final
-    delta's when the reply is cut off). ``content`` is the text only of a
-    candidate that never carries a state event, which is known when it ends;
-    until the first event it is collected, not shown, because content ahead of
-    the first event is marker text (a bare think-open token).
+    The rule of ``gather_non_streaming_batch_response``, applied as the deltas
+    arrive. ``content`` ahead of the first state event is collected, not shown,
+    and is the text only if no event ever comes.
     """
 
     __slots__ = ("pending_content", "saw_state_events", "streamed")
