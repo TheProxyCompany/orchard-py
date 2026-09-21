@@ -265,8 +265,15 @@ class IPCState:
         *,
         timeout: float | None = 2.0,
     ) -> dict[str, Any]:
+        # Every client counts request ids from 1. An engine that keys its
+        # requests by response channel cancels exactly this client's; an older
+        # one ignores the field and cancels every request with that id.
         response = await self.send_management_command(
-            {"type": "cancel_request", "request_id": request_id},
+            {
+                "type": "cancel_request",
+                "request_id": request_id,
+                "response_channel_id": self.response_channel_id,
+            },
             timeout=timeout,
         )
         status = str(response.get("status") or "").lower()

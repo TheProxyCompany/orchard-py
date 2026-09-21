@@ -99,6 +99,29 @@ def test_socket_close_waits_for_inflight_ops_to_drain():
     assert ipc_state.request_socket is None
 
 
+@pytest.mark.asyncio
+async def test_cancel_request_names_this_clients_response_channel():
+    # Every client counts request ids from 1: the channel is what tells an
+    # engine whose request 7 is meant.
+    sent: list[dict] = []
+
+    async def asend(payload: bytes) -> None:
+        sent.append(json.loads(payload))
+
+    async def arecv() -> bytes:
+        return b'{"status": "accepted"}'
+
+    ipc_state = IPCState(GlobalContext())
+    ipc_state.response_channel_id = 0xABC
+    ipc_state.management_socket = SimpleNamespace(asend=asend, arecv=arecv)
+
+    await ipc_state.cancel_request(7)
+
+    assert sent == [
+        {"type": "cancel_request", "request_id": 7, "response_channel_id": 0xABC}
+    ]
+
+
 @pytest.mark.parametrize(
     ("capabilities", "advertised"),
     [
