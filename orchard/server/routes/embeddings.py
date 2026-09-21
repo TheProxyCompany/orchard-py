@@ -133,7 +133,10 @@ async def create_embeddings(
     )
 
     # 3. Register the queue for this request. On exit the session cancels an
-    # engine request that did not run to completion (a timeout, an error).
+    # engine request that did not run to completion (a timeout, an error), in
+    # an engine that advertises lossless_responses and so cancels by response
+    # channel. An older one cancels by bare request id and never forgets it:
+    # it would end every client's request with this id, so it is not asked.
     response_queue = asyncio.Queue[ResponseDeltaDict]()
     request_completed = False
 
@@ -143,7 +146,7 @@ async def create_embeddings(
             ipc_state,
             current_request_id,
             response_queue,
-            cancel_on_exit=True,
+            cancel_on_exit=ipc_state.engine_advertises_lossless,
             completed=lambda: request_completed,
         ):
             logger.debug(

@@ -23,6 +23,7 @@ class _IpcState:
 
     response_channel_id = 7
     lossless_responses = True
+    engine_advertises_lossless = True
 
     def __init__(self, delta: dict | None) -> None:
         self.delta = delta
@@ -59,6 +60,24 @@ async def test_a_request_that_times_out_is_cancelled_in_the_engine() -> None:
 
     assert raised.value.status_code == 502
     assert ipc_state.cancelled_requests == [42]
+    assert ipc_state.active_request_queues == {}
+
+
+@pytest.mark.asyncio
+async def test_an_engine_that_cancels_by_bare_id_is_not_sent_the_cancel() -> None:
+    # An engine that has not advertised lossless_responses ignores the channel
+    # and never forgets a cancelled id: it would end every client's request
+    # 42, those already running and those still to come.
+    ipc_state = _IpcState(None)
+    ipc_state.engine_advertises_lossless = False
+
+    with pytest.raises(HTTPException) as raised:
+        await create_embeddings(
+            EmbeddingRequest(model="stub", input="hi"), ipc_state, _Registry()
+        )
+
+    assert raised.value.status_code == 502
+    assert ipc_state.cancelled_requests == []
     assert ipc_state.active_request_queues == {}
 
 
