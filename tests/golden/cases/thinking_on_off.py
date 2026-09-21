@@ -57,7 +57,6 @@ async def test_thinking_on_off(client: Client, model: Model):
     # Turn 1 ("on"): thinking enabled — the model reasons, then answers.
     on_request = dict(
         input=conversation,
-        deterministic=True,
         max_output_tokens=512,
         reasoning={"effort": "medium"},
         prefix_cache=False,
@@ -95,7 +94,6 @@ async def test_thinking_on_off(client: Client, model: Model):
     # Turn 2 ("off"): thinking suppressed (reasoning=False) — same prompt, no CoT.
     off_request = dict(
         input=conversation,
-        deterministic=True,
         max_output_tokens=512,
         reasoning=False,
         prefix_cache=False,

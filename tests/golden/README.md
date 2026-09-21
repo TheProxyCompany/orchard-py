@@ -60,7 +60,7 @@ model, plus one for the multi-model pipeline cases) and from the buckshot volley
 
 ## Sampling
 
-The cases pass `deterministic=True` and no temperature. On its own that is
+The cases pass no sampling arguments. `deterministic=True` on its own is
 **not** greedy: the client (`orchard/clients/client.py`, request building)
 fills omitted sampling fields from the profile's `recommended` lane and pins
 `rng_seed=11`, so gpt-oss and gemma-4 would sample at temperature 1.0 and the
