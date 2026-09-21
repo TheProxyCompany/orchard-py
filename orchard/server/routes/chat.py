@@ -781,7 +781,6 @@ async def stream_response_generator(
     Each candidate's final chunk carries the complete `generation` record of its
     reply (see `gather_non_streaming_batch_response`).
     """
-    completion_tokens_by_candidate: defaultdict[tuple[int, int], int] = defaultdict(int)
     tokens_by_candidate: defaultdict[tuple[int, int], list[int]] = defaultdict(list)
     completed_sequences: set[int] = set()
     completed_candidate_slots: set[tuple[int, int]] = set()
@@ -810,9 +809,9 @@ async def stream_response_generator(
                     index=candidate_index,
                     delta=ChatMessage(
                         # only send assistant role for the first chunk
-                        role="assistant"
-                        if completion_tokens_by_candidate[candidate_key] <= 0
-                        else None,
+                        role=None
+                        if tokens_by_candidate[candidate_key]
+                        else "assistant",
                         content=delta_dict.get("content", None),
                     ),
                     finish_reason=None,
@@ -826,7 +825,6 @@ async def stream_response_generator(
                 )
 
                 token_list = delta_dict.get("tokens", [])
-                completion_tokens_by_candidate[candidate_key] += len(token_list)
                 tokens_by_candidate[candidate_key].extend(token_list)
 
                 yield {"data": chunk.model_dump_json(exclude_none=True)}
