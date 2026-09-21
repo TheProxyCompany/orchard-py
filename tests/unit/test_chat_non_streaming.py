@@ -134,3 +134,21 @@ def test_usage_carries_the_openai_names() -> None:
     assert usage["completion_tokens"] == 40
     assert usage["prompt_tokens_details"] == {"cached_tokens": 96}
     assert usage["completion_tokens_details"] == {"reasoning_tokens": 30}
+
+
+def test_max_tokens_is_the_cap_under_its_older_name() -> None:
+    from orchard.server.models.chat.request import ChatCompletionRequest
+
+    def request(**cap) -> ChatCompletionRequest:
+        return ChatCompletionRequest(
+            model="m",
+            messages=[{"role": "user", "content": "hi"}],
+            temperature=0,
+            **cap,
+        )
+
+    assert request(max_tokens=300).get_normalized_field("max_completion_tokens") == [
+        300
+    ]
+    with pytest.raises(ValueError, match="max_completion_tokens"):
+        request(max_tokens=0)
