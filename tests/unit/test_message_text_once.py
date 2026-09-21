@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any
 
@@ -470,45 +471,41 @@ async def test_chat_route_logprob_entry_is_unchanged_for_an_old_engine() -> None
     assert (entry.token, entry.logprob) == ("e cat", -999.0)
 
 
-@pytest.mark.asyncio
-@all_cases
-async def test_chat_route_streaming(case: Case) -> None:
+async def _streamed_text(
+    deltas: list[dict[str, Any]], expected_sequences: int, released_text: bool
+) -> dict[int, str]:
+    """The text /v1/chat/completions streams, by choice index."""
     chunks = [
         chunk["data"]
         async for chunk in chat_route.stream_response_generator(
             1,
-            await _queue_of(case.deltas),
+            await _queue_of(deltas),
             _IpcStub(),
             "test-model",
-            1,
-            released_text=case.released_text,
+            expected_sequences,
+            released_text=released_text,
         )
     ]
-
     assert chunks[-1] == "[DONE]"
-    text = "".join(
-        choice["delta"].get("content") or ""
-        for chunk in chunks[:-1]
-        for choice in json.loads(chunk)["choices"]
-    )
-    assert text == case.chat_stream
+    text: defaultdict[int, str] = defaultdict(str)
+    for chunk in chunks[:-1]:
+        for choice in json.loads(chunk)["choices"]:
+            text[choice["index"]] += choice["delta"].get("content") or ""
+    return text
+
+
+@pytest.mark.asyncio
+@all_cases
+async def test_chat_route_streaming(case: Case) -> None:
+    text = await _streamed_text(case.deltas, 1, case.released_text)
+    assert text[0] == case.chat_stream
 
 
 async def _both_chat_routes(deltas: list[dict[str, Any]]) -> tuple[str, str]:
     """The streamed and the non-streaming text, against an engine with released_text."""
-    chunks = [
-        chunk["data"]
-        async for chunk in chat_route.stream_response_generator(
-            1, await _queue_of(deltas), _IpcStub(), "test-model", 1, released_text=True
-        )
-    ]
-    streamed = "".join(
-        choice["delta"].get("content") or ""
-        for chunk in chunks[:-1]
-        for choice in json.loads(chunk)["choices"]
-    )
+    streamed = await _streamed_text(deltas, 1, released_text=True)
     choice = await _chat_route_choice(deltas, released_text=True)
-    return streamed, choice.message.content
+    return streamed[0], choice.message.content
 
 
 @pytest.mark.asyncio
@@ -557,16 +554,7 @@ async def test_chat_route_streaming_keeps_candidates_apart() -> None:
         if delta is not None
     ]
 
-    chunks = [
-        chunk["data"]
-        async for chunk in chat_route.stream_response_generator(
-            1, await _queue_of(deltas), _IpcStub(), "test-model", 2, released_text=True
-        )
-    ]
-    text = {0: "", 1: ""}
-    for chunk in chunks[:-1]:
-        for choice in json.loads(chunk)["choices"]:
-            text[choice["index"]] += choice["delta"].get("content") or ""
+    text = await _streamed_text(deltas, 2, released_text=True)
 
     assert text == {0: STOP_SEQUENCE.text, 1: NO_STATE_EVENTS.text}
 
