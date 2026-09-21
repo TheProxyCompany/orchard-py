@@ -84,7 +84,13 @@ async def test_buckshot_full_matrix(live_server, client, engine):
         state = "TIMEOUT" if timed_out else f"{len(failures)} fail"
         print(f"{suite:11s} {name:15s} {secs:6.1f}  {state}")
         for failure in failures:
-            tail = failure.detail.strip().splitlines()[-4:]
+            lines = failure.detail.strip().splitlines()
+            # The last 4 lines, or the whole drift report: a case reports every
+            # drifted turn (3 lines each), not just the first.
+            drift = next(
+                (i for i, x in enumerate(lines) if "golden drift" in x), len(lines)
+            )
+            tail = lines[min(drift, max(len(lines) - 4, 0)) :]
             print(f"    x {failure.case_id}:")
             for line in tail:
                 print(f"      | {line[:400]}")

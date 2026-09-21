@@ -415,8 +415,8 @@
     {
       "type": "response.output_token",
       "sequence_number": 26,
-      "token_id": 323,
-      "content": " and"
+      "token_id": 449,
+      "content": " with"
     },
     {
       "type": "response.output_text.delta",
@@ -424,14 +424,14 @@
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " and",
+      "delta": " with",
       "logprobs": []
     },
     {
       "type": "response.output_token",
       "sequence_number": 28,
-      "token_id": 433,
-      "content": " it"
+      "token_id": 264,
+      "content": " a"
     },
     {
       "type": "response.output_text.delta",
@@ -439,33 +439,18 @@
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " it",
+      "delta": " a",
       "logprobs": []
     },
     {
       "type": "response.output_token",
       "sequence_number": 30,
-      "token_id": 596,
-      "content": "'s"
-    },
-    {
-      "type": "response.output_text.delta",
-      "sequence_number": 31,
-      "item_id": "msg_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": "'s",
-      "logprobs": []
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 32,
       "token_id": 31349,
       "content": " fog"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 33,
+      "sequence_number": 31,
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
@@ -474,9 +459,24 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 34,
+      "sequence_number": 32,
       "token_id": 4680,
       "content": "gy"
+    },
+    {
+      "type": "response.output_text.delta",
+      "sequence_number": 33,
+      "item_id": "msg_0",
+      "output_index": 0,
+      "content_index": 0,
+      "delta": "gy",
+      "logprobs": []
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 34,
+      "token_id": 3044,
+      "content": " condition"
     },
     {
       "type": "response.output_text.delta",
@@ -484,7 +484,7 @@
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "gy",
+      "delta": " condition",
       "logprobs": []
     },
     {
@@ -508,7 +508,7 @@
       "item_id": "msg_0",
       "output_index": 0,
       "content_index": 0,
-      "text": "The current weather in San Francisco is 65 degrees Fahrenheit and it's foggy.",
+      "text": "The current weather in San Francisco is 65 degrees Fahrenheit with a foggy condition.",
       "logprobs": []
     },
     {
@@ -519,7 +519,7 @@
       "content_index": 0,
       "part": {
         "type": "output_text",
-        "text": "The current weather in San Francisco is 65 degrees Fahrenheit and it's foggy.",
+        "text": "The current weather in San Francisco is 65 degrees Fahrenheit with a foggy condition.",
         "annotations": [],
         "logprobs": []
       }
@@ -536,7 +536,7 @@
         "content": [
           {
             "type": "output_text",
-            "text": "The current weather in San Francisco is 65 degrees Fahrenheit and it's foggy.",
+            "text": "The current weather in San Francisco is 65 degrees Fahrenheit with a foggy condition.",
             "annotations": [],
             "logprobs": []
           }
@@ -565,7 +565,7 @@
             "content": [
               {
                 "type": "output_text",
-                "text": "The current weather in San Francisco is 65 degrees Fahrenheit and it's foggy.",
+                "text": "The current weather in San Francisco is 65 degrees Fahrenheit with a foggy condition.",
                 "annotations": [],
                 "logprobs": []
               }

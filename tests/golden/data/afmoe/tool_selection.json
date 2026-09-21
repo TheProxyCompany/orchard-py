@@ -1310,8 +1310,8 @@
     {
       "type": "response.output_token",
       "sequence_number": 183,
-      "token_id": 11406,
-      "content": " JSON"
+      "token_id": 19170,
+      "content": " XML"
     },
     {
       "type": "response.reasoning.delta",
@@ -1319,13 +1319,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " JSON"
+      "delta": " XML"
     },
     {
       "type": "response.output_token",
       "sequence_number": 185,
-      "token_id": 1858,
-      "content": " object"
+      "token_id": 13994,
+      "content": " tags"
     },
     {
       "type": "response.reasoning.delta",
@@ -1333,13 +1333,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " object"
+      "delta": " tags"
     },
     {
       "type": "response.output_token",
       "sequence_number": 187,
-      "token_id": 1434,
-      "content": " within"
+      "token_id": 440,
+      "content": ".\n"
     },
     {
       "type": "response.reasoning.delta",
@@ -1347,95 +1347,25 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " within"
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 189,
-      "token_id": 296,
-      "content": " the"
-    },
-    {
-      "type": "response.reasoning.delta",
-      "sequence_number": 190,
-      "item_id": "reasoning_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": " the"
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 191,
-      "token_id": 2190,
-      "content": " tool"
-    },
-    {
-      "type": "response.reasoning.delta",
-      "sequence_number": 192,
-      "item_id": "reasoning_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": " tool"
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 193,
-      "token_id": 31394,
-      "content": "_call"
-    },
-    {
-      "type": "response.reasoning.delta",
-      "sequence_number": 194,
-      "item_id": "reasoning_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": "_call"
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 195,
-      "token_id": 13994,
-      "content": " tags"
-    },
-    {
-      "type": "response.reasoning.delta",
-      "sequence_number": 196,
-      "item_id": "reasoning_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": " tags"
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 197,
-      "token_id": 440,
-      "content": ".\n"
-    },
-    {
-      "type": "response.reasoning.delta",
-      "sequence_number": 198,
-      "item_id": "reasoning_0",
-      "output_index": 0,
-      "content_index": 0,
       "delta": ".\n"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 199,
+      "sequence_number": 189,
       "token_id": 14,
       "content": "</think>"
     },
     {
       "type": "response.reasoning.done",
-      "sequence_number": 200,
+      "sequence_number": 190,
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "text": "Okay, the user is asking about the weather in San Francisco. Let me check which tool I can use for that. Looking at the available functions, there's one called get_weather which requires a location. The parameters need a location string, and San Francisco is the city they mentioned. So I should call get_weather with location set to \"San Francisco\". No other parameters are needed here. I'll make sure to format the tool call correctly inside the JSON object within the tool_call tags."
+      "text": "Okay, the user is asking about the weather in San Francisco. Let me check which tool I can use for that. Looking at the available functions, there's one called get_weather which requires a location. The parameters need a location string, and San Francisco is the city they mentioned. So I should call get_weather with location set to \"San Francisco\". No other parameters are needed here. I'll make sure to format the tool call correctly inside the XML tags."
     },
     {
       "type": "response.output_item.done",
-      "sequence_number": 201,
+      "sequence_number": 191,
       "output_index": 0,
       "item": {
         "type": "reasoning",
@@ -1445,7 +1375,7 @@
         "content": [
           {
             "type": "reasoning_text",
-            "text": "Okay, the user is asking about the weather in San Francisco. Let me check which tool I can use for that. Looking at the available functions, there's one called get_weather which requires a location. The parameters need a location string, and San Francisco is the city they mentioned. So I should call get_weather with location set to \"San Francisco\". No other parameters are needed here. I'll make sure to format the tool call correctly inside the JSON object within the tool_call tags."
+            "text": "Okay, the user is asking about the weather in San Francisco. Let me check which tool I can use for that. Looking at the available functions, there's one called get_weather which requires a location. The parameters need a location string, and San Francisco is the city they mentioned. So I should call get_weather with location set to \"San Francisco\". No other parameters are needed here. I'll make sure to format the tool call correctly inside the XML tags."
           }
         ],
         "encrypted_content": null
@@ -1453,91 +1383,91 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 202,
+      "sequence_number": 192,
       "token_id": 59,
       "content": "<"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 203,
+      "sequence_number": 193,
       "token_id": 24429,
       "content": "tool"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 204,
+      "sequence_number": 194,
       "token_id": 31394,
       "content": "_call"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 205,
+      "sequence_number": 195,
       "token_id": 648,
       "content": ">\n"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 206,
+      "sequence_number": 196,
       "token_id": 9293,
       "content": "{\""
     },
     {
       "type": "response.output_token",
-      "sequence_number": 207,
+      "sequence_number": 197,
       "token_id": 1405,
       "content": "name"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 208,
+      "sequence_number": 198,
       "token_id": 1515,
       "content": "\":"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 209,
+      "sequence_number": 199,
       "token_id": 443,
       "content": " \""
     },
     {
       "type": "response.output_token",
-      "sequence_number": 210,
+      "sequence_number": 200,
       "token_id": 686,
       "content": "get"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 211,
+      "sequence_number": 201,
       "token_id": 123756,
       "content": "_weather"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 212,
+      "sequence_number": 202,
       "token_id": 920,
       "content": "\","
     },
     {
       "type": "response.output_token",
-      "sequence_number": 213,
+      "sequence_number": 203,
       "token_id": 443,
       "content": " \""
     },
     {
       "type": "response.output_token",
-      "sequence_number": 214,
+      "sequence_number": 204,
       "token_id": 20516,
       "content": "arguments"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 215,
+      "sequence_number": 205,
       "token_id": 1515,
       "content": "\":"
     },
     {
       "type": "response.output_item.added",
-      "sequence_number": 216,
+      "sequence_number": 206,
       "output_index": 1,
       "item": {
         "type": "function_call",
@@ -1550,37 +1480,37 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 217,
+      "sequence_number": 207,
       "token_id": 10422,
       "content": " {\""
     },
     {
       "type": "response.output_token",
-      "sequence_number": 218,
+      "sequence_number": 208,
       "token_id": 14064,
       "content": "location"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 219,
+      "sequence_number": 209,
       "token_id": 1515,
       "content": "\":"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 220,
+      "sequence_number": 210,
       "token_id": 443,
       "content": " \""
     },
     {
       "type": "response.output_token",
-      "sequence_number": 221,
+      "sequence_number": 211,
       "token_id": 27408,
       "content": "San"
     },
     {
       "type": "response.function_call_arguments.delta",
-      "sequence_number": 222,
+      "sequence_number": 212,
       "item_id": "fc_0",
       "output_index": 1,
       "delta": "San",
@@ -1588,13 +1518,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 223,
+      "sequence_number": 213,
       "token_id": 14052,
       "content": " Francisco"
     },
     {
       "type": "response.function_call_arguments.delta",
-      "sequence_number": 224,
+      "sequence_number": 214,
       "item_id": "fc_0",
       "output_index": 1,
       "delta": " Francisco",
@@ -1602,13 +1532,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 225,
+      "sequence_number": 215,
       "token_id": 143574,
       "content": "\"}}\n"
     },
     {
       "type": "response.function_call_arguments.delta",
-      "sequence_number": 226,
+      "sequence_number": 216,
       "item_id": "fc_0",
       "output_index": 1,
       "delta": "{\"location\": \"San Francisco\"}",
@@ -1616,14 +1546,14 @@
     },
     {
       "type": "response.function_call_arguments.done",
-      "sequence_number": 227,
+      "sequence_number": 217,
       "item_id": "fc_0",
       "output_index": 1,
       "arguments": "{\"location\": \"San Francisco\"}"
     },
     {
       "type": "response.output_item.done",
-      "sequence_number": 228,
+      "sequence_number": 218,
       "output_index": 1,
       "item": {
         "type": "function_call",
@@ -1636,31 +1566,31 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 229,
+      "sequence_number": 219,
       "token_id": 777,
       "content": "</"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 230,
+      "sequence_number": 220,
       "token_id": 24429,
       "content": "tool"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 231,
+      "sequence_number": 221,
       "token_id": 31394,
       "content": "_call"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 232,
+      "sequence_number": 222,
       "token_id": 61,
       "content": ">"
     },
     {
       "type": "response.completed",
-      "sequence_number": 233,
+      "sequence_number": 223,
       "response": {
         "id": "resp_0",
         "object": "response",
@@ -1680,7 +1610,7 @@
             "content": [
               {
                 "type": "reasoning_text",
-                "text": "Okay, the user is asking about the weather in San Francisco. Let me check which tool I can use for that. Looking at the available functions, there's one called get_weather which requires a location. The parameters need a location string, and San Francisco is the city they mentioned. So I should call get_weather with location set to \"San Francisco\". No other parameters are needed here. I'll make sure to format the tool call correctly inside the JSON object within the tool_call tags."
+                "text": "Okay, the user is asking about the weather in San Francisco. Let me check which tool I can use for that. Looking at the available functions, there's one called get_weather which requires a location. The parameters need a location string, and San Francisco is the city they mentioned. So I should call get_weather with location set to \"San Francisco\". No other parameters are needed here. I'll make sure to format the tool call correctly inside the XML tags."
               }
             ],
             "encrypted_content": null
@@ -1702,7 +1632,7 @@
             "cached_tokens": 0
           },
           "output_tokens_details": {
-            "reasoning_tokens": 99
+            "reasoning_tokens": 94
           }
         }
       }

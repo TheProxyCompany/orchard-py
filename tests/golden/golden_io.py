@@ -24,6 +24,9 @@ pinning the random value. Timestamps are dropped. Everything behavioral
 
 import json
 import os
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Any
 
@@ -40,6 +43,47 @@ TIMESTAMP_KEYS = frozenset({"created_at", "completed_at"})  # wall clock -> drop
 # (flush_pending / discard_pending, driven by the golden conftest). A failing
 # test never persists a buggy golden.
 _pending: dict[Path, dict[str, list[dict]]] = {}
+
+# Drift notes of the case running in this context; None outside collect_drift(),
+# where a drift raises at once. A ContextVar because cases run concurrently.
+_drifts: ContextVar[list[str] | None] = ContextVar("golden_drifts", default=None)
+
+TEXT_KEYS = ("content", "delta", "text", "arguments")  # where an event carries text
+
+
+@contextmanager
+def collect_drift() -> Iterator[None]:
+    """Report this case's drifted turns when it ends instead of at the first one.
+
+    What fails the case is unchanged: any drifted turn still fails it, and so
+    does any other exception (raised as the cause, with the drift report last).
+    """
+    drifts: list[str] = []
+    token = _drifts.set(drifts)
+    try:
+        yield
+    except Exception as exc:
+        if drifts:
+            raise AssertionError("\n".join(drifts)) from exc
+        raise
+    finally:
+        _drifts.reset(token)
+    if drifts:
+        raise AssertionError("\n".join(drifts))
+
+
+def _show(event: dict, other: dict) -> str:
+    """One short line for a drifted event: its type and its text, or, when the
+    text is not what differs from ``other``, the fields that do differ."""
+    for key in TEXT_KEYS:
+        if isinstance(event.get(key), str) and event[key] != other.get(key):
+            return f"{event['type']} {event[key]!r}"[:200]
+    differing = {
+        key: event.get(key)
+        for key in sorted(event.keys() | other.keys())
+        if event.get(key) != other.get(key)
+    }
+    return f"{event['type']} {differing!r}"[:200]
 
 
 def normalize(events: list[BaseModel]) -> list[dict]:
@@ -86,14 +130,15 @@ def assert_or_record(
     Missing ``data/<template_type>/<scenario>.json`` turn → STAGE the current
     normalized stream; it is written to disk only if the whole test passes (so a
     failing test never records a buggy baseline). Present → assert exact
-    equality; any drift raises with the first differing event.
+    equality; any drift fails with the first differing event, at once or, inside
+    ``collect_drift()``, when the case ends. ``GOLDEN_RECORD=1`` stages always.
     """
     live = normalize(events)
     path = DATA_DIR / template_type / f"{scenario}.json"
     text = path.read_text().strip() if path.exists() else ""
     data = json.loads(text) if text else {}
 
-    recorded = data.get(turn)
+    recorded = None if os.environ.get("GOLDEN_RECORD") else data.get(turn)
     if recorded is None:
         _pending.setdefault(path, {})[turn] = live
         print(
@@ -132,25 +177,40 @@ def assert_or_record(
         detail = "event count matches but contents differ"
     for i, (exp, act) in enumerate(zip(recorded, live, strict=False)):
         if exp != act:
-            detail += f"; first diff at index {i}:\n  golden: {exp}\n  live:   {act}"
+            # The token stream both runs agreed on, so the two texts read in place.
+            agreed = "".join(
+                e["content"] for e in live[:i] if e["type"] == "response.output_token"
+            )
+            detail += (
+                f"; first diff at index {i} after {agreed[-60:]!r}:"
+                f"\n  golden: {_show(exp, act)}\n  live:   {_show(act, exp)}"
+            )
             break
     else:
         n = min(len(recorded), len(live))
         if len(live) > n:
-            detail += f"; live has an extra event at index {n}:\n  live: {live[n]}"
+            detail += (
+                f"; live has an extra event at index {n}:\n  live: {_show(live[n], {})}"
+            )
         elif len(recorded) > n:
             detail += (
-                f"; live is missing the event at index {n}:\n  golden: {recorded[n]}"
+                f"; live is missing the event at index {n}:"
+                f"\n  golden: {_show(recorded[n], {})}"
             )
 
-    raise AssertionError(f"golden drift {template_type}/{scenario}/{turn}: {detail}")
+    message = f"golden drift {template_type}/{scenario}/{turn}: {detail}"
+    drifts = _drifts.get()
+    if drifts is None:
+        raise AssertionError(message)
+    drifts.append(message)
 
 
 def flush_pending() -> None:
     """Write the baselines staged this test to disk. Call only after it passed."""
     for path, turns in _pending.items():
         text = path.read_text().strip() if path.exists() else ""
-        data = json.loads(text) if text else {}
+        # A re-record replaces the file: one case stages all of a file's turns.
+        data = json.loads(text) if text and not os.environ.get("GOLDEN_RECORD") else {}
         data.update(turns)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")

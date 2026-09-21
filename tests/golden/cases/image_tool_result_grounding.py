@@ -84,7 +84,6 @@ async def _run_gemma_generate_image_call(
         input=conversation,
         core_tools=[GENERATE_IMAGE],
         tool_choice="required",
-        deterministic=True,
         max_output_tokens=512,
         reasoning={"effort": "medium"},
         prefix_cache=False,
@@ -236,7 +235,6 @@ async def test_image_tool_self_loop_and_blind_verifier(client: Client):
         input=conversation,
         core_tools=[GENERATE_IMAGE],
         tool_choice="none",
-        deterministic=True,
         max_output_tokens=512,
         reasoning={"effort": "medium"},
         prefix_cache=False,
@@ -279,7 +277,6 @@ async def test_image_tool_self_loop_and_blind_verifier(client: Client):
                 ],
             }
         ],
-        deterministic=True,
         max_output_tokens=512,
         reasoning={"effort": "medium"},
         prefix_cache=False,
@@ -336,7 +333,6 @@ async def test_image_tool_self_loop_and_blind_verifier_flux(client: Client):
         input=conversation,
         core_tools=[GENERATE_IMAGE],
         tool_choice="none",
-        deterministic=True,
         max_output_tokens=512,
         reasoning={"effort": "medium"},
         prefix_cache=False,
@@ -372,7 +368,6 @@ async def test_image_tool_self_loop_and_blind_verifier_flux(client: Client):
                 ],
             }
         ],
-        deterministic=True,
         max_output_tokens=512,
         reasoning={"effort": "medium"},
         prefix_cache=False,
@@ -428,7 +423,6 @@ async def test_image_edit_tool_blind_verifier(client: Client):
                 ],
             }
         ],
-        deterministic=True,
         max_output_tokens=256,
         reasoning={"effort": "medium"},
         prefix_cache=False,
@@ -487,7 +481,6 @@ async def test_image_edit_tool_blind_verifier_flux(client: Client):
                 ],
             }
         ],
-        deterministic=True,
         max_output_tokens=256,
         reasoning={"effort": "medium"},
         prefix_cache=False,

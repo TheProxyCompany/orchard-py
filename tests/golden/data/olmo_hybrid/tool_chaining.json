@@ -49,78 +49,66 @@
     {
       "type": "response.output_token",
       "sequence_number": 4,
-      "token_id": 220,
-      "content": " "
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 5,
       "token_id": 330,
       "content": " \""
     },
     {
       "type": "response.output_token",
-      "sequence_number": 6,
+      "sequence_number": 5,
       "token_id": 609,
       "content": "name"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 7,
+      "sequence_number": 6,
       "token_id": 794,
       "content": "\":"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 8,
+      "sequence_number": 7,
       "token_id": 330,
       "content": " \""
     },
     {
       "type": "response.output_token",
-      "sequence_number": 9,
+      "sequence_number": 8,
       "token_id": 3990,
       "content": "find"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 10,
+      "sequence_number": 9,
       "token_id": 3173,
       "content": "_key"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 11,
+      "sequence_number": 10,
       "token_id": 498,
       "content": "\","
     },
     {
       "type": "response.output_token",
-      "sequence_number": 12,
-      "token_id": 220,
-      "content": " "
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 13,
+      "sequence_number": 11,
       "token_id": 330,
       "content": " \""
     },
     {
       "type": "response.output_token",
-      "sequence_number": 14,
+      "sequence_number": 12,
       "token_id": 16774,
       "content": "arguments"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 15,
+      "sequence_number": 13,
       "token_id": 794,
       "content": "\":"
     },
     {
       "type": "response.output_item.added",
-      "sequence_number": 16,
+      "sequence_number": 14,
       "output_index": 0,
       "item": {
         "type": "function_call",
@@ -133,9 +121,23 @@
     },
     {
       "type": "response.output_token",
+      "sequence_number": 15,
+      "token_id": 314,
+      "content": " {"
+    },
+    {
+      "type": "response.function_call_arguments.delta",
+      "sequence_number": 16,
+      "item_id": "fc_0",
+      "output_index": 0,
+      "delta": "{",
+      "field_path": null
+    },
+    {
+      "type": "response.output_token",
       "sequence_number": 17,
-      "token_id": 5324,
-      "content": " {\""
+      "token_id": 330,
+      "content": " \""
     },
     {
       "type": "response.output_token",
@@ -172,39 +174,47 @@
     {
       "type": "response.output_token",
       "sequence_number": 23,
-      "token_id": 9388,
-      "content": "\"}"
+      "token_id": 1,
+      "content": "\""
     },
     {
       "type": "response.function_call_arguments.delta",
       "sequence_number": 24,
       "item_id": "fc_0",
       "output_index": 0,
-      "delta": "{\"room\": \"library\"}",
+      "delta": " \"room\": \"library\"",
       "field_path": null
     },
     {
       "type": "response.output_token",
       "sequence_number": 25,
-      "token_id": 220,
-      "content": " "
+      "token_id": 335,
+      "content": " }"
+    },
+    {
+      "type": "response.function_call_arguments.delta",
+      "sequence_number": 26,
+      "item_id": "fc_0",
+      "output_index": 0,
+      "delta": " }",
+      "field_path": null
     },
     {
       "type": "response.output_token",
-      "sequence_number": 26,
+      "sequence_number": 27,
       "token_id": 335,
       "content": " }"
     },
     {
       "type": "response.function_call_arguments.done",
-      "sequence_number": 27,
+      "sequence_number": 28,
       "item_id": "fc_0",
       "output_index": 0,
       "arguments": "{\"room\": \"library\"}"
     },
     {
       "type": "response.output_item.done",
-      "sequence_number": 28,
+      "sequence_number": 29,
       "output_index": 0,
       "item": {
         "type": "function_call",
@@ -217,13 +227,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 29,
+      "sequence_number": 30,
       "token_id": 100269,
       "content": "</function_calls>"
     },
     {
       "type": "response.completed",
-      "sequence_number": 30,
+      "sequence_number": 31,
       "response": {
         "id": "resp_0",
         "object": "response",
@@ -246,8 +256,8 @@
         ],
         "usage": {
           "input_tokens": 195,
-          "output_tokens": 23,
-          "total_tokens": 218,
+          "output_tokens": 22,
+          "total_tokens": 217,
           "input_tokens_details": {
             "cached_tokens": 0
           },
@@ -311,84 +321,72 @@
     {
       "type": "response.output_token",
       "sequence_number": 4,
-      "token_id": 220,
-      "content": " "
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 5,
       "token_id": 330,
       "content": " \""
     },
     {
       "type": "response.output_token",
-      "sequence_number": 6,
+      "sequence_number": 5,
       "token_id": 609,
       "content": "name"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 7,
+      "sequence_number": 6,
       "token_id": 794,
       "content": "\":"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 8,
+      "sequence_number": 7,
       "token_id": 330,
       "content": " \""
     },
     {
       "type": "response.output_token",
-      "sequence_number": 9,
+      "sequence_number": 8,
       "token_id": 56121,
       "content": "unlock"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 10,
+      "sequence_number": 9,
       "token_id": 4231,
       "content": "_ch"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 11,
+      "sequence_number": 10,
       "token_id": 478,
       "content": "est"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 12,
+      "sequence_number": 11,
       "token_id": 498,
       "content": "\","
     },
     {
       "type": "response.output_token",
-      "sequence_number": 13,
-      "token_id": 220,
-      "content": " "
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 14,
+      "sequence_number": 12,
       "token_id": 330,
       "content": " \""
     },
     {
       "type": "response.output_token",
-      "sequence_number": 15,
+      "sequence_number": 13,
       "token_id": 16774,
       "content": "arguments"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 16,
+      "sequence_number": 14,
       "token_id": 794,
       "content": "\":"
     },
     {
       "type": "response.output_item.added",
-      "sequence_number": 17,
+      "sequence_number": 15,
       "output_index": 0,
       "item": {
         "type": "function_call",
@@ -401,13 +399,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 18,
+      "sequence_number": 16,
       "token_id": 314,
       "content": " {"
     },
     {
       "type": "response.function_call_arguments.delta",
-      "sequence_number": 19,
+      "sequence_number": 17,
       "item_id": "fc_0",
       "output_index": 0,
       "delta": "{",
@@ -415,37 +413,37 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 20,
+      "sequence_number": 18,
       "token_id": 330,
       "content": " \""
     },
     {
       "type": "response.output_token",
-      "sequence_number": 21,
+      "sequence_number": 19,
       "token_id": 798,
       "content": "key"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 22,
+      "sequence_number": 20,
       "token_id": 794,
       "content": "\":"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 23,
+      "sequence_number": 21,
       "token_id": 330,
       "content": " \""
     },
     {
       "type": "response.output_token",
-      "sequence_number": 24,
+      "sequence_number": 22,
       "token_id": 42,
       "content": "K"
     },
     {
       "type": "response.function_call_arguments.delta",
-      "sequence_number": 25,
+      "sequence_number": 23,
       "item_id": "fc_0",
       "output_index": 0,
       "delta": "K",
@@ -453,13 +451,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 26,
+      "sequence_number": 24,
       "token_id": 22,
       "content": "7"
     },
     {
       "type": "response.function_call_arguments.delta",
-      "sequence_number": 27,
+      "sequence_number": 25,
       "item_id": "fc_0",
       "output_index": 0,
       "delta": "7",
@@ -467,13 +465,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 28,
+      "sequence_number": 26,
       "token_id": 5364,
       "content": "-M"
     },
     {
       "type": "response.function_call_arguments.delta",
-      "sequence_number": 29,
+      "sequence_number": 27,
       "item_id": "fc_0",
       "output_index": 0,
       "delta": "-M",
@@ -481,13 +479,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 30,
+      "sequence_number": 28,
       "token_id": 1929,
       "content": "AG"
     },
     {
       "type": "response.function_call_arguments.delta",
-      "sequence_number": 31,
+      "sequence_number": 29,
       "item_id": "fc_0",
       "output_index": 0,
       "delta": "AG",
@@ -495,13 +493,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 32,
+      "sequence_number": 30,
       "token_id": 73421,
       "content": "ENTA"
     },
     {
       "type": "response.function_call_arguments.delta",
-      "sequence_number": 33,
+      "sequence_number": 31,
       "item_id": "fc_0",
       "output_index": 0,
       "delta": "ENTA",
@@ -509,13 +507,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 34,
+      "sequence_number": 32,
       "token_id": 12,
       "content": "-"
     },
     {
       "type": "response.function_call_arguments.delta",
-      "sequence_number": 35,
+      "sequence_number": 33,
       "item_id": "fc_0",
       "output_index": 0,
       "delta": "-",
@@ -523,13 +521,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 36,
+      "sequence_number": 34,
       "token_id": 24242,
       "content": "993"
     },
     {
       "type": "response.function_call_arguments.delta",
-      "sequence_number": 37,
+      "sequence_number": 35,
       "item_id": "fc_0",
       "output_index": 0,
       "delta": "993",
@@ -537,13 +535,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 38,
+      "sequence_number": 36,
       "token_id": 16,
       "content": "1"
     },
     {
       "type": "response.function_call_arguments.delta",
-      "sequence_number": 39,
+      "sequence_number": 37,
       "item_id": "fc_0",
       "output_index": 0,
       "delta": "1",
@@ -551,16 +549,30 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 40,
+      "sequence_number": 38,
       "token_id": 1,
       "content": "\""
+    },
+    {
+      "type": "response.function_call_arguments.delta",
+      "sequence_number": 39,
+      "item_id": "fc_0",
+      "output_index": 0,
+      "delta": " \"key\": \"K7-MAGENTA-9931\"",
+      "field_path": null
+    },
+    {
+      "type": "response.output_token",
+      "sequence_number": 40,
+      "token_id": 335,
+      "content": " }"
     },
     {
       "type": "response.function_call_arguments.delta",
       "sequence_number": 41,
       "item_id": "fc_0",
       "output_index": 0,
-      "delta": " \"key\": \"K7-MAGENTA-9931\"",
+      "delta": " }",
       "field_path": null
     },
     {
@@ -570,29 +582,15 @@
       "content": " }"
     },
     {
-      "type": "response.function_call_arguments.delta",
-      "sequence_number": 43,
-      "item_id": "fc_0",
-      "output_index": 0,
-      "delta": " }",
-      "field_path": null
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 44,
-      "token_id": 335,
-      "content": " }"
-    },
-    {
       "type": "response.function_call_arguments.done",
-      "sequence_number": 45,
+      "sequence_number": 43,
       "item_id": "fc_0",
       "output_index": 0,
       "arguments": "{\"key\": \"K7-MAGENTA-9931\"}"
     },
     {
       "type": "response.output_item.done",
-      "sequence_number": 46,
+      "sequence_number": 44,
       "output_index": 0,
       "item": {
         "type": "function_call",
@@ -605,13 +603,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 47,
+      "sequence_number": 45,
       "token_id": 100269,
       "content": "</function_calls>"
     },
     {
       "type": "response.completed",
-      "sequence_number": 48,
+      "sequence_number": 46,
       "response": {
         "id": "resp_0",
         "object": "response",
@@ -634,8 +632,8 @@
         ],
         "usage": {
           "input_tokens": 226,
-          "output_tokens": 32,
-          "total_tokens": 258,
+          "output_tokens": 30,
+          "total_tokens": 256,
           "input_tokens_details": {
             "cached_tokens": 0
           },

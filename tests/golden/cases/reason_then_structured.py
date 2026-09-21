@@ -71,7 +71,6 @@ async def test_reason_then_structured(client: Client, model: Model):
                 "strict": True,
             }
         },
-        deterministic=True,
         max_output_tokens=512,
         reasoning=reasoning,
         prefix_cache=False,
