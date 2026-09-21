@@ -301,3 +301,41 @@ async def test_cancelled_activation_is_retryable(monkeypatch, tmp_path):
     assert state == ModelLoadState.LOADING
     assert resolved_id == canonical_id
     assert registry._entries[canonical_id].error is None
+
+
+@pytest.mark.asyncio
+async def test_a_load_model_reply_that_advertises_lossless_responses_is_recorded():
+    ctx = GlobalContext()
+    ipc_state = IPCState(ctx)
+    # The reply for a model that is already up carries the capabilities.
+    ipc_state.management_socket = _FakeManagementSocket(
+        {
+            "status": "ok",
+            "data": {
+                "load_model": {
+                    "runtime_started": True,
+                    "capabilities": {"answer": [3], "lossless_responses": [1]},
+                }
+            },
+        }
+    )
+    registry = ModelRegistry(ipc_state)
+    canonical_id = "gemma/local"
+    info = ModelInfo(model_id=canonical_id, model_path="/tmp/gemma", formatter=object())
+    loop = asyncio.get_running_loop()
+    registry._entries[canonical_id] = ModelEntry(
+        state=ModelLoadState.ACTIVATING,
+        info=info,
+        activation_future=loop.create_future(),
+        activation_loop=loop,
+    )
+    assert not ipc_state.lossless_responses
+
+    await registry._send_load_model_command(
+        requested_id=canonical_id, canonical_id=canonical_id, info=info
+    )
+
+    assert ipc_state.lossless_responses
+    # It describes the engine, so it is not kept among the model's control
+    # tokens, which Client.resolve_capabilities reports.
+    assert info.capabilities == {"answer": [3]}

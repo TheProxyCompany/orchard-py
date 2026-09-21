@@ -29,6 +29,10 @@ _REQUEST_TYPE_CODES = {
     "image_generation": 9,
 }
 
+# The name a request uses to ask for the push/pull response route; see
+# endpoints.response_pull_path and IPCState.lossless_responses.
+RESPONSE_TRANSPORT = "pull_v1"
+
 __all__ = ["_build_request_payload"]
 
 _METADATA_PREFIX_STRUCT = struct.Struct("<I")
@@ -186,6 +190,7 @@ def _build_request_payload(
     model_path: str,
     request_type: str | int,
     response_channel_id: int,
+    lossless_responses: bool,
     prompts: Sequence[Mapping[str, Any]],
     request_channel_id: int = 0,
     parent_request_id: int | None = None,
@@ -203,6 +208,8 @@ def _build_request_payload(
         "request_channel_id": int(request_channel_id),
         "response_channel_id": int(response_channel_id),
     }
+    if lossless_responses:
+        metadata["response_transport"] = RESPONSE_TRANSPORT
     metadata_prompts: list[dict[str, Any]] = []
     metadata["prompts"] = metadata_prompts
 
