@@ -76,12 +76,9 @@ def engine(request: pytest.FixtureRequest) -> Generator[InferenceEngine, None, N
     A session-scoped fixture that starts the PIE service using InferenceEngine,
     preloads models, and ensures clean shutdown.
     """
-    # One heavy GPU tenant at a time on this machine (tests/gpu_lease.py).
-    # Every engine a test session starts comes from this fixture, so the lease
-    # is taken here, before the engine exists, and held until pytest exits.
-    # Not at import: unit-test sessions load this conftest too, never reach
-    # this fixture, and must not queue behind a GPU run. Capture is lifted so
-    # the waiting line reaches the terminal or the CI log while we block.
+    # One heavy GPU tenant at a time on this machine (tests/gpu_lease.py), held
+    # until pytest exits. Not at import: unit sessions load this conftest and
+    # must not queue. Capture is lifted so the waiting line shows while we block.
     what = " ".join(["orchard-py pytest", *request.config.invocation_params.args])
     capture = request.config.pluginmanager.getplugin("capturemanager")
     with capture.global_and_fixture_disabled() if capture else contextlib.nullcontext():
@@ -91,12 +88,9 @@ def engine(request: pytest.FixtureRequest) -> Generator[InferenceEngine, None, N
             acquired = time.strftime("%Y-%m-%d %H:%M:%S")
             print(f"[gpu-lease] acquired {acquired}", flush=True)
 
-    # Ensure we start with a clean slate in case a prior run crashed and left
-    # the engine up. Only now, with the lease held, and never at import: a
-    # session that is about to wait for the lease would first stop the lease
-    # holder's engine (sessions can share a pinned ORCHARD_CACHE_ROOT) and
-    # delete its logs, and a unit-test session would do both without ever
-    # taking the lease.
+    # Clean slate in case a prior run crashed and left the engine up. Only with
+    # the lease held: sessions can share a pinned ORCHARD_CACHE_ROOT, so cleanup
+    # at import stops the holder's engine and deletes its logs.
     try:
         InferenceEngine.shutdown(timeout=30.0)
         logger.info("Pre-test engine cleanup complete.")

@@ -27,10 +27,7 @@ mkdir -p "$OUT_DIR"
 export ORCHARD_TEST_HTTP_TIMEOUT_S="${ORCHARD_TEST_HTTP_TIMEOUT_S:-600}"
 
 # Who else is on the GPU. The firmware lockup that turns this gate red is
-# device-wide: GPU work in any other process (another engine, a PAL pytest
-# session, a benchmark) can push the device over the line, and once the run is
-# over nothing else says who was there. The GPU lease keeps cooperating
-# sessions apart; this names whoever ran beside us anyway.
+# device-wide, so this names whoever ran beside us, lease or no lease.
 record_tenants() { # $1 = file to write
   {
     echo "== $(date '+%Y-%m-%dT%H:%M:%S') other engine, python and pytest processes (pid, ppid, started, command)"
@@ -66,14 +63,10 @@ record_gpu_errors() { # $1 = file to append to, $2 = window start "YYYY-MM-DD HH
 
 for i in $(seq 1 "$N"); do
   log="$OUT_DIR/run_${i}.log"
-  # Keep each run's engine log (and any hang sample) next to its results:
-  # tests/conftest.py wipes its log directory before it starts the engine, so
-  # without a per-run directory run N+1 erases the engine-side record of run N,
-  # and the workflow uploads only the results directory.
+  # tests/conftest.py wipes its log directory, so each run gets its own, inside
+  # the results directory the workflow uploads.
   export ORCHARD_TEST_LOG_DIR="$(cd "$OUT_DIR" && pwd)/run_${i}_logs"
-  # Taken before pytest starts, so before any wait for the GPU lease: a session
-  # listed here may be the holder this run then waited for (the waiting line
-  # is in run_N.log), not one that ran beside it.
+  # Before pytest starts, so a session listed may be the lease holder this run then waited for.
   run_started="$(date '+%Y-%m-%d %H:%M:%S')"
   record_tenants "$OUT_DIR/run_${i}_tenants_start.txt"
   macmon_pid=""
@@ -88,13 +81,9 @@ for i in $(seq 1 "$N"); do
   ended=$(date +%s)
   wall=$(( ended - start ))
 
-  # The run may have spent most of that waiting for the GPU lease, and what the
-  # GPU did meanwhile is the lease holder's. The session prints "[gpu-lease]
-  # acquired <time>" once it holds the lease (tests/conftest.py); the wall time
-  # and the failure record count from there. lease_wait_s runs from launching
-  # pytest to that line, so it is a few seconds of startup when nobody held
-  # the lease. Without the line (the run took no lease: a wrapper holds it, or
-  # PROXY_GPU_LEASE=0; or it died first) everything counts from the run's start.
+  # Wall time and the failure window count from the session's "[gpu-lease]
+  # acquired <time>" line, lease_wait_s from launch up to it. With no such line (a
+  # wrapper holds the lease, PROXY_GPU_LEASE=0, or it died first) both count from launch.
   held_from="$(grep -m 1 -o '\[gpu-lease\] acquired [0-9-]\{10\} [0-9:]\{8\}' "$log" | cut -d ' ' -f 3-)"
   lease_wait=null
   if [ -n "$held_from" ] && held_from_s=$(date -j -f '%Y-%m-%d %H:%M:%S' "$held_from" +%s 2>/dev/null); then
@@ -132,11 +121,8 @@ for line in open(log):
             {"suite": m[1], "name": m[2], "secs": float(m[3]), "state": m[4].strip()}
         )
 longest = max((s["secs"] for s in suites), default=0.0)
-# A GPU-wide freeze shows in the engine log as command buffer acquisition
-# stalling on the busy streams at once. The firmware's restart step is about
-# half a second, and the same stall has been seen to resolve with no restart,
-# so waits of 400 ms and up are counted for every run, green or red: the count
-# is what to compare between runs that had the GPU alone and runs that did not.
+# Command buffer acquisition waits of 400 ms and up in the engine log are
+# GPU-wide freezes; counted for green and red runs alike, to compare them.
 freeze_waits = None
 try:
     with open(engine_log, errors="replace") as f:
