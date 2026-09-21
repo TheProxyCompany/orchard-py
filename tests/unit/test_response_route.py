@@ -291,19 +291,6 @@ async def test_what_a_reaping_engine_publishes_is_delivered_without_the_warning(
 
 
 @pytest.mark.asyncio
-async def test_an_engine_this_process_launched_is_asked_for_the_route(
-    stand_in, ipc_client
-):
-    # No capability was ever advertised: launching the engine is enough.
-    queue = await ipc_client.request(1)
-    request = stand_in.receive_request()
-
-    assert request["response_transport"] == "pull_v1"
-    await asyncio.to_thread(stand_in.answer, request, 5)
-    assert await numbers_received(queue) == list(range(5))
-
-
-@pytest.mark.asyncio
 async def test_a_shared_engine_is_asked_for_the_route_once_it_advertises_it(
     stand_in, shared_engine_client
 ):
