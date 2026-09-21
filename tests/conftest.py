@@ -1,10 +1,13 @@
 import asyncio
+import contextlib
 import logging
 import os
 import resource
+import shutil
 import socket
 import tempfile
 import threading
+import time
 from collections.abc import Generator
 from pathlib import Path
 
@@ -16,14 +19,15 @@ import uvicorn
 
 # Tests must never operate in the default engine namespace: that namespace
 # belongs to whatever long-lived engine this machine runs (Proxy.app's Grand
-# Central engine in production), and the pre-test cleanup below force-stops
-# the namespace's engine. Unless the caller pinned a namespace explicitly
+# Central engine in production), and the engine fixture's pre-test cleanup
+# force-stops the namespace's engine. Unless the caller pinned a namespace explicitly
 # (pie_cycle.sh exports ORCHARD_CACHE_ROOT), give this session a private one.
 # This must happen before any orchard import: orchard.ipc.endpoints resolves
 # the IPC socket root at import time.
 if "ORCHARD_CACHE_ROOT" not in os.environ:
     os.environ["ORCHARD_CACHE_ROOT"] = tempfile.mkdtemp(prefix="orchard-pytest-")
 
+from gpu_lease import hold_gpu_lease
 from models import MODELS, Model
 
 from orchard.clients.client import Client
@@ -45,13 +49,14 @@ if _soft < 10240:
 PROJECT_ROOT = Path(__file__).parent.parent
 # ORCHARD_TEST_LOG_DIR lets two test sessions run side by side (device-wide
 # GPU diagnostics) without clobbering each other's engine log.
-LOG_DIR = Path(os.environ["ORCHARD_TEST_LOG_DIR"]) if os.environ.get("ORCHARD_TEST_LOG_DIR") else PROJECT_ROOT / "logs_test"
+LOG_DIR = (
+    Path(os.environ["ORCHARD_TEST_LOG_DIR"])
+    if os.environ.get("ORCHARD_TEST_LOG_DIR")
+    else PROJECT_ROOT / "logs_test"
+)
 
-if LOG_DIR.exists():
-    import shutil
-
-    shutil.rmtree(LOG_DIR)
-
+# Only created here. It is emptied in the engine fixture, once the GPU lease is
+# held: until then another session's live logs may be in it.
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 SERVER_LOG_PATH = LOG_DIR / "python_server.test.log"
@@ -64,22 +69,39 @@ SERVER_STARTUP_TIMEOUT_SECONDS = float(
     os.getenv("ORCHARD_TEST_SERVER_STARTUP_TIMEOUT_SECONDS", "120.0")
 )
 
-# Ensure we start with a clean slate in case a prior run crashed and left the engine up.
-try:
-    InferenceEngine.shutdown(timeout=30.0)
-    logger.info("Pre-test engine cleanup complete.")
-except RuntimeError as exc:
-    raise RuntimeError(
-        "Failed to stop existing engine before starting tests; manual cleanup required."
-    ) from exc
-
 
 @pytest.fixture(scope="session")
-def engine() -> Generator[InferenceEngine, None, None]:
+def engine(request: pytest.FixtureRequest) -> Generator[InferenceEngine, None, None]:
     """
     A session-scoped fixture that starts the PIE service using InferenceEngine,
     preloads models, and ensures clean shutdown.
     """
+    # One heavy GPU tenant at a time on this machine (tests/gpu_lease.py), held
+    # until pytest exits. Not at import: unit sessions load this conftest and
+    # must not queue. Capture is lifted so the waiting line shows while we block.
+    what = " ".join(["orchard-py pytest", *request.config.invocation_params.args])
+    capture = request.config.pluginmanager.getplugin("capturemanager")
+    with capture.global_and_fixture_disabled() if capture else contextlib.nullcontext():
+        if hold_gpu_lease(what) is not None:
+            # scripts/buckshot_gate.sh reads this line: what it records about a
+            # run starts here, not while the run was still waiting its turn.
+            acquired = time.strftime("%Y-%m-%d %H:%M:%S")
+            print(f"[gpu-lease] acquired {acquired}", flush=True)
+
+    # Clean slate in case a prior run crashed and left the engine up. Only with
+    # the lease held: sessions can share a pinned ORCHARD_CACHE_ROOT, so cleanup
+    # at import stops the holder's engine and deletes its logs.
+    try:
+        InferenceEngine.shutdown(timeout=30.0)
+        logger.info("Pre-test engine cleanup complete.")
+    except RuntimeError as exc:
+        raise RuntimeError(
+            "Failed to stop existing engine before starting tests; manual cleanup required."
+        ) from exc
+    if LOG_DIR.exists():
+        shutil.rmtree(LOG_DIR)
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+
     logger.info("Setting up InferenceEngine for test session.")
 
     engine_instance: InferenceEngine | None = None
