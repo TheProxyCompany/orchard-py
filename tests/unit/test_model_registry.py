@@ -336,4 +336,6 @@ async def test_a_load_model_reply_that_advertises_lossless_responses_is_recorded
     )
 
     assert ipc_state.lossless_responses
-    assert info.capabilities == {"answer": [3], "lossless_responses": [1]}
+    # It describes the engine, so it is not kept among the model's control
+    # tokens, which Client.resolve_capabilities reports.
+    assert info.capabilities == {"answer": [3]}

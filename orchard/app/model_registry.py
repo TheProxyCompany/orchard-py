@@ -635,6 +635,10 @@ class ModelRegistry:
 
         normalized: dict[str, list[int]] = {}
         for name, value in capabilities.items():
+            if name == "lossless_responses":
+                # Describes the engine (IPCState.note_engine_capabilities),
+                # not a control token of this model.
+                continue
             if isinstance(value, list | tuple):
                 normalized[str(name)] = [int(v) for v in value]
             else:
