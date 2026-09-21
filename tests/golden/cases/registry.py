@@ -42,16 +42,7 @@ _PIPELINE_MODULES = [
 
 class GreedyClient:
     """The client every golden case gets: its Responses calls decode greedily.
-
-    ``deterministic=True`` alone is not greedy: the client resolves it to the
-    model's *recommended* sampling with ``rng_seed=11`` (temperature 1.0 for
-    gpt-oss and gemma-4), so the recorded token is ``argmax(logprob/T + seeded
-    noise)`` and a near-tie flips on any kernel change. An explicit temperature
-    of 0 makes the engine take the plain argmax and skip top-p/top-k/min-p;
-    ``deterministic`` stays on for the engine's reproducible scheduling. Pinned
-    here, on ``aresponses`` and its rendered-prompt preview, whatever the case
-    passes. Image and audio calls pass through untouched.
-    """
+    Why, and what passes through untouched: tests/golden/README.md, "Sampling"."""
 
     SAMPLING: ClassVar[dict[str, Any]] = {"temperature": 0.0, "deterministic": True}
 

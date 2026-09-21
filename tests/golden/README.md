@@ -13,17 +13,10 @@ Re-record one model at a time, with only that model loaded, each in its own
 fresh engine namespace, and review the git diff of `data/<template_type>/`
 after each run (a run writes nothing unless every case of that model passes):
 
-    ORCHARD_CACHE_ROOT=<fresh dir> PIE_LOCAL_BUILD=<engine release dir> scripts/record_golden.sh llama3
-    ORCHARD_CACHE_ROOT=<fresh dir> PIE_LOCAL_BUILD=<engine release dir> scripts/record_golden.sh gemma4
-    ORCHARD_CACHE_ROOT=<fresh dir> PIE_LOCAL_BUILD=<engine release dir> scripts/record_golden.sh qwen3_5
-    ORCHARD_CACHE_ROOT=<fresh dir> PIE_LOCAL_BUILD=<engine release dir> scripts/record_golden.sh moondream3
-    ORCHARD_CACHE_ROOT=<fresh dir> PIE_LOCAL_BUILD=<engine release dir> scripts/record_golden.sh afmoe
-    ORCHARD_CACHE_ROOT=<fresh dir> PIE_LOCAL_BUILD=<engine release dir> scripts/record_golden.sh lfm2_5
-    ORCHARD_CACHE_ROOT=<fresh dir> PIE_LOCAL_BUILD=<engine release dir> scripts/record_golden.sh olmo_hybrid
-    ORCHARD_CACHE_ROOT=<fresh dir> PIE_LOCAL_BUILD=<engine release dir> scripts/record_golden.sh nemotron_h
-    ORCHARD_CACHE_ROOT=<fresh dir> PIE_LOCAL_BUILD=<engine release dir> scripts/record_golden.sh granite_switch
-    ORCHARD_CACHE_ROOT=<fresh dir> PIE_LOCAL_BUILD=<engine release dir> scripts/record_golden.sh gpt_oss
-    ORCHARD_CACHE_ROOT=<fresh dir> PIE_LOCAL_BUILD=<engine release dir> scripts/record_golden.sh pipeline
+    ORCHARD_CACHE_ROOT=<fresh dir> PIE_LOCAL_BUILD=<engine release dir> scripts/record_golden.sh <template_type>
+
+in this order: `llama3` `gemma4` `qwen3_5` `moondream3` `afmoe` `lfm2_5`
+`olmo_hybrid` `nemotron_h` `granite_switch` `gpt_oss`, then `pipeline`.
 
 `pipeline` goes last and is the only run that needs several models at once:
 `gemma4` and `moondream3` preloaded, then the test hydrates, one at a time,

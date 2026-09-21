@@ -20,16 +20,6 @@ canonicalized to stable first-seen tokens — this pins event-to-event reference
 pinning the random value. Timestamps are dropped. Everything behavioral
 (``type``, ``sequence_number``, ``output_index``, ``delta``, ``field_path``,
 ``arguments``, ``text``, ``status``, usage counts) is pinned exactly.
-
-``GOLDEN_RECORD=1`` re-records: every turn is staged instead of asserted, and a
-passing test replaces each golden file it staged (turns the scenario no longer
-produces are dropped with it). Without it a recorded turn is only ever asserted.
-
-Inside ``collect_drift()`` (the runner wraps every case in it) a drifted turn is
-noted and the case goes on, so turn N+1 is still compared after turn N drifted;
-the notes are raised together when the case ends. A later turn's prompt is
-built from the live earlier turn, so read a later drift as independent only
-when the earlier turn's visible output (tool calls, answer) was unchanged.
 """
 
 import json
