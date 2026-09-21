@@ -2896,8 +2896,8 @@
     {
       "type": "response.output_token",
       "sequence_number": 183,
-      "token_id": 9791,
-      "content": " straightforward"
+      "token_id": 18134,
+      "content": " concise"
     },
     {
       "type": "response.reasoning.delta",
@@ -2905,7 +2905,7 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " straightforward"
+      "delta": " concise"
     },
     {
       "type": "response.output_token",
@@ -2966,8 +2966,8 @@
     {
       "type": "response.output_token",
       "sequence_number": 193,
-      "token_id": 296,
-      "content": " the"
+      "token_id": 590,
+      "content": " me"
     },
     {
       "type": "response.reasoning.delta",
@@ -2975,13 +2975,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " the"
+      "delta": " me"
     },
     {
       "type": "response.output_token",
       "sequence_number": 195,
-      "token_id": 2236,
-      "content": " user"
+      "token_id": 4356,
+      "content": " format"
     },
     {
       "type": "response.reasoning.delta",
@@ -2989,13 +2989,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " user"
+      "delta": " format"
     },
     {
       "type": "response.output_token",
       "sequence_number": 197,
-      "token_id": 832,
-      "content": " know"
+      "token_id": 394,
+      "content": " it"
     },
     {
       "type": "response.reasoning.delta",
@@ -3003,13 +3003,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " know"
+      "delta": " it"
     },
     {
       "type": "response.output_token",
       "sequence_number": 199,
-      "token_id": 296,
-      "content": " the"
+      "token_id": 7369,
+      "content": " properly"
     },
     {
       "type": "response.reasoning.delta",
@@ -3017,13 +3017,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " the"
+      "delta": " properly"
     },
     {
       "type": "response.output_token",
       "sequence_number": 201,
-      "token_id": 1568,
-      "content": " current"
+      "token_id": 440,
+      "content": ".\n"
     },
     {
       "type": "response.reasoning.delta",
@@ -3031,123 +3031,25 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " current"
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 203,
-      "token_id": 4344,
-      "content": " weather"
-    },
-    {
-      "type": "response.reasoning.delta",
-      "sequence_number": 204,
-      "item_id": "reasoning_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": " weather"
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 205,
-      "token_id": 3801,
-      "content": " details"
-    },
-    {
-      "type": "response.reasoning.delta",
-      "sequence_number": 206,
-      "item_id": "reasoning_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": " details"
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 207,
-      "token_id": 1411,
-      "content": " without"
-    },
-    {
-      "type": "response.reasoning.delta",
-      "sequence_number": 208,
-      "item_id": "reasoning_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": " without"
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 209,
-      "token_id": 830,
-      "content": " any"
-    },
-    {
-      "type": "response.reasoning.delta",
-      "sequence_number": 210,
-      "item_id": "reasoning_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": " any"
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 211,
-      "token_id": 3476,
-      "content": " extra"
-    },
-    {
-      "type": "response.reasoning.delta",
-      "sequence_number": 212,
-      "item_id": "reasoning_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": " extra"
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 213,
-      "token_id": 63576,
-      "content": " fluff"
-    },
-    {
-      "type": "response.reasoning.delta",
-      "sequence_number": 214,
-      "item_id": "reasoning_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": " fluff"
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 215,
-      "token_id": 440,
-      "content": ".\n"
-    },
-    {
-      "type": "response.reasoning.delta",
-      "sequence_number": 216,
-      "item_id": "reasoning_0",
-      "output_index": 0,
-      "content_index": 0,
       "delta": ".\n"
     },
     {
       "type": "response.output_token",
-      "sequence_number": 217,
+      "sequence_number": 203,
       "token_id": 14,
       "content": "</think>"
     },
     {
       "type": "response.reasoning.done",
-      "sequence_number": 218,
+      "sequence_number": 204,
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "text": "Okay, the user asked for the weather in San Francisco. I need to use the get_weather tool. Let me check the parameters. The tool requires a location, which is provided as \"San Francisco\". I'll call the function with that location.\n\nAfter getting the response, the temperature is 9°C and it's snowing. I should present this information clearly. Make sure to mention the temperature with the unit and the condition. Keep the answer straightforward and friendly. Let the user know the current weather details without any extra fluff."
+      "text": "Okay, the user asked for the weather in San Francisco. I need to use the get_weather tool. Let me check the parameters. The tool requires a location, which is provided as \"San Francisco\". I'll call the function with that location.\n\nAfter getting the response, the temperature is 9°C and it's snowing. I should present this information clearly. Make sure to mention the temperature with the unit and the condition. Keep the answer concise and friendly. Let me format it properly."
     },
     {
       "type": "response.output_item.done",
-      "sequence_number": 219,
+      "sequence_number": 205,
       "output_index": 0,
       "item": {
         "type": "reasoning",
@@ -3157,7 +3059,7 @@
         "content": [
           {
             "type": "reasoning_text",
-            "text": "Okay, the user asked for the weather in San Francisco. I need to use the get_weather tool. Let me check the parameters. The tool requires a location, which is provided as \"San Francisco\". I'll call the function with that location.\n\nAfter getting the response, the temperature is 9°C and it's snowing. I should present this information clearly. Make sure to mention the temperature with the unit and the condition. Keep the answer straightforward and friendly. Let the user know the current weather details without any extra fluff."
+            "text": "Okay, the user asked for the weather in San Francisco. I need to use the get_weather tool. Let me check the parameters. The tool requires a location, which is provided as \"San Francisco\". I'll call the function with that location.\n\nAfter getting the response, the temperature is 9°C and it's snowing. I should present this information clearly. Make sure to mention the temperature with the unit and the condition. Keep the answer concise and friendly. Let me format it properly."
           }
         ],
         "encrypted_content": null
@@ -3165,13 +3067,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 220,
+      "sequence_number": 206,
       "token_id": 327,
       "content": "\n\n"
     },
     {
       "type": "response.output_item.added",
-      "sequence_number": 221,
+      "sequence_number": 207,
       "output_index": 1,
       "item": {
         "type": "message",
@@ -3183,7 +3085,7 @@
     },
     {
       "type": "response.content_part.added",
-      "sequence_number": 222,
+      "sequence_number": 208,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -3196,7 +3098,7 @@
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 223,
+      "sequence_number": 209,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -3205,13 +3107,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 224,
+      "sequence_number": 210,
       "token_id": 581,
       "content": "The"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 225,
+      "sequence_number": 211,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -3220,13 +3122,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 226,
+      "sequence_number": 212,
       "token_id": 1568,
       "content": " current"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 227,
+      "sequence_number": 213,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -3235,13 +3137,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 228,
+      "sequence_number": 214,
       "token_id": 4344,
       "content": " weather"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 229,
+      "sequence_number": 215,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -3250,13 +3152,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 230,
+      "sequence_number": 216,
       "token_id": 320,
       "content": " in"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 231,
+      "sequence_number": 217,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -3265,13 +3167,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 232,
+      "sequence_number": 218,
       "token_id": 6100,
       "content": " San"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 233,
+      "sequence_number": 219,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -3280,13 +3182,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 234,
+      "sequence_number": 220,
       "token_id": 14052,
       "content": " Francisco"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 235,
+      "sequence_number": 221,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -3295,13 +3197,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 236,
+      "sequence_number": 222,
       "token_id": 351,
       "content": " is"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 237,
+      "sequence_number": 223,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -3310,13 +3212,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 238,
+      "sequence_number": 224,
       "token_id": 673,
       "content": " **"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 239,
+      "sequence_number": 225,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -3325,13 +3227,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 240,
+      "sequence_number": 226,
       "token_id": 56,
       "content": "9"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 241,
+      "sequence_number": 227,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -3340,13 +3242,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 242,
+      "sequence_number": 228,
       "token_id": 3901,
       "content": "°"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 243,
+      "sequence_number": 229,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -3355,13 +3257,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 244,
+      "sequence_number": 230,
       "token_id": 66,
       "content": "C"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 245,
+      "sequence_number": 231,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -3370,13 +3272,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 246,
+      "sequence_number": 232,
       "token_id": 369,
       "content": "**"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 247,
+      "sequence_number": 233,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -3385,13 +3287,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 248,
+      "sequence_number": 234,
       "token_id": 388,
       "content": " with"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 249,
+      "sequence_number": 235,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -3400,13 +3302,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 250,
+      "sequence_number": 236,
       "token_id": 673,
       "content": " **"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 251,
+      "sequence_number": 237,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -3415,13 +3317,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 252,
+      "sequence_number": 238,
       "token_id": 74392,
       "content": "snow"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 253,
+      "sequence_number": 239,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -3430,13 +3332,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 254,
+      "sequence_number": 240,
       "token_id": 310,
       "content": "ing"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 255,
+      "sequence_number": 241,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -3445,13 +3347,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 256,
+      "sequence_number": 242,
       "token_id": 8362,
       "content": "**."
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 257,
+      "sequence_number": 243,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -3460,7 +3362,7 @@
     },
     {
       "type": "response.output_text.done",
-      "sequence_number": 258,
+      "sequence_number": 244,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -3469,7 +3371,7 @@
     },
     {
       "type": "response.content_part.done",
-      "sequence_number": 259,
+      "sequence_number": 245,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -3482,7 +3384,7 @@
     },
     {
       "type": "response.output_item.done",
-      "sequence_number": 260,
+      "sequence_number": 246,
       "output_index": 1,
       "item": {
         "type": "message",
@@ -3501,7 +3403,7 @@
     },
     {
       "type": "response.completed",
-      "sequence_number": 261,
+      "sequence_number": 247,
       "response": {
         "id": "resp_0",
         "object": "response",
@@ -3521,7 +3423,7 @@
             "content": [
               {
                 "type": "reasoning_text",
-                "text": "Okay, the user asked for the weather in San Francisco. I need to use the get_weather tool. Let me check the parameters. The tool requires a location, which is provided as \"San Francisco\". I'll call the function with that location.\n\nAfter getting the response, the temperature is 9°C and it's snowing. I should present this information clearly. Make sure to mention the temperature with the unit and the condition. Keep the answer straightforward and friendly. Let the user know the current weather details without any extra fluff."
+                "text": "Okay, the user asked for the weather in San Francisco. I need to use the get_weather tool. Let me check the parameters. The tool requires a location, which is provided as \"San Francisco\". I'll call the function with that location.\n\nAfter getting the response, the temperature is 9°C and it's snowing. I should present this information clearly. Make sure to mention the temperature with the unit and the condition. Keep the answer concise and friendly. Let me format it properly."
               }
             ],
             "encrypted_content": null
@@ -3549,7 +3451,7 @@
             "cached_tokens": 0
           },
           "output_tokens_details": {
-            "reasoning_tokens": 108
+            "reasoning_tokens": 101
           }
         }
       }

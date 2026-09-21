@@ -530,8 +530,8 @@
     {
       "type": "response.output_token",
       "sequence_number": 72,
-      "token_id": 54950,
-      "content": "Perform"
+      "token_id": 137938,
+      "content": "Identify"
     },
     {
       "type": "response.reasoning.delta",
@@ -539,7 +539,7 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "Perform"
+      "delta": "Identify"
     },
     {
       "type": "response.output_token",
@@ -558,8 +558,8 @@
     {
       "type": "response.output_token",
       "sequence_number": 76,
-      "token_id": 14988,
-      "content": " calculation"
+      "token_id": 21183,
+      "content": " constraint"
     },
     {
       "type": "response.reasoning.delta",
@@ -567,7 +567,7 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " calculation"
+      "delta": " constraint"
     },
     {
       "type": "response.output_token",
@@ -586,8 +586,8 @@
     {
       "type": "response.output_token",
       "sequence_number": 80,
-      "token_id": 236743,
-      "content": " "
+      "token_id": 669,
+      "content": " The"
     },
     {
       "type": "response.reasoning.delta",
@@ -595,13 +595,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " "
+      "delta": " The"
     },
     {
       "type": "response.output_token",
       "sequence_number": 82,
-      "token_id": 236770,
-      "content": "1"
+      "token_id": 15148,
+      "content": " reply"
     },
     {
       "type": "response.reasoning.delta",
@@ -609,13 +609,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "1"
+      "delta": " reply"
     },
     {
       "type": "response.output_token",
       "sequence_number": 84,
-      "token_id": 236832,
-      "content": "7"
+      "token_id": 1921,
+      "content": " must"
     },
     {
       "type": "response.reasoning.delta",
@@ -623,13 +623,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "7"
+      "delta": " must"
     },
     {
       "type": "response.output_token",
       "sequence_number": 86,
-      "token_id": 900,
-      "content": " +"
+      "token_id": 577,
+      "content": " be"
     },
     {
       "type": "response.reasoning.delta",
@@ -637,13 +637,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " +"
+      "delta": " be"
     },
     {
       "type": "response.output_token",
       "sequence_number": 88,
-      "token_id": 236743,
-      "content": " "
+      "token_id": 623,
+      "content": " \""
     },
     {
       "type": "response.reasoning.delta",
@@ -651,13 +651,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " "
+      "delta": " \""
     },
     {
       "type": "response.output_token",
       "sequence_number": 90,
-      "token_id": 236778,
-      "content": "2"
+      "token_id": 4017,
+      "content": "just"
     },
     {
       "type": "response.reasoning.delta",
@@ -665,13 +665,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "2"
+      "delta": "just"
     },
     {
       "type": "response.output_token",
       "sequence_number": 92,
-      "token_id": 236825,
-      "content": "6"
+      "token_id": 506,
+      "content": " the"
     },
     {
       "type": "response.reasoning.delta",
@@ -679,13 +679,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "6"
+      "delta": " the"
     },
     {
       "type": "response.output_token",
       "sequence_number": 94,
-      "token_id": 236761,
-      "content": "."
+      "token_id": 1548,
+      "content": " number"
     },
     {
       "type": "response.reasoning.delta",
@@ -693,13 +693,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "."
+      "delta": " number"
     },
     {
       "type": "response.output_token",
       "sequence_number": 96,
-      "token_id": 107,
-      "content": "\n"
+      "token_id": 3056,
+      "content": "\"."
     },
     {
       "type": "response.reasoning.delta",
@@ -707,13 +707,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "\n"
+      "delta": "\"."
     },
     {
       "type": "response.output_token",
       "sequence_number": 98,
-      "token_id": 140,
-      "content": "    "
+      "token_id": 107,
+      "content": "\n"
     },
     {
       "type": "response.reasoning.delta",
@@ -721,13 +721,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "    "
+      "delta": "\n"
     },
     {
       "type": "response.output_token",
       "sequence_number": 100,
-      "token_id": 236829,
-      "content": "*"
+      "token_id": 236800,
+      "content": "3"
     },
     {
       "type": "response.reasoning.delta",
@@ -735,13 +735,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "*"
+      "delta": "3"
     },
     {
       "type": "response.output_token",
       "sequence_number": 102,
-      "token_id": 139,
-      "content": "   "
+      "token_id": 236761,
+      "content": "."
     },
     {
       "type": "response.reasoning.delta",
@@ -749,13 +749,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "   "
+      "delta": "."
     },
     {
       "type": "response.output_token",
       "sequence_number": 104,
-      "token_id": 9013,
-      "content": "Method"
+      "token_id": 138,
+      "content": "  "
     },
     {
       "type": "response.reasoning.delta",
@@ -763,13 +763,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "Method"
+      "delta": "  "
     },
     {
       "type": "response.output_token",
       "sequence_number": 106,
-      "token_id": 236743,
-      "content": " "
+      "token_id": 1018,
+      "content": "**"
     },
     {
       "type": "response.reasoning.delta",
@@ -777,13 +777,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " "
+      "delta": "**"
     },
     {
       "type": "response.output_token",
       "sequence_number": 108,
-      "token_id": 236770,
-      "content": "1"
+      "token_id": 54950,
+      "content": "Perform"
     },
     {
       "type": "response.reasoning.delta",
@@ -791,13 +791,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "1"
+      "delta": "Perform"
     },
     {
       "type": "response.output_token",
       "sequence_number": 110,
-      "token_id": 236787,
-      "content": ":"
+      "token_id": 506,
+      "content": " the"
     },
     {
       "type": "response.reasoning.delta",
@@ -805,13 +805,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": ":"
+      "delta": " the"
     },
     {
       "type": "response.output_token",
       "sequence_number": 112,
-      "token_id": 236743,
-      "content": " "
+      "token_id": 14988,
+      "content": " calculation"
     },
     {
       "type": "response.reasoning.delta",
@@ -819,13 +819,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " "
+      "delta": " calculation"
     },
     {
       "type": "response.output_token",
       "sequence_number": 114,
-      "token_id": 236770,
-      "content": "1"
+      "token_id": 53121,
+      "content": ":**"
     },
     {
       "type": "response.reasoning.delta",
@@ -833,13 +833,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "1"
+      "delta": ":**"
     },
     {
       "type": "response.output_token",
       "sequence_number": 116,
-      "token_id": 236832,
-      "content": "7"
+      "token_id": 236743,
+      "content": " "
     },
     {
       "type": "response.reasoning.delta",
@@ -847,13 +847,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "7"
+      "delta": " "
     },
     {
       "type": "response.output_token",
       "sequence_number": 118,
-      "token_id": 900,
-      "content": " +"
+      "token_id": 236770,
+      "content": "1"
     },
     {
       "type": "response.reasoning.delta",
@@ -861,13 +861,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " +"
+      "delta": "1"
     },
     {
       "type": "response.output_token",
       "sequence_number": 120,
-      "token_id": 236743,
-      "content": " "
+      "token_id": 236832,
+      "content": "7"
     },
     {
       "type": "response.reasoning.delta",
@@ -875,13 +875,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " "
+      "delta": "7"
     },
     {
       "type": "response.output_token",
       "sequence_number": 122,
-      "token_id": 236778,
-      "content": "2"
+      "token_id": 900,
+      "content": " +"
     },
     {
       "type": "response.reasoning.delta",
@@ -889,13 +889,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "2"
+      "delta": " +"
     },
     {
       "type": "response.output_token",
       "sequence_number": 124,
-      "token_id": 236771,
-      "content": "0"
+      "token_id": 236743,
+      "content": " "
     },
     {
       "type": "response.reasoning.delta",
@@ -903,13 +903,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "0"
+      "delta": " "
     },
     {
       "type": "response.output_token",
       "sequence_number": 126,
-      "token_id": 578,
-      "content": " ="
+      "token_id": 236778,
+      "content": "2"
     },
     {
       "type": "response.reasoning.delta",
@@ -917,13 +917,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " ="
+      "delta": "2"
     },
     {
       "type": "response.output_token",
       "sequence_number": 128,
-      "token_id": 236743,
-      "content": " "
+      "token_id": 236825,
+      "content": "6"
     },
     {
       "type": "response.reasoning.delta",
@@ -931,13 +931,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " "
+      "delta": "6"
     },
     {
       "type": "response.output_token",
       "sequence_number": 130,
-      "token_id": 236800,
-      "content": "3"
+      "token_id": 236761,
+      "content": "."
     },
     {
       "type": "response.reasoning.delta",
@@ -945,13 +945,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "3"
+      "delta": "."
     },
     {
       "type": "response.output_token",
       "sequence_number": 132,
-      "token_id": 236832,
-      "content": "7"
+      "token_id": 107,
+      "content": "\n"
     },
     {
       "type": "response.reasoning.delta",
@@ -959,13 +959,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "7"
+      "delta": "\n"
     },
     {
       "type": "response.output_token",
       "sequence_number": 134,
-      "token_id": 236761,
-      "content": "."
+      "token_id": 140,
+      "content": "    "
     },
     {
       "type": "response.reasoning.delta",
@@ -973,13 +973,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "."
+      "delta": "    "
     },
     {
       "type": "response.output_token",
       "sequence_number": 136,
-      "token_id": 236743,
-      "content": " "
+      "token_id": 236829,
+      "content": "*"
     },
     {
       "type": "response.reasoning.delta",
@@ -987,13 +987,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " "
+      "delta": "*"
     },
     {
       "type": "response.output_token",
       "sequence_number": 138,
-      "token_id": 236800,
-      "content": "3"
+      "token_id": 139,
+      "content": "   "
     },
     {
       "type": "response.reasoning.delta",
@@ -1001,13 +1001,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "3"
+      "delta": "   "
     },
     {
       "type": "response.output_token",
       "sequence_number": 140,
-      "token_id": 236832,
-      "content": "7"
+      "token_id": 236770,
+      "content": "1"
     },
     {
       "type": "response.reasoning.delta",
@@ -1015,13 +1015,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "7"
+      "delta": "1"
     },
     {
       "type": "response.output_token",
       "sequence_number": 142,
-      "token_id": 900,
-      "content": " +"
+      "token_id": 236832,
+      "content": "7"
     },
     {
       "type": "response.reasoning.delta",
@@ -1029,13 +1029,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " +"
+      "delta": "7"
     },
     {
       "type": "response.output_token",
       "sequence_number": 144,
-      "token_id": 236743,
-      "content": " "
+      "token_id": 900,
+      "content": " +"
     },
     {
       "type": "response.reasoning.delta",
@@ -1043,13 +1043,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " "
+      "delta": " +"
     },
     {
       "type": "response.output_token",
       "sequence_number": 146,
-      "token_id": 236825,
-      "content": "6"
+      "token_id": 236743,
+      "content": " "
     },
     {
       "type": "response.reasoning.delta",
@@ -1057,13 +1057,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "6"
+      "delta": " "
     },
     {
       "type": "response.output_token",
       "sequence_number": 148,
-      "token_id": 578,
-      "content": " ="
+      "token_id": 236778,
+      "content": "2"
     },
     {
       "type": "response.reasoning.delta",
@@ -1071,13 +1071,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " ="
+      "delta": "2"
     },
     {
       "type": "response.output_token",
       "sequence_number": 150,
-      "token_id": 236743,
-      "content": " "
+      "token_id": 236771,
+      "content": "0"
     },
     {
       "type": "response.reasoning.delta",
@@ -1085,13 +1085,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " "
+      "delta": "0"
     },
     {
       "type": "response.output_token",
       "sequence_number": 152,
-      "token_id": 236812,
-      "content": "4"
+      "token_id": 578,
+      "content": " ="
     },
     {
       "type": "response.reasoning.delta",
@@ -1099,13 +1099,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "4"
+      "delta": " ="
     },
     {
       "type": "response.output_token",
       "sequence_number": 154,
-      "token_id": 236800,
-      "content": "3"
+      "token_id": 236743,
+      "content": " "
     },
     {
       "type": "response.reasoning.delta",
@@ -1113,13 +1113,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "3"
+      "delta": " "
     },
     {
       "type": "response.output_token",
       "sequence_number": 156,
-      "token_id": 236761,
-      "content": "."
+      "token_id": 236800,
+      "content": "3"
     },
     {
       "type": "response.reasoning.delta",
@@ -1127,13 +1127,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "."
+      "delta": "3"
     },
     {
       "type": "response.output_token",
       "sequence_number": 158,
-      "token_id": 107,
-      "content": "\n"
+      "token_id": 236832,
+      "content": "7"
     },
     {
       "type": "response.reasoning.delta",
@@ -1141,13 +1141,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "\n"
+      "delta": "7"
     },
     {
       "type": "response.output_token",
       "sequence_number": 160,
-      "token_id": 140,
-      "content": "    "
+      "token_id": 107,
+      "content": "\n"
     },
     {
       "type": "response.reasoning.delta",
@@ -1155,13 +1155,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "    "
+      "delta": "\n"
     },
     {
       "type": "response.output_token",
       "sequence_number": 162,
-      "token_id": 236829,
-      "content": "*"
+      "token_id": 140,
+      "content": "    "
     },
     {
       "type": "response.reasoning.delta",
@@ -1169,13 +1169,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "*"
+      "delta": "    "
     },
     {
       "type": "response.output_token",
       "sequence_number": 164,
-      "token_id": 139,
-      "content": "   "
+      "token_id": 236829,
+      "content": "*"
     },
     {
       "type": "response.reasoning.delta",
@@ -1183,13 +1183,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "   "
+      "delta": "*"
     },
     {
       "type": "response.output_token",
       "sequence_number": 166,
-      "token_id": 9013,
-      "content": "Method"
+      "token_id": 139,
+      "content": "   "
     },
     {
       "type": "response.reasoning.delta",
@@ -1197,13 +1197,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "Method"
+      "delta": "   "
     },
     {
       "type": "response.output_token",
       "sequence_number": 168,
-      "token_id": 236743,
-      "content": " "
+      "token_id": 236800,
+      "content": "3"
     },
     {
       "type": "response.reasoning.delta",
@@ -1211,13 +1211,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " "
+      "delta": "3"
     },
     {
       "type": "response.output_token",
       "sequence_number": 170,
-      "token_id": 236778,
-      "content": "2"
+      "token_id": 236832,
+      "content": "7"
     },
     {
       "type": "response.reasoning.delta",
@@ -1225,13 +1225,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "2"
+      "delta": "7"
     },
     {
       "type": "response.output_token",
       "sequence_number": 172,
-      "token_id": 568,
-      "content": " ("
+      "token_id": 900,
+      "content": " +"
     },
     {
       "type": "response.reasoning.delta",
@@ -1239,13 +1239,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " ("
+      "delta": " +"
     },
     {
       "type": "response.output_token",
       "sequence_number": 174,
-      "token_id": 21108,
-      "content": "Standard"
+      "token_id": 236743,
+      "content": " "
     },
     {
       "type": "response.reasoning.delta",
@@ -1253,13 +1253,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "Standard"
+      "delta": " "
     },
     {
       "type": "response.output_token",
       "sequence_number": 176,
-      "token_id": 2517,
-      "content": " addition"
+      "token_id": 236825,
+      "content": "6"
     },
     {
       "type": "response.reasoning.delta",
@@ -1267,13 +1267,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " addition"
+      "delta": "6"
     },
     {
       "type": "response.output_token",
       "sequence_number": 178,
-      "token_id": 1473,
-      "content": "):"
+      "token_id": 578,
+      "content": " ="
     },
     {
       "type": "response.reasoning.delta",
@@ -1281,13 +1281,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "):"
+      "delta": " ="
     },
     {
       "type": "response.output_token",
       "sequence_number": 180,
-      "token_id": 107,
-      "content": "\n"
+      "token_id": 236743,
+      "content": " "
     },
     {
       "type": "response.reasoning.delta",
@@ -1295,13 +1295,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "\n"
+      "delta": " "
     },
     {
       "type": "response.output_token",
       "sequence_number": 182,
-      "token_id": 144,
-      "content": "        "
+      "token_id": 236812,
+      "content": "4"
     },
     {
       "type": "response.reasoning.delta",
@@ -1309,13 +1309,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "        "
+      "delta": "4"
     },
     {
       "type": "response.output_token",
       "sequence_number": 184,
-      "token_id": 236829,
-      "content": "*"
+      "token_id": 236800,
+      "content": "3"
     },
     {
       "type": "response.reasoning.delta",
@@ -1323,13 +1323,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "*"
+      "delta": "3"
     },
     {
       "type": "response.output_token",
       "sequence_number": 186,
-      "token_id": 139,
-      "content": "   "
+      "token_id": 107,
+      "content": "\n"
     },
     {
       "type": "response.reasoning.delta",
@@ -1337,13 +1337,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "   "
+      "delta": "\n"
     },
     {
       "type": "response.output_token",
       "sequence_number": 188,
-      "token_id": 62791,
-      "content": "Units"
+      "token_id": 140,
+      "content": "    "
     },
     {
       "type": "response.reasoning.delta",
@@ -1351,13 +1351,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "Units"
+      "delta": "    "
     },
     {
       "type": "response.output_token",
       "sequence_number": 190,
-      "token_id": 4321,
-      "content": " column"
+      "token_id": 236829,
+      "content": "*"
     },
     {
       "type": "response.reasoning.delta",
@@ -1365,13 +1365,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " column"
+      "delta": "*"
     },
     {
       "type": "response.output_token",
       "sequence_number": 192,
-      "token_id": 236787,
-      "content": ":"
+      "token_id": 139,
+      "content": "   "
     },
     {
       "type": "response.reasoning.delta",
@@ -1379,13 +1379,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": ":"
+      "delta": "   "
     },
     {
       "type": "response.output_token",
       "sequence_number": 194,
-      "token_id": 236743,
-      "content": " "
+      "token_id": 236769,
+      "content": "("
     },
     {
       "type": "response.reasoning.delta",
@@ -1393,13 +1393,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " "
+      "delta": "("
     },
     {
       "type": "response.output_token",
       "sequence_number": 196,
-      "token_id": 236832,
-      "content": "7"
+      "token_id": 93446,
+      "content": "Alternatively"
     },
     {
       "type": "response.reasoning.delta",
@@ -1407,13 +1407,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "7"
+      "delta": "Alternatively"
     },
     {
       "type": "response.output_token",
       "sequence_number": 198,
-      "token_id": 900,
-      "content": " +"
+      "token_id": 236787,
+      "content": ":"
     },
     {
       "type": "response.reasoning.delta",
@@ -1421,7 +1421,7 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " +"
+      "delta": ":"
     },
     {
       "type": "response.output_token",
@@ -1440,8 +1440,8 @@
     {
       "type": "response.output_token",
       "sequence_number": 202,
-      "token_id": 236825,
-      "content": "6"
+      "token_id": 236770,
+      "content": "1"
     },
     {
       "type": "response.reasoning.delta",
@@ -1449,13 +1449,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "6"
+      "delta": "1"
     },
     {
       "type": "response.output_token",
       "sequence_number": 204,
-      "token_id": 578,
-      "content": " ="
+      "token_id": 236771,
+      "content": "0"
     },
     {
       "type": "response.reasoning.delta",
@@ -1463,13 +1463,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " ="
+      "delta": "0"
     },
     {
       "type": "response.output_token",
       "sequence_number": 206,
-      "token_id": 236743,
-      "content": " "
+      "token_id": 900,
+      "content": " +"
     },
     {
       "type": "response.reasoning.delta",
@@ -1477,13 +1477,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " "
+      "delta": " +"
     },
     {
       "type": "response.output_token",
       "sequence_number": 208,
-      "token_id": 236770,
-      "content": "1"
+      "token_id": 236743,
+      "content": " "
     },
     {
       "type": "response.reasoning.delta",
@@ -1491,13 +1491,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "1"
+      "delta": " "
     },
     {
       "type": "response.output_token",
       "sequence_number": 210,
-      "token_id": 236800,
-      "content": "3"
+      "token_id": 236778,
+      "content": "2"
     },
     {
       "type": "response.reasoning.delta",
@@ -1505,13 +1505,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "3"
+      "delta": "2"
     },
     {
       "type": "response.output_token",
       "sequence_number": 212,
-      "token_id": 568,
-      "content": " ("
+      "token_id": 236771,
+      "content": "0"
     },
     {
       "type": "response.reasoning.delta",
@@ -1519,13 +1519,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " ("
+      "delta": "0"
     },
     {
       "type": "response.output_token",
       "sequence_number": 214,
-      "token_id": 6974,
-      "content": "Write"
+      "token_id": 578,
+      "content": " ="
     },
     {
       "type": "response.reasoning.delta",
@@ -1533,7 +1533,7 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "Write"
+      "delta": " ="
     },
     {
       "type": "response.output_token",
@@ -1566,8 +1566,8 @@
     {
       "type": "response.output_token",
       "sequence_number": 220,
-      "token_id": 236764,
-      "content": ","
+      "token_id": 236771,
+      "content": "0"
     },
     {
       "type": "response.reasoning.delta",
@@ -1575,13 +1575,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": ","
+      "delta": "0"
     },
     {
       "type": "response.output_token",
       "sequence_number": 222,
-      "token_id": 6081,
-      "content": " carry"
+      "token_id": 236793,
+      "content": ";"
     },
     {
       "type": "response.reasoning.delta",
@@ -1589,7 +1589,7 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " carry"
+      "delta": ";"
     },
     {
       "type": "response.output_token",
@@ -1608,8 +1608,8 @@
     {
       "type": "response.output_token",
       "sequence_number": 226,
-      "token_id": 236770,
-      "content": "1"
+      "token_id": 236832,
+      "content": "7"
     },
     {
       "type": "response.reasoning.delta",
@@ -1617,13 +1617,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "1"
+      "delta": "7"
     },
     {
       "type": "response.output_token",
       "sequence_number": 228,
-      "token_id": 769,
-      "content": ")."
+      "token_id": 900,
+      "content": " +"
     },
     {
       "type": "response.reasoning.delta",
@@ -1631,13 +1631,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": ")."
+      "delta": " +"
     },
     {
       "type": "response.output_token",
       "sequence_number": 230,
-      "token_id": 107,
-      "content": "\n"
+      "token_id": 236743,
+      "content": " "
     },
     {
       "type": "response.reasoning.delta",
@@ -1645,13 +1645,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "\n"
+      "delta": " "
     },
     {
       "type": "response.output_token",
       "sequence_number": 232,
-      "token_id": 144,
-      "content": "        "
+      "token_id": 236825,
+      "content": "6"
     },
     {
       "type": "response.reasoning.delta",
@@ -1659,13 +1659,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "        "
+      "delta": "6"
     },
     {
       "type": "response.output_token",
       "sequence_number": 234,
-      "token_id": 236829,
-      "content": "*"
+      "token_id": 578,
+      "content": " ="
     },
     {
       "type": "response.reasoning.delta",
@@ -1673,13 +1673,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "*"
+      "delta": " ="
     },
     {
       "type": "response.output_token",
       "sequence_number": 236,
-      "token_id": 139,
-      "content": "   "
+      "token_id": 236743,
+      "content": " "
     },
     {
       "type": "response.reasoning.delta",
@@ -1687,13 +1687,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "   "
+      "delta": " "
     },
     {
       "type": "response.output_token",
       "sequence_number": 238,
-      "token_id": 205011,
-      "content": "Tens"
+      "token_id": 236770,
+      "content": "1"
     },
     {
       "type": "response.reasoning.delta",
@@ -1701,13 +1701,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "Tens"
+      "delta": "1"
     },
     {
       "type": "response.output_token",
       "sequence_number": 240,
-      "token_id": 4321,
-      "content": " column"
+      "token_id": 236800,
+      "content": "3"
     },
     {
       "type": "response.reasoning.delta",
@@ -1715,13 +1715,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " column"
+      "delta": "3"
     },
     {
       "type": "response.output_token",
       "sequence_number": 242,
-      "token_id": 236787,
-      "content": ":"
+      "token_id": 236793,
+      "content": ";"
     },
     {
       "type": "response.reasoning.delta",
@@ -1729,7 +1729,7 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": ":"
+      "delta": ";"
     },
     {
       "type": "response.output_token",
@@ -1748,8 +1748,8 @@
     {
       "type": "response.output_token",
       "sequence_number": 246,
-      "token_id": 236770,
-      "content": "1"
+      "token_id": 236800,
+      "content": "3"
     },
     {
       "type": "response.reasoning.delta",
@@ -1757,13 +1757,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "1"
+      "delta": "3"
     },
     {
       "type": "response.output_token",
       "sequence_number": 248,
-      "token_id": 568,
-      "content": " ("
+      "token_id": 236771,
+      "content": "0"
     },
     {
       "type": "response.reasoning.delta",
@@ -1771,13 +1771,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " ("
+      "delta": "0"
     },
     {
       "type": "response.output_token",
       "sequence_number": 250,
-      "token_id": 122111,
-      "content": "carry"
+      "token_id": 900,
+      "content": " +"
     },
     {
       "type": "response.reasoning.delta",
@@ -1785,13 +1785,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "carry"
+      "delta": " +"
     },
     {
       "type": "response.output_token",
       "sequence_number": 252,
-      "token_id": 236768,
-      "content": ")"
+      "token_id": 236743,
+      "content": " "
     },
     {
       "type": "response.reasoning.delta",
@@ -1799,13 +1799,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": ")"
+      "delta": " "
     },
     {
       "type": "response.output_token",
       "sequence_number": 254,
-      "token_id": 900,
-      "content": " +"
+      "token_id": 236770,
+      "content": "1"
     },
     {
       "type": "response.reasoning.delta",
@@ -1813,13 +1813,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " +"
+      "delta": "1"
     },
     {
       "type": "response.output_token",
       "sequence_number": 256,
-      "token_id": 236743,
-      "content": " "
+      "token_id": 236800,
+      "content": "3"
     },
     {
       "type": "response.reasoning.delta",
@@ -1827,13 +1827,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " "
+      "delta": "3"
     },
     {
       "type": "response.output_token",
       "sequence_number": 258,
-      "token_id": 236770,
-      "content": "1"
+      "token_id": 578,
+      "content": " ="
     },
     {
       "type": "response.reasoning.delta",
@@ -1841,13 +1841,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "1"
+      "delta": " ="
     },
     {
       "type": "response.output_token",
       "sequence_number": 260,
-      "token_id": 900,
-      "content": " +"
+      "token_id": 236743,
+      "content": " "
     },
     {
       "type": "response.reasoning.delta",
@@ -1855,13 +1855,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " +"
+      "delta": " "
     },
     {
       "type": "response.output_token",
       "sequence_number": 262,
-      "token_id": 236743,
-      "content": " "
+      "token_id": 236812,
+      "content": "4"
     },
     {
       "type": "response.reasoning.delta",
@@ -1869,13 +1869,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " "
+      "delta": "4"
     },
     {
       "type": "response.output_token",
       "sequence_number": 264,
-      "token_id": 236778,
-      "content": "2"
+      "token_id": 236800,
+      "content": "3"
     },
     {
       "type": "response.reasoning.delta",
@@ -1883,13 +1883,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "2"
+      "delta": "3"
     },
     {
       "type": "response.output_token",
       "sequence_number": 266,
-      "token_id": 578,
-      "content": " ="
+      "token_id": 236768,
+      "content": ")"
     },
     {
       "type": "response.reasoning.delta",
@@ -1897,13 +1897,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " ="
+      "delta": ")"
     },
     {
       "type": "response.output_token",
       "sequence_number": 268,
-      "token_id": 236743,
-      "content": " "
+      "token_id": 107,
+      "content": "\n"
     },
     {
       "type": "response.reasoning.delta",
@@ -1911,7 +1911,7 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " "
+      "delta": "\n"
     },
     {
       "type": "response.output_token",
@@ -1944,8 +1944,8 @@
     {
       "type": "response.output_token",
       "sequence_number": 274,
-      "token_id": 107,
-      "content": "\n"
+      "token_id": 138,
+      "content": "  "
     },
     {
       "type": "response.reasoning.delta",
@@ -1953,13 +1953,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "\n"
+      "delta": "  "
     },
     {
       "type": "response.output_token",
       "sequence_number": 276,
-      "token_id": 140,
-      "content": "    "
+      "token_id": 1018,
+      "content": "**"
     },
     {
       "type": "response.reasoning.delta",
@@ -1967,13 +1967,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "    "
+      "delta": "**"
     },
     {
       "type": "response.output_token",
       "sequence_number": 278,
-      "token_id": 236829,
-      "content": "*"
+      "token_id": 11238,
+      "content": "Format"
     },
     {
       "type": "response.reasoning.delta",
@@ -1981,13 +1981,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "*"
+      "delta": "Format"
     },
     {
       "type": "response.output_token",
       "sequence_number": 280,
-      "token_id": 139,
-      "content": "   "
+      "token_id": 506,
+      "content": " the"
     },
     {
       "type": "response.reasoning.delta",
@@ -1995,13 +1995,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "   "
+      "delta": " the"
     },
     {
       "type": "response.output_token",
       "sequence_number": 282,
-      "token_id": 4116,
-      "content": "Result"
+      "token_id": 3938,
+      "content": " output"
     },
     {
       "type": "response.reasoning.delta",
@@ -2009,13 +2009,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "Result"
+      "delta": " output"
     },
     {
       "type": "response.output_token",
       "sequence_number": 284,
-      "token_id": 236787,
-      "content": ":"
+      "token_id": 53121,
+      "content": ":**"
     },
     {
       "type": "response.reasoning.delta",
@@ -2023,13 +2023,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": ":"
+      "delta": ":**"
     },
     {
       "type": "response.output_token",
       "sequence_number": 286,
-      "token_id": 236743,
-      "content": " "
+      "token_id": 669,
+      "content": " The"
     },
     {
       "type": "response.reasoning.delta",
@@ -2037,13 +2037,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " "
+      "delta": " The"
     },
     {
       "type": "response.output_token",
       "sequence_number": 288,
-      "token_id": 236812,
-      "content": "4"
+      "token_id": 1354,
+      "content": " result"
     },
     {
       "type": "response.reasoning.delta",
@@ -2051,13 +2051,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "4"
+      "delta": " result"
     },
     {
       "type": "response.output_token",
       "sequence_number": 290,
-      "token_id": 236800,
-      "content": "3"
+      "token_id": 563,
+      "content": " is"
     },
     {
       "type": "response.reasoning.delta",
@@ -2065,13 +2065,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "3"
+      "delta": " is"
     },
     {
       "type": "response.output_token",
       "sequence_number": 292,
-      "token_id": 236761,
-      "content": "."
+      "token_id": 236743,
+      "content": " "
     },
     {
       "type": "response.reasoning.delta",
@@ -2079,13 +2079,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "."
+      "delta": " "
     },
     {
       "type": "response.output_token",
       "sequence_number": 294,
-      "token_id": 107,
-      "content": "\n"
+      "token_id": 236812,
+      "content": "4"
     },
     {
       "type": "response.reasoning.delta",
@@ -2093,7 +2093,7 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "\n"
+      "delta": "4"
     },
     {
       "type": "response.output_token",
@@ -2126,8 +2126,8 @@
     {
       "type": "response.output_token",
       "sequence_number": 300,
-      "token_id": 138,
-      "content": "  "
+      "token_id": 107,
+      "content": "\n"
     },
     {
       "type": "response.reasoning.delta",
@@ -2135,13 +2135,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "  "
+      "delta": "\n"
     },
     {
       "type": "response.output_token",
       "sequence_number": 302,
-      "token_id": 1018,
-      "content": "**"
+      "token_id": 236810,
+      "content": "5"
     },
     {
       "type": "response.reasoning.delta",
@@ -2149,13 +2149,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "**"
+      "delta": "5"
     },
     {
       "type": "response.output_token",
       "sequence_number": 304,
-      "token_id": 6845,
-      "content": "Check"
+      "token_id": 236761,
+      "content": "."
     },
     {
       "type": "response.reasoning.delta",
@@ -2163,13 +2163,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "Check"
+      "delta": "."
     },
     {
       "type": "response.output_token",
       "sequence_number": 306,
-      "token_id": 506,
-      "content": " the"
+      "token_id": 138,
+      "content": "  "
     },
     {
       "type": "response.reasoning.delta",
@@ -2177,13 +2177,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " the"
+      "delta": "  "
     },
     {
       "type": "response.output_token",
       "sequence_number": 308,
-      "token_id": 15166,
-      "content": " constraints"
+      "token_id": 1018,
+      "content": "**"
     },
     {
       "type": "response.reasoning.delta",
@@ -2191,13 +2191,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " constraints"
+      "delta": "**"
     },
     {
       "type": "response.output_token",
       "sequence_number": 310,
-      "token_id": 53121,
-      "content": ":**"
+      "token_id": 17667,
+      "content": "Final"
     },
     {
       "type": "response.reasoning.delta",
@@ -2205,13 +2205,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": ":**"
+      "delta": "Final"
     },
     {
       "type": "response.output_token",
       "sequence_number": 312,
-      "token_id": 669,
-      "content": " The"
+      "token_id": 2426,
+      "content": " check"
     },
     {
       "type": "response.reasoning.delta",
@@ -2219,13 +2219,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " The"
+      "delta": " check"
     },
     {
       "type": "response.output_token",
       "sequence_number": 314,
-      "token_id": 2430,
-      "content": " user"
+      "token_id": 2342,
+      "content": " against"
     },
     {
       "type": "response.reasoning.delta",
@@ -2233,13 +2233,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " user"
+      "delta": " against"
     },
     {
       "type": "response.output_token",
       "sequence_number": 316,
-      "token_id": 15633,
-      "content": " requested"
+      "token_id": 15166,
+      "content": " constraints"
     },
     {
       "type": "response.reasoning.delta",
@@ -2247,13 +2247,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " requested"
+      "delta": " constraints"
     },
     {
       "type": "response.output_token",
       "sequence_number": 318,
-      "token_id": 506,
-      "content": " the"
+      "token_id": 53121,
+      "content": ":**"
     },
     {
       "type": "response.reasoning.delta",
@@ -2261,13 +2261,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " the"
+      "delta": ":**"
     },
     {
       "type": "response.output_token",
       "sequence_number": 320,
-      "token_id": 15148,
-      "content": " reply"
+      "token_id": 2375,
+      "content": " Is"
     },
     {
       "type": "response.reasoning.delta",
@@ -2275,13 +2275,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " reply"
+      "delta": " Is"
     },
     {
       "type": "response.output_token",
       "sequence_number": 322,
-      "token_id": 607,
-      "content": " with"
+      "token_id": 625,
+      "content": " it"
     },
     {
       "type": "response.reasoning.delta",
@@ -2289,13 +2289,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " with"
+      "delta": " it"
     },
     {
       "type": "response.output_token",
       "sequence_number": 324,
-      "token_id": 623,
-      "content": " \""
+      "token_id": 1164,
+      "content": " just"
     },
     {
       "type": "response.reasoning.delta",
@@ -2303,13 +2303,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " \""
+      "delta": " just"
     },
     {
       "type": "response.output_token",
       "sequence_number": 326,
-      "token_id": 4017,
-      "content": "just"
+      "token_id": 506,
+      "content": " the"
     },
     {
       "type": "response.reasoning.delta",
@@ -2317,13 +2317,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "just"
+      "delta": " the"
     },
     {
       "type": "response.output_token",
       "sequence_number": 328,
-      "token_id": 506,
-      "content": " the"
+      "token_id": 1548,
+      "content": " number"
     },
     {
       "type": "response.reasoning.delta",
@@ -2331,13 +2331,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " the"
+      "delta": " number"
     },
     {
       "type": "response.output_token",
       "sequence_number": 330,
-      "token_id": 1548,
-      "content": " number"
+      "token_id": 236881,
+      "content": "?"
     },
     {
       "type": "response.reasoning.delta",
@@ -2345,13 +2345,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " number"
+      "delta": "?"
     },
     {
       "type": "response.output_token",
       "sequence_number": 332,
-      "token_id": 3056,
-      "content": "\"."
+      "token_id": 8438,
+      "content": " Yes"
     },
     {
       "type": "response.reasoning.delta",
@@ -2359,13 +2359,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "\"."
+      "delta": " Yes"
     },
     {
       "type": "response.output_token",
       "sequence_number": 334,
-      "token_id": 107,
-      "content": "\n"
+      "token_id": 236761,
+      "content": "."
     },
     {
       "type": "response.reasoning.delta",
@@ -2373,13 +2373,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "\n"
+      "delta": "."
     },
     {
       "type": "response.output_token",
       "sequence_number": 336,
-      "token_id": 236812,
-      "content": "4"
+      "token_id": 568,
+      "content": " ("
     },
     {
       "type": "response.reasoning.delta",
@@ -2387,13 +2387,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "4"
+      "delta": " ("
     },
     {
       "type": "response.output_token",
       "sequence_number": 338,
-      "token_id": 236761,
-      "content": "."
+      "token_id": 236812,
+      "content": "4"
     },
     {
       "type": "response.reasoning.delta",
@@ -2401,13 +2401,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "."
+      "delta": "4"
     },
     {
       "type": "response.output_token",
       "sequence_number": 340,
-      "token_id": 138,
-      "content": "  "
+      "token_id": 236800,
+      "content": "3"
     },
     {
       "type": "response.reasoning.delta",
@@ -2415,13 +2415,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "  "
+      "delta": "3"
     },
     {
       "type": "response.output_token",
       "sequence_number": 342,
-      "token_id": 1018,
-      "content": "**"
+      "token_id": 236768,
+      "content": ")"
     },
     {
       "type": "response.reasoning.delta",
@@ -2429,137 +2429,25 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "**"
+      "delta": ")"
     },
     {
       "type": "response.output_token",
       "sequence_number": 344,
-      "token_id": 17667,
-      "content": "Final"
-    },
-    {
-      "type": "response.reasoning.delta",
-      "sequence_number": 345,
-      "item_id": "reasoning_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": "Final"
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 346,
-      "token_id": 3938,
-      "content": " output"
-    },
-    {
-      "type": "response.reasoning.delta",
-      "sequence_number": 347,
-      "item_id": "reasoning_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": " output"
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 348,
-      "token_id": 27713,
-      "content": " formulation"
-    },
-    {
-      "type": "response.reasoning.delta",
-      "sequence_number": 349,
-      "item_id": "reasoning_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": " formulation"
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 350,
-      "token_id": 53121,
-      "content": ":**"
-    },
-    {
-      "type": "response.reasoning.delta",
-      "sequence_number": 351,
-      "item_id": "reasoning_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": ":**"
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 352,
-      "token_id": 236743,
-      "content": " "
-    },
-    {
-      "type": "response.reasoning.delta",
-      "sequence_number": 353,
-      "item_id": "reasoning_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": " "
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 354,
-      "token_id": 236812,
-      "content": "4"
-    },
-    {
-      "type": "response.reasoning.delta",
-      "sequence_number": 355,
-      "item_id": "reasoning_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": "4"
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 356,
-      "token_id": 236800,
-      "content": "3"
-    },
-    {
-      "type": "response.reasoning.delta",
-      "sequence_number": 357,
-      "item_id": "reasoning_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": "3"
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 358,
-      "token_id": 236761,
-      "content": "."
-    },
-    {
-      "type": "response.reasoning.delta",
-      "sequence_number": 359,
-      "item_id": "reasoning_0",
-      "output_index": 0,
-      "content_index": 0,
-      "delta": "."
-    },
-    {
-      "type": "response.output_token",
-      "sequence_number": 360,
       "token_id": 101,
       "content": "<channel|>"
     },
     {
       "type": "response.reasoning.done",
-      "sequence_number": 361,
+      "sequence_number": 345,
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "text": "Thinking Process:\n1.  **Analyze the request:** The user wants to know the sum of 17 and 26.\n2.  **Perform the calculation:** 17 + 26.\n    *   Method 1: 17 + 20 = 37. 37 + 6 = 43.\n    *   Method 2 (Standard addition):\n        *   Units column: 7 + 6 = 13 (Write 3, carry 1).\n        *   Tens column: 1 (carry) + 1 + 2 = 4.\n    *   Result: 43.\n3.  **Check the constraints:** The user requested the reply with \"just the number\".\n4.  **Final output formulation:** 43."
+      "text": "Thinking Process:\n1.  **Analyze the request:** The user wants to know the sum of 17 and 26.\n2.  **Identify the constraint:** The reply must be \"just the number\".\n3.  **Perform the calculation:** 17 + 26.\n    *   17 + 20 = 37\n    *   37 + 6 = 43\n    *   (Alternatively: 10 + 20 = 30; 7 + 6 = 13; 30 + 13 = 43)\n4.  **Format the output:** The result is 43.\n5.  **Final check against constraints:** Is it just the number? Yes. (43)"
     },
     {
       "type": "response.output_item.done",
-      "sequence_number": 362,
+      "sequence_number": 346,
       "output_index": 0,
       "item": {
         "type": "reasoning",
@@ -2569,7 +2457,7 @@
         "content": [
           {
             "type": "reasoning_text",
-            "text": "Thinking Process:\n1.  **Analyze the request:** The user wants to know the sum of 17 and 26.\n2.  **Perform the calculation:** 17 + 26.\n    *   Method 1: 17 + 20 = 37. 37 + 6 = 43.\n    *   Method 2 (Standard addition):\n        *   Units column: 7 + 6 = 13 (Write 3, carry 1).\n        *   Tens column: 1 (carry) + 1 + 2 = 4.\n    *   Result: 43.\n3.  **Check the constraints:** The user requested the reply with \"just the number\".\n4.  **Final output formulation:** 43."
+            "text": "Thinking Process:\n1.  **Analyze the request:** The user wants to know the sum of 17 and 26.\n2.  **Identify the constraint:** The reply must be \"just the number\".\n3.  **Perform the calculation:** 17 + 26.\n    *   17 + 20 = 37\n    *   37 + 6 = 43\n    *   (Alternatively: 10 + 20 = 30; 7 + 6 = 13; 30 + 13 = 43)\n4.  **Format the output:** The result is 43.\n5.  **Final check against constraints:** Is it just the number? Yes. (43)"
           }
         ],
         "encrypted_content": null
@@ -2577,13 +2465,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 363,
+      "sequence_number": 347,
       "token_id": 236812,
       "content": "4"
     },
     {
       "type": "response.output_item.added",
-      "sequence_number": 364,
+      "sequence_number": 348,
       "output_index": 1,
       "item": {
         "type": "message",
@@ -2595,7 +2483,7 @@
     },
     {
       "type": "response.content_part.added",
-      "sequence_number": 365,
+      "sequence_number": 349,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -2608,7 +2496,7 @@
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 366,
+      "sequence_number": 350,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -2617,13 +2505,13 @@
     },
     {
       "type": "response.output_token",
-      "sequence_number": 367,
+      "sequence_number": 351,
       "token_id": 236800,
       "content": "3"
     },
     {
       "type": "response.output_text.delta",
-      "sequence_number": 368,
+      "sequence_number": 352,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -2632,7 +2520,7 @@
     },
     {
       "type": "response.output_text.done",
-      "sequence_number": 369,
+      "sequence_number": 353,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -2641,7 +2529,7 @@
     },
     {
       "type": "response.content_part.done",
-      "sequence_number": 370,
+      "sequence_number": 354,
       "item_id": "msg_0",
       "output_index": 1,
       "content_index": 0,
@@ -2654,7 +2542,7 @@
     },
     {
       "type": "response.output_item.done",
-      "sequence_number": 371,
+      "sequence_number": 355,
       "output_index": 1,
       "item": {
         "type": "message",
@@ -2673,7 +2561,7 @@
     },
     {
       "type": "response.completed",
-      "sequence_number": 372,
+      "sequence_number": 356,
       "response": {
         "id": "resp_0",
         "object": "response",
@@ -2693,7 +2581,7 @@
             "content": [
               {
                 "type": "reasoning_text",
-                "text": "Thinking Process:\n1.  **Analyze the request:** The user wants to know the sum of 17 and 26.\n2.  **Perform the calculation:** 17 + 26.\n    *   Method 1: 17 + 20 = 37. 37 + 6 = 43.\n    *   Method 2 (Standard addition):\n        *   Units column: 7 + 6 = 13 (Write 3, carry 1).\n        *   Tens column: 1 (carry) + 1 + 2 = 4.\n    *   Result: 43.\n3.  **Check the constraints:** The user requested the reply with \"just the number\".\n4.  **Final output formulation:** 43."
+                "text": "Thinking Process:\n1.  **Analyze the request:** The user wants to know the sum of 17 and 26.\n2.  **Identify the constraint:** The reply must be \"just the number\".\n3.  **Perform the calculation:** 17 + 26.\n    *   17 + 20 = 37\n    *   37 + 6 = 43\n    *   (Alternatively: 10 + 20 = 30; 7 + 6 = 13; 30 + 13 = 43)\n4.  **Format the output:** The result is 43.\n5.  **Final check against constraints:** Is it just the number? Yes. (43)"
               }
             ],
             "encrypted_content": null
@@ -2721,7 +2609,7 @@
             "cached_tokens": 0
           },
           "output_tokens_details": {
-            "reasoning_tokens": 178
+            "reasoning_tokens": 170
           }
         }
       }
