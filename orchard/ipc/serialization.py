@@ -112,7 +112,7 @@ def _encode_layout(
     text_len: int,
     image_buffers: Sequence[bytes],
     audio_buffers: Sequence[bytes],
-    token_segments: Sequence[Sequence[int]] = (),
+    token_segments: Sequence[Sequence[int]],
 ) -> tuple[bytes, int]:
     """Encode layout segments including text, image, audio, capability, and token types."""
     segments: list[tuple[int, int]] = []
