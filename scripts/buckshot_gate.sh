@@ -52,34 +52,15 @@ record_tenants() { # $1 = file to write
   } > "$1" 2>&1
 }
 
-# The GPU error callbacks the system logged during the run, grouped by process.
-# Every lockup recorded so far errored exactly 19 command buffers device-wide,
-# so fewer than 19 under our engine's pid means another process held the rest:
-# any other pid in this list was a GPU tenant at the moment of the lockup, even
-# if it has exited by now. The window is the whole time the run held the GPU
-# lease, not the last few minutes: a hung suite is only declared after its
-# 480 s timeout, so the lockup behind a red run can be that old. It does not
-# reach back into the wait for the lease: GPU errors from then belong to the
-# session the run queued behind. (`log` records its own command line, which
-# contains the string we search for; the predicate leaves that out.)
+# The GPU error callbacks the system logged since the run got the GPU lease (not
+# during the wait before it). Every lockup so far errored 19 command buffers
+# device-wide, so fewer than 19 under the engine's pid means another process
+# held the rest. The predicate excludes `log`: it records its own command line.
 record_gpu_errors() { # $1 = file to append to, $2 = window start "YYYY-MM-DD HH:MM:SS"
   {
-    echo "== GPU error callbacks since $2: count, process[pid], kind, first seen"
+    echo "== GPU error callbacks since $2 (unified log, one line per errored command buffer; process[pid:tid] is column 4)"
     /usr/bin/log show --start "$2" --style compact \
-      --predicate 'eventMessage CONTAINS "kIOGPUCommandBufferCallbackError" AND process != "log"' |
-      awk '
-        match($0, /kIOGPUCommandBufferCallbackError[A-Za-z]*/) {
-          kind = substr($0, RSTART, RLENGTH)
-          who = match($0, /[^ ]+\[[0-9]+:/) ? substr($0, RSTART, RLENGTH - 1) "]" : "?"
-          key = who " " kind
-          if (!(key in n)) { first[key] = $1 " " $2; order[++keys] = key }
-          n[key]++; total++; raw[total] = $0
-        }
-        END {
-          for (k = 1; k <= keys; k++) print n[order[k]], order[k], first[order[k]]
-          print total + 0, "errored command buffers in total"
-          for (t = 1; t <= total; t++) print "  " raw[t]
-        }'
+      --predicate 'eventMessage CONTAINS "kIOGPUCommandBufferCallbackError" AND process != "log"'
   } >> "$1" 2>&1
 }
 
