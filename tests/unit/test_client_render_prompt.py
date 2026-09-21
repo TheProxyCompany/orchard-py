@@ -78,9 +78,6 @@ class _FakeFormatter:
     def get_audio_placeholder(self) -> str | None:
         return None
 
-    def get_capability_placeholder(self) -> str:
-        return "<|coord|>"
-
     def strip_template_placeholders(self, prompt: str) -> str:
         return prompt.replace(self.image_placeholder, "").replace("<|coord|>", "")
 
@@ -208,7 +205,6 @@ def test_gemma4u_profile_loads_audio_placeholder() -> None:
 
     assert formatter.profile_dir.name == "gemma4u"
     assert formatter.get_audio_placeholder() == "<|audio|>"
-    assert formatter.get_capability_placeholder() is None
     assert formatter.strip_template_placeholders("a<|audio|>b") == "ab"
 
 
@@ -313,7 +309,11 @@ def test_afmoe_trinity_formatter_renders_reasoning_and_json_tool_calls(
     assert rendered.startswith("<|im_start|>system\n# Tools")
     assert "Follow the test instruction." in rendered
     assert "<|im_start|>user\nUse lookup.<|im_end|>\n" in rendered
-    assert "<|im_start|>assistant\nCalling lookup.\n<tool_call>\n" in rendered
+    # The earlier turn keeps its think block.
+    assert (
+        "<|im_start|>assistant\n<think>\nNeed lookup.\n</think>\n\nCalling lookup.\n<tool_call>\n"
+        in rendered
+    )
     assert '"name":"lookup"' in rendered
     assert '"arguments":{"query": "orchard"}' in rendered
     assert "<function=" not in rendered
@@ -1566,3 +1566,159 @@ async def test_arender_prompt_explicit_sampling_overrides_profile_defaults() -> 
     assert rendered["sampling_params"]["temperature"] == 0.0
     assert rendered["sampling_params"]["top_p"] == 1.0
     assert rendered["sampling_params"]["top_k"] == -1
+
+
+class _ReplayFormatter(_FakeFormatter):
+    """Renders a `generated` marker in place of the reply, as the chat templates do."""
+
+    def apply_template(self, messages: list[dict[str, Any]], **kwargs: Any) -> str:
+        return " | ".join(
+            f"{message['role']}:{message.get('generated', message['content'])}"
+            for message in messages
+        )
+
+
+_REPLAYED_CONVERSATION: list[dict[str, Any]] = [
+    {"role": "user", "content": "one"},
+    {
+        "role": "assistant",
+        "content": "two",
+        "generation": {"model": "test-model", "tokens": [7, 8, 9], "thinking": True},
+    },
+    {"role": "user", "content": "three"},
+]
+
+
+@pytest.mark.asyncio
+async def test_generated_reply_is_submitted_as_its_token_ids() -> None:
+    info = ModelInfo(
+        model_id="test-model",
+        model_path="/models/test-model",
+        formatter=_ReplayFormatter(),
+        capabilities={"token_segments": [1]},
+    )
+    ipc_state = _DummyIPCState()
+    client = Client(ipc_state, _FakeRegistry(info))
+
+    payload, capture = client._prepare_prompt_payload(
+        model_id="test-model",
+        model_path=info.model_path,
+        formatter=info.formatter,
+        messages=_REPLAYED_CONVERSATION,
+        replay_model="test-model",
+    )
+    rendered = await client.arender_prompt("test-model", _REPLAYED_CONVERSATION)
+    await client._asubmit_request(1, "test-model", _REPLAYED_CONVERSATION)
+
+    assert payload["prompt_bytes"] == b"user:one | agent: | user:three"
+    assert payload["layout"] == [
+        {"type": "text", "length": len("user:one | agent:")},
+        {"type": "tokens", "length": 3},
+        {"type": "text", "length": len(" | user:three")},
+    ]
+    assert payload["token_segments"] == [[7, 8, 9]]
+    assert capture["rendered_prompt_text"] == "user:one | agent: | user:three"
+    assert rendered["rendered_prompt_text"] == capture["rendered_prompt_text"]
+    assert "generation" in _REPLAYED_CONVERSATION[1]
+
+    frame = ipc_state.request_socket.last_payload
+    metadata_size = int.from_bytes(frame[:4], "little")
+    prompt = json.loads(frame[4 : 4 + metadata_size])["prompts"][0]
+    assert prompt["layout_count"] == 3
+    assert prompt["token_data_size"] == 12
+
+
+@pytest.mark.asyncio
+async def test_generated_reply_stays_text_for_an_engine_without_token_segments() -> (
+    None
+):
+    client = _make_client(_ReplayFormatter())
+
+    rendered = await client.arender_prompt("test-model", _REPLAYED_CONVERSATION)
+    await client._asubmit_request(1, "test-model", _REPLAYED_CONVERSATION)
+
+    assert rendered["rendered_prompt_text"] == "user:one | agent:two | user:three"
+    frame = client._ipc_state.request_socket.last_payload
+    metadata_size = int.from_bytes(frame[:4], "little")
+    prompt = json.loads(frame[4 : 4 + metadata_size])["prompts"][0]
+    assert prompt["layout_count"] == 1
+    assert prompt["token_data_size"] == 0
+
+
+@pytest.mark.asyncio
+async def test_assistant_message_keeps_reasoning_tool_calls_and_generated_ids() -> None:
+    client = _make_client()
+    deltas = [
+        ClientDelta(
+            request_id=1,
+            tokens=[1, 2],
+            state_events=[
+                {
+                    "event_type": "content_delta",
+                    "item_type": "reasoning",
+                    "identifier": "reasoning",
+                    "delta": "Need lookup.",
+                }
+            ],
+        ),
+        ClientDelta(
+            request_id=1,
+            tokens=[3],
+            state_events=[
+                {
+                    "event_type": "content_delta",
+                    "item_type": "message",
+                    "delta": "Calling lookup.",
+                }
+            ],
+        ),
+        ClientDelta(
+            request_id=1,
+            tokens=[4, 5],
+            state_events=[
+                {
+                    "event_type": "item_completed",
+                    "item_type": "tool_call",
+                    "output_index": 0,
+                    "identifier": "tool_call:lookup",
+                    "value": {"name": "lookup", "arguments": {"query": "orchard"}},
+                }
+            ],
+            is_final_delta=True,
+            finish_reason="tool_calls",
+        ),
+    ]
+
+    message = await client.aassistant_message("test-model", {}, deltas)
+    without_thinking = await client.aassistant_message(
+        "test-model", {"reasoning": False}, iter(deltas)
+    )
+
+    assert message == {
+        "role": "assistant",
+        "content": "Calling lookup.",
+        "reasoning_content": "Need lookup.",
+        "tool_calls": [
+            {
+                "type": "function",
+                "function": {"name": "lookup", "arguments": {"query": "orchard"}},
+            }
+        ],
+        "generation": {
+            "model": "test-model",
+            "tokens": [1, 2, 3, 4, 5],
+            "thinking": True,
+        },
+    }
+    assert without_thinking["generation"]["thinking"] is False
+
+
+@pytest.mark.asyncio
+async def test_assistant_message_without_streamed_ids_has_no_generation() -> None:
+    client = _make_client()
+
+    message = await client.aassistant_message(
+        "test-model", {}, [ClientDelta(request_id=1, content="hello")]
+    )
+
+    assert message == {"role": "assistant", "content": "hello"}

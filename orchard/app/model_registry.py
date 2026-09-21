@@ -44,6 +44,10 @@ class ModelInfo:
     capabilities: dict[str, list[int]] | None = None
     minimum_memory_bytes: int | None = None
 
+    def takes_token_segments(self) -> bool:
+        """Whether the engine that loaded this model accepts `tokens` layout segments."""
+        return "token_segments" in (self.capabilities or {})
+
 
 @dataclass(slots=True)
 class ModelEntry:
@@ -433,24 +437,6 @@ class ModelRegistry:
             await self._mark_activation_failed(canonical_id, MODEL_LOAD_CANCELLED)
 
         return response
-
-    def list_models(self) -> list[dict[str, str]]:
-        """List all currently loaded models."""
-        catalog = []
-        for canonical_id, entry in self._entries.items():
-            if entry.resolved is None:
-                continue
-            payload = dict(entry.resolved.metadata)
-            payload["canonical_id"] = canonical_id
-            payload["model_path"] = str(entry.resolved.model_path)
-            payload["source"] = entry.resolved.source
-            payload["hf_repo"] = entry.resolved.hf_repo or ""
-            payload["state"] = entry.state.name
-            catalog.append(payload)
-        return catalog
-
-    def resolve(self, model_id: str) -> ResolvedModel:
-        return self._resolver.resolve(model_id)
 
     async def _inspect_model_source(
         self, requested_model_id: str, resolved: ResolvedModel, *, refresh: bool = False

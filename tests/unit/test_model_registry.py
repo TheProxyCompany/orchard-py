@@ -113,6 +113,27 @@ def test_handle_model_loaded_updates_minimum_memory_bytes():
     assert registry._entries[canonical_id].info.minimum_memory_bytes == 123456789
 
 
+def test_token_segments_capability_comes_from_the_load_model_response():
+    ctx = GlobalContext()
+    ipc_state = IPCState(ctx)
+    registry = ModelRegistry(ipc_state)
+    canonical_id = "gemma/local"
+    registry._alias_cache[canonical_id.lower()] = canonical_id
+    info = ModelInfo(model_id=canonical_id, model_path="/tmp/gemma", formatter=object())
+    registry._entries[canonical_id] = ModelEntry(
+        state=ModelLoadState.ACTIVATING, info=info
+    )
+    assert not info.takes_token_segments()
+
+    response = {
+        "status": "ok",
+        "data": {"load_model": {"capabilities": {"token_segments": [1]}}},
+    }
+    registry.update_capabilities(canonical_id, registry._parse_capabilities(response))
+
+    assert info.takes_token_segments()
+
+
 @pytest.mark.asyncio
 async def test_schedule_model_uses_ready_alias_before_local_source_inspection(tmp_path):
     ctx = GlobalContext()

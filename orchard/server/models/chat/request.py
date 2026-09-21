@@ -20,8 +20,8 @@ from orchard.server.models.chat.tools import (
     ChatCompletionTool,
     ChatCompletionToolChoice,
 )
-from orchard.server.models.tools import ToolCall, ToolUseMode
 from orchard.server.models.reasoning import normalize_reasoning_value
+from orchard.server.models.tools import ToolCall, ToolUseMode
 
 ReasoningInput = bool | str | dict[str, Any] | None
 
@@ -35,6 +35,18 @@ class ChatMessage(BaseModel):
         default_factory=list,
         description="The tool calls that were made in the message.",
     )
+    reasoning_content: str | None = Field(
+        default=None,
+        description="The think-block text of an assistant message.",
+    )
+    generation: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "What the model generated for an assistant message: "
+            "{'model': canonical model id, 'tokens': token ids, 'thinking': bool}. "
+            "Send it back unchanged on later turns."
+        ),
+    )
 
     @model_serializer
     def serialize_model(self) -> dict[str, Any]:
@@ -47,6 +59,10 @@ class ChatMessage(BaseModel):
             result["tool_calls"] = [
                 tool_call.model_dump() for tool_call in self.tool_calls
             ]
+        if self.reasoning_content is not None:
+            result["reasoning_content"] = self.reasoning_content
+        if self.generation is not None:
+            result["generation"] = self.generation
 
         return result
 
@@ -429,30 +445,6 @@ class ChatCompletionRequest(BaseModel):
             return normalized
         raise ValueError("Invalid tools specification")
 
-    @staticmethod
-    def _normalize_response_format(
-        value: Any,
-        batch_size: int,
-    ) -> list[
-        ChatCompletionTextResponseFormat
-        | ChatCompletionJSONSchemaResponseFormat
-        | ChatCompletionJsonObjectResponseFormat
-        | None
-    ]:
-        if value is None:
-            return [None] * batch_size
-        if isinstance(value, list):
-            if not value:
-                return [None] * batch_size
-            if len(value) == batch_size:
-                return list(value)
-            if len(value) == 1:
-                return [value[0]] * batch_size
-            raise ValueError(
-                f"Length of 'response_format' ({len(value)}) does not match batch size {batch_size}."
-            )
-        return [value] * batch_size
-
     @model_validator(mode="after")
     def _broadcast_parameters(self) -> ChatCompletionRequest:
         batch_size = len(self.messages)
@@ -460,45 +452,35 @@ class ChatCompletionRequest(BaseModel):
 
         normalized_fields: dict[str, list[Any]] = {}
 
-        normalized_fields["max_completion_tokens"] = self._broadcast_list(
-            self.max_completion_tokens, batch_size, "max_completion_tokens"
-        )
-        normalized_fields["temperature"] = self._broadcast_list(
-            self.temperature, batch_size, "temperature"
-        )
-        normalized_fields["top_p"] = self._broadcast_list(
-            self.top_p, batch_size, "top_p"
-        )
-        normalized_fields["top_k"] = self._broadcast_list(
-            self.top_k, batch_size, "top_k"
-        )
-        normalized_fields["min_p"] = self._broadcast_list(
-            self.min_p, batch_size, "min_p"
-        )
-        normalized_fields["deterministic"] = self._broadcast_list(
-            self.deterministic, batch_size, "deterministic"
-        )
-        normalized_fields["logprobs"] = self._broadcast_list(
-            self.logprobs, batch_size, "logprobs"
-        )
-        normalized_fields["top_logprobs"] = self._broadcast_list(
-            self.top_logprobs, batch_size, "top_logprobs"
+        def broadcast(*names: str) -> None:
+            for name in names:
+                normalized_fields[name] = self._broadcast_list(
+                    getattr(self, name), batch_size, name
+                )
+
+        broadcast(
+            "max_completion_tokens",
+            "temperature",
+            "top_p",
+            "top_k",
+            "min_p",
+            "deterministic",
+            "logprobs",
+            "top_logprobs",
         )
         normalized_fields["tools"] = self._normalize_tools(self.tools, batch_size)
-        normalized_fields["response_format"] = self._normalize_response_format(
-            self.response_format, batch_size
+        # An empty response_format list means "none", like None.
+        normalized_fields["response_format"] = self._broadcast_list(
+            self.response_format or None, batch_size, "response_format"
         )
         normalized_fields["stop"] = self._normalize_stop_sequences(
             self.stop, batch_size
         )
-        normalized_fields["task"] = self._broadcast_list(self.task, batch_size, "task")
-        reasoning_inputs = self._broadcast_list(self.reasoning, batch_size, "reasoning")
-        normalized_fields["reasoning"] = reasoning_inputs
+        broadcast("task", "reasoning", "n")
         normalized_fields["reasoning_effort"] = [
             normalize_reasoning_value(value, field_name="reasoning")
-            for value in reasoning_inputs
+            for value in normalized_fields["reasoning"]
         ]
-        normalized_fields["n"] = self._broadcast_list(self.n, batch_size, "n")
 
         raw_best_of = self._broadcast_list(self.best_of, batch_size, "best_of")
         best_of_values: list[int] = []

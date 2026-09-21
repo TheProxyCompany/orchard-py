@@ -16,6 +16,7 @@ from typing import Any, Literal, TypeVar, overload
 
 from orchard.app.ipc_dispatch import IPCState, QueueRegistration
 from orchard.app.model_registry import ModelRegistry
+from orchard.clients.replay import splice_replays, take_replays
 from orchard.clients.responses import (
     ResponseEvent,
     ResponsesRequest,
@@ -118,16 +119,6 @@ class AudioClient:
         if isinstance(result, AsyncIterator):
             return self._client._sync_iterator_bridge(result)
         return result
-
-    async def asynthesize(
-        self, *args: Any, **kwargs: Any
-    ) -> list[ModalArtifact] | AsyncIterator[ClientDelta]:
-        return await self.agenerate(*args, **kwargs)
-
-    def synthesize(
-        self, *args: Any, **kwargs: Any
-    ) -> list[ModalArtifact] | Iterator[ClientDelta]:
-        return self.generate(*args, **kwargs)
 
     async def atranscribe(
         self,
@@ -294,39 +285,13 @@ class Client:
         self._sync_thread: threading.Thread | None = None
         self._sync_start_lock = threading.Lock()
 
-    def resolve_capabilities(self, model_id: str) -> dict[str, int]:
-        """Resolve control token capabilities for a model into token IDs."""
-        info = self._model_registry.ensure_ready_sync(model_id)
-        capabilities = info.capabilities or {}
-        resolved: dict[str, int] = {}
-        for name, token_ids in capabilities.items():
-            if isinstance(token_ids, list | tuple) and token_ids:
-                resolved[name] = int(token_ids[0])
-            elif isinstance(token_ids, int | float):
-                resolved[name] = int(token_ids)
-            else:
-                raise TypeError(f"Unsupported capability token format for '{name}'.")
-        return resolved
-
     async def acancel_request(self, request_id: int) -> dict[str, Any]:
         """Cancel an in-flight PIE request by request id."""
         return await self._ipc_state.cancel_request(request_id)
 
     def cancel_request(self, request_id: int) -> dict[str, Any]:
         """Synchronous wrapper for canceling an in-flight PIE request."""
-        if (
-            not self._sync_loop
-            or not self._sync_thread
-            or not self._sync_thread.is_alive()
-        ):
-            self._start_sync_event_loop()
-
-        assert self._sync_loop, "Sync loop not initialized"
-        future = asyncio.run_coroutine_threadsafe(
-            self.acancel_request(request_id),
-            self._sync_loop,
-        )
-        return future.result()
+        return self._sync_submit(self.acancel_request(request_id))
 
     async def acancel_model_load(self, model_id: str) -> dict | None:
         """Cancel an in-progress PIE model load or activation."""
@@ -334,19 +299,7 @@ class Client:
 
     def cancel_model_load(self, model_id: str) -> dict | None:
         """Synchronous wrapper for canceling an in-progress model load."""
-        if (
-            not self._sync_loop
-            or not self._sync_thread
-            or not self._sync_thread.is_alive()
-        ):
-            self._start_sync_event_loop()
-
-        assert self._sync_loop, "Sync loop not initialized"
-        future = asyncio.run_coroutine_threadsafe(
-            self.acancel_model_load(model_id),
-            self._sync_loop,
-        )
-        return future.result()
+        return self._sync_submit(self.acancel_model_load(model_id))
 
     async def _cancel_request_for_cleanup(self, request_id: int) -> None:
         try:
@@ -370,6 +323,32 @@ class Client:
         future = asyncio.run_coroutine_threadsafe(coro, self._sync_loop)
         return future.result()
 
+    async def _open_request(self) -> tuple[int, asyncio.Queue[ResponseDeltaDict]]:
+        """Allocate a request id and register its response queue on this loop."""
+        request_id = await self._ipc_state.get_next_request_id()
+        response_queue: asyncio.Queue[ResponseDeltaDict] = asyncio.Queue()
+        self._ipc_state.active_request_queues[request_id] = QueueRegistration(
+            loop=asyncio.get_running_loop(), queue=response_queue
+        )
+        return request_id, response_queue
+
+    def _close_request(self, request_id: int) -> None:
+        self._ipc_state.active_request_queues.pop(request_id, None)
+
+    async def _stream_deltas(
+        self, request_id: int, response_queue: asyncio.Queue[ResponseDeltaDict]
+    ) -> AsyncIterator[ClientDelta]:
+        stream_processor = self._async_process_stream(
+            response_queue,
+            on_cancel=lambda: self._cancel_request_for_cleanup(request_id),
+        )
+        try:
+            async for delta in stream_processor:
+                yield delta
+        finally:
+            await stream_processor.aclose()
+            self._close_request(request_id)
+
     async def _amodal_artifacts(
         self,
         *,
@@ -386,21 +365,8 @@ class Client:
         if self._ipc_state.engine_dead:
             raise RuntimeError("Engine process is dead; cannot submit new requests.")
 
-        request_id = await self._ipc_state.get_next_request_id()
-        response_queue: asyncio.Queue[ResponseDeltaDict] = asyncio.Queue()
-        owner_loop = asyncio.get_running_loop()
-        self._ipc_state.active_request_queues[request_id] = QueueRegistration(
-            loop=owner_loop, queue=response_queue
-        )
-        queue_cleared = False
+        request_id, response_queue = await self._open_request()
         stream_managed_cleanup = False
-
-        def _cleanup_queue() -> None:
-            nonlocal queue_cleared
-            if queue_cleared:
-                return
-            queue_cleared = True
-            self._ipc_state.active_request_queues.pop(request_id, None)
 
         try:
             info = await self._model_registry.get_info(model_id)
@@ -456,21 +422,9 @@ class Client:
             )
             await self._ipc_state.send_request(request_bytes)
 
-            async def _stream_generator() -> AsyncIterator[ClientDelta]:
-                stream_processor = self._async_process_stream(
-                    response_queue,
-                    on_cancel=lambda: self._cancel_request_for_cleanup(request_id),
-                )
-                try:
-                    async for delta in stream_processor:
-                        yield delta
-                finally:
-                    await stream_processor.aclose()
-                    _cleanup_queue()
-
             if stream:
                 stream_managed_cleanup = True
-                return _stream_generator()
+                return self._stream_deltas(request_id, response_queue)
 
             deltas = [
                 delta
@@ -479,24 +433,20 @@ class Client:
                     on_cancel=lambda: self._cancel_request_for_cleanup(request_id),
                 )
             ]
-            _cleanup_queue()
             return self._modal_artifacts_from_deltas(deltas)
         finally:
-            if not stream or not stream_managed_cleanup:
-                _cleanup_queue()
+            if not stream_managed_cleanup:
+                self._close_request(request_id)
+
+    @staticmethod
+    def _raise_on_error_delta(deltas: list[ClientDelta], default: str) -> None:
+        for delta in deltas:
+            if delta.error_message or (delta.finish_reason or "").lower() == "error":
+                raise InferenceError(delta.error_message or delta.content or default)
 
     @staticmethod
     def _modal_artifacts_from_deltas(deltas: list[ClientDelta]) -> list[ModalArtifact]:
-        error_message = next(
-            (
-                delta.error_message or delta.content or "Modal artifact request failed."
-                for delta in deltas
-                if delta.error_message or (delta.finish_reason or "").lower() == "error"
-            ),
-            None,
-        )
-        if error_message is not None:
-            raise InferenceError(error_message)
+        Client._raise_on_error_delta(deltas, "Modal artifact request failed.")
 
         artifacts: list[ModalArtifact] = []
         for delta in deltas:
@@ -525,20 +475,7 @@ class Client:
         if self._ipc_state.engine_dead:
             raise RuntimeError("Engine process is dead; cannot submit new requests.")
 
-        request_id = await self._ipc_state.get_next_request_id()
-        response_queue: asyncio.Queue[ResponseDeltaDict] = asyncio.Queue()
-        owner_loop = asyncio.get_running_loop()
-        self._ipc_state.active_request_queues[request_id] = QueueRegistration(
-            loop=owner_loop, queue=response_queue
-        )
-        queue_cleared = False
-
-        def _cleanup_queue() -> None:
-            nonlocal queue_cleared
-            if queue_cleared:
-                return
-            queue_cleared = True
-            self._ipc_state.active_request_queues.pop(request_id, None)
+        request_id, response_queue = await self._open_request()
 
         try:
             info = await self._model_registry.get_info(model_id)
@@ -569,22 +506,10 @@ class Client:
                     on_cancel=lambda: self._cancel_request_for_cleanup(request_id),
                 )
             ]
-            error_message = next(
-                (
-                    delta.error_message
-                    or delta.content
-                    or "Transcription request failed."
-                    for delta in deltas
-                    if delta.error_message
-                    or (delta.finish_reason or "").lower() == "error"
-                ),
-                None,
-            )
-            if error_message is not None:
-                raise InferenceError(error_message)
+            self._raise_on_error_delta(deltas, "Transcription request failed.")
             return "".join(delta.content or "" for delta in deltas)
         finally:
-            _cleanup_queue()
+            self._close_request(request_id)
 
     @staticmethod
     def _encode_float32_pcm_bytes(pcm: Iterable[float]) -> bytes:
@@ -725,40 +650,15 @@ class Client:
         if self._ipc_state.engine_dead:
             raise RuntimeError("Engine process is dead; cannot submit new requests.")
 
-        request_id = await self._ipc_state.get_next_request_id()
-        response_queue: asyncio.Queue[ResponseDeltaDict] = asyncio.Queue()
-        owner_loop = asyncio.get_running_loop()
-        self._ipc_state.active_request_queues[request_id] = QueueRegistration(
-            loop=owner_loop, queue=response_queue
-        )
-        queue_cleared = False
+        request_id, response_queue = await self._open_request()
         stream_managed_cleanup = False
-
-        def _cleanup_queue() -> None:
-            nonlocal queue_cleared
-            if queue_cleared:
-                return
-            queue_cleared = True
-            self._ipc_state.active_request_queues.pop(request_id, None)
 
         try:
             await self._asubmit_prefill_task(request_id, model_id, [text], task_name)
 
-            async def _stream_generator() -> AsyncIterator[ClientDelta]:
-                stream_processor = self._async_process_stream(
-                    response_queue,
-                    on_cancel=lambda: self._cancel_request_for_cleanup(request_id),
-                )
-                try:
-                    async for delta in stream_processor:
-                        yield delta
-                finally:
-                    await stream_processor.aclose()
-                    _cleanup_queue()
-
             if stream:
                 stream_managed_cleanup = True
-                return _stream_generator()
+                return self._stream_deltas(request_id, response_queue)
 
             deltas = [
                 delta
@@ -767,11 +667,10 @@ class Client:
                     on_cancel=lambda: self._cancel_request_for_cleanup(request_id),
                 )
             ]
-            _cleanup_queue()
             return deltas
         finally:
-            if not stream or not stream_managed_cleanup:
-                _cleanup_queue()
+            if not stream_managed_cleanup:
+                self._close_request(request_id)
 
     def prefill_task(
         self,
@@ -781,19 +680,9 @@ class Client:
         *,
         stream: bool = False,
     ) -> list[ClientDelta] | Iterator[ClientDelta]:
-        if (
-            not self._sync_loop
-            or not self._sync_thread
-            or not self._sync_thread.is_alive()
-        ):
-            self._start_sync_event_loop()
-
-        assert self._sync_loop, "Sync loop not initialized"
-        future = asyncio.run_coroutine_threadsafe(
-            self.aprefill_task(model_id, text, task_name, stream=stream),
-            self._sync_loop,
+        result = self._sync_submit(
+            self.aprefill_task(model_id, text, task_name, stream=stream)
         )
-        result = future.result()
         if isinstance(result, AsyncIterator):
             return self._sync_iterator_bridge(result)
         return result
@@ -809,12 +698,7 @@ class Client:
         if self._ipc_state.engine_dead:
             raise RuntimeError("Engine process is dead; cannot submit new requests.")
 
-        request_id = await self._ipc_state.get_next_request_id()
-        response_queue: asyncio.Queue[ResponseDeltaDict] = asyncio.Queue()
-        owner_loop = asyncio.get_running_loop()
-        self._ipc_state.active_request_queues[request_id] = QueueRegistration(
-            loop=owner_loop, queue=response_queue
-        )
+        request_id, response_queue = await self._open_request()
 
         try:
             await self._asubmit_prefill_task(request_id, model_id, texts, task_name)
@@ -827,7 +711,7 @@ class Client:
                 )
             ]
         finally:
-            self._ipc_state.active_request_queues.pop(request_id, None)
+            self._close_request(request_id)
 
         deltas_by_prompt: list[list[ClientDelta]] = [[] for _ in texts]
         for delta in deltas:
@@ -842,19 +726,7 @@ class Client:
         texts: list[str],
         task_name: str,
     ) -> list[list[ClientDelta]]:
-        if (
-            not self._sync_loop
-            or not self._sync_thread
-            or not self._sync_thread.is_alive()
-        ):
-            self._start_sync_event_loop()
-
-        assert self._sync_loop, "Sync loop not initialized"
-        future = asyncio.run_coroutine_threadsafe(
-            self.aprefill_task_batch(model_id, texts, task_name),
-            self._sync_loop,
-        )
-        return future.result()
+        return self._sync_submit(self.aprefill_task_batch(model_id, texts, task_name))
 
     def _build_responses_request(
         self,
@@ -922,6 +794,7 @@ class Client:
             model_path=info.model_path,
             formatter=info.formatter,
             messages=messages,
+            replay_model=info.model_id if info.takes_token_segments() else None,
             **kwargs,
         )
         return capture_payload
@@ -933,19 +806,7 @@ class Client:
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Synchronous wrapper for `arender_prompt()`."""
-        if (
-            not self._sync_loop
-            or not self._sync_thread
-            or not self._sync_thread.is_alive()
-        ):
-            self._start_sync_event_loop()
-
-        assert self._sync_loop, "Sync loop not initialized"
-        future = asyncio.run_coroutine_threadsafe(
-            self.arender_prompt(model_id, messages, **kwargs),
-            self._sync_loop,
-        )
-        return future.result()
+        return self._sync_submit(self.arender_prompt(model_id, messages, **kwargs))
 
     async def arender_responses_prompt(
         self,
@@ -1006,19 +867,59 @@ class Client:
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Synchronous wrapper for `arender_responses_prompt()`."""
-        if (
-            not self._sync_loop
-            or not self._sync_thread
-            or not self._sync_thread.is_alive()
-        ):
-            self._start_sync_event_loop()
+        return self._sync_submit(self.arender_responses_prompt(model_id, **kwargs))
 
-        assert self._sync_loop, "Sync loop not initialized"
-        future = asyncio.run_coroutine_threadsafe(
-            self.arender_responses_prompt(model_id, **kwargs),
-            self._sync_loop,
-        )
-        return future.result()
+    async def aassistant_message(
+        self,
+        model_id: str,
+        params: dict[str, Any],
+        deltas: Iterable[ClientDelta],
+    ) -> dict[str, Any]:
+        """
+        The assistant message to append to the conversation for a finished reply.
+
+        Besides the visible text it keeps the reply's reasoning and tool calls, and a
+        `generation` record with the exact token ids the model produced. Sent back on
+        the next turn to the same model, the reply is replayed id for id, so the engine
+        reuses its cached keys and values for all of it. Any other model reads the text.
+
+        Args:
+            model_id: The model the reply came from.
+            params: The generation parameters the request was made with.
+            deltas: The reply's deltas: the ones a stream yielded, or a complete
+                   response's `deltas`.
+        """
+        deltas = list(deltas)
+        info = await self._model_registry.get_info(model_id)
+        reasoning, tool_calls = self._aggregate_structured_items(deltas)
+        tokens = [token for delta in deltas for token in delta.tokens]
+
+        message: dict[str, Any] = {
+            "role": "assistant",
+            "content": self._aggregate_message_text(deltas),
+        }
+        if reasoning:
+            message["reasoning_content"] = "\n".join(reasoning)
+        if tool_calls:
+            message["tool_calls"] = [
+                {"type": "function", "function": tool_call} for tool_call in tool_calls
+            ]
+        if tokens:
+            message["generation"] = {
+                "model": info.model_id,
+                "tokens": tokens,
+                "thinking": self._reasoning_flag(info.formatter, params),
+            }
+        return message
+
+    def assistant_message(
+        self,
+        model_id: str,
+        params: dict[str, Any],
+        deltas: Iterable[ClientDelta],
+    ) -> dict[str, Any]:
+        """Synchronous wrapper for `aassistant_message()`."""
+        return self._sync_submit(self.aassistant_message(model_id, params, deltas))
 
     async def achat(
         self,
@@ -1050,42 +951,17 @@ class Client:
         conversations = self._normalize_messages(messages)
         batch_size = len(conversations)
 
-        request_id = await self._ipc_state.get_next_request_id()
-        response_queue: asyncio.Queue[ResponseDeltaDict] = asyncio.Queue()
-        owner_loop = asyncio.get_running_loop()
-        self._ipc_state.active_request_queues[request_id] = QueueRegistration(
-            loop=owner_loop, queue=response_queue
-        )
-        queue_cleared = False
+        request_id, response_queue = await self._open_request()
         stream_managed_cleanup = False
-
-        def _cleanup_queue() -> None:
-            nonlocal queue_cleared
-            if queue_cleared:
-                return
-            queue_cleared = True
-            self._ipc_state.active_request_queues.pop(request_id, None)
 
         try:
             await self._asubmit_request_batch(
                 request_id, model_id, conversations, **kwargs
             )
 
-            async def _stream_generator() -> AsyncIterator[ClientDelta]:
-                stream_processor = self._async_process_stream(
-                    response_queue,
-                    on_cancel=lambda: self._cancel_request_for_cleanup(request_id),
-                )
-                try:
-                    async for delta in stream_processor:
-                        yield delta
-                finally:
-                    await stream_processor.aclose()
-                    _cleanup_queue()
-
             if stream:
                 stream_managed_cleanup = True
-                return _stream_generator()
+                return self._stream_deltas(request_id, response_queue)
             else:
                 deltas = [
                     delta
@@ -1095,12 +971,11 @@ class Client:
                         on_cancel=lambda: self._cancel_request_for_cleanup(request_id),
                     )
                 ]
-                _cleanup_queue()
                 responses = self._aggregate_batch_response(deltas, batch_size)
                 return responses if is_batched else responses[0]
         finally:
-            if not stream or not stream_managed_cleanup:
-                _cleanup_queue()
+            if not stream_managed_cleanup:
+                self._close_request(request_id)
 
     @overload
     async def aresponses(
@@ -1212,21 +1087,8 @@ class Client:
             **request_kwargs,
         )
 
-        request_id = await self._ipc_state.get_next_request_id()
-        response_queue: asyncio.Queue[ResponseDeltaDict] = asyncio.Queue()
-        owner_loop = asyncio.get_running_loop()
-        self._ipc_state.active_request_queues[request_id] = QueueRegistration(
-            loop=owner_loop, queue=response_queue
-        )
-        queue_cleared = False
+        request_id, response_queue = await self._open_request()
         stream_managed_cleanup = False
-
-        def _cleanup_queue() -> None:
-            nonlocal queue_cleared
-            if queue_cleared:
-                return
-            queue_cleared = True
-            self._ipc_state.active_request_queues.pop(request_id, None)
 
         try:
             await self._asubmit_request(
@@ -1253,7 +1115,7 @@ class Client:
                     with contextlib.suppress(Exception):
                         await event_stream.aclose()
                     await raw_stream.aclose()
-                    _cleanup_queue()
+                    self._close_request(request_id)
 
             if response_request.stream:
                 stream_managed_cleanup = True
@@ -1266,11 +1128,10 @@ class Client:
                     on_cancel=lambda: self._cancel_request_for_cleanup(request_id),
                 )
             ]
-            _cleanup_queue()
             return aggregate_non_streaming_response(deltas, model_id, response_request)
         finally:
-            if not response_request.stream or not stream_managed_cleanup:
-                _cleanup_queue()
+            if not stream_managed_cleanup:
+                self._close_request(request_id)
 
     def chat(
         self,
@@ -1295,21 +1156,9 @@ class Client:
             - Streaming (single or batched): Iterator[ClientDelta]
               (use delta.prompt_index to demultiplex batched streams)
         """
-        # We need a running event loop in a background thread
-        if (
-            not self._sync_loop
-            or not self._sync_thread
-            or not self._sync_thread.is_alive()
-        ):
-            self._start_sync_event_loop()
-
-        assert self._sync_loop, "Sync loop not initialized"
-        future = asyncio.run_coroutine_threadsafe(
-            self.achat(model_id, messages, stream=stream, **kwargs),
-            self._sync_loop,
+        result = self._sync_submit(
+            self.achat(model_id, messages, stream=stream, **kwargs)
         )
-
-        result = future.result()
 
         if stream and isinstance(result, AsyncIterator):
             # If streaming, the result is an async generator. We need to wrap it
@@ -1336,19 +1185,7 @@ class Client:
             `resp = client.responses("llama3", input="hi")`
             `for event in client.responses("llama3", input="hi", stream=True): ...`
         """
-        if (
-            not self._sync_loop
-            or not self._sync_thread
-            or not self._sync_thread.is_alive()
-        ):
-            self._start_sync_event_loop()
-
-        assert self._sync_loop, "Sync loop not initialized"
-        future = asyncio.run_coroutine_threadsafe(
-            self.aresponses(model_id, **kwargs),
-            self._sync_loop,
-        )
-        result = future.result()
+        result = self._sync_submit(self.aresponses(model_id, **kwargs))
 
         if isinstance(result, AsyncIterator):
             return self._sync_iterator_bridge(result)
@@ -1614,16 +1451,7 @@ class Client:
         return reasoning, tool_calls
 
     def _aggregate_response(self, deltas: list[ClientDelta]) -> ClientResponse:
-        error_message = next(
-            (
-                delta.error_message or delta.content or "Inference request failed."
-                for delta in deltas
-                if delta.error_message or (delta.finish_reason or "").lower() == "error"
-            ),
-            None,
-        )
-        if error_message is not None:
-            raise InferenceError(error_message)
+        self._raise_on_error_delta(deltas, "Inference request failed.")
 
         aggregated_text = self._aggregate_message_text(deltas)
         finish_reason = next(
@@ -1666,24 +1494,18 @@ class Client:
         model_path: str,
         formatter: ChatFormatter,
         messages: list[dict[str, Any]],
+        replay_model: str | None = None,
         **kwargs: Any,
     ) -> tuple[dict[str, Any], dict[str, Any]]:
+        # `replay_model` is the model being asked when its engine takes token segments:
+        # replies that model generated earlier in the conversation are then sent as
+        # their token ids.
+        messages, replays = take_replays(messages, replay_model)
         requested_reasoning_effort = kwargs.get("reasoning_effort")
-        native_reasoning = formatter.supports_native_thinking()
         max_generated_tokens = int(
             kwargs.get("max_generated_tokens", MAX_GENERATED_TOKENS)
         )
-        requested_reasoning = kwargs.get("reasoning")
-        default_reasoning = (
-            native_reasoning
-            and requested_reasoning is None
-            and requested_reasoning_effort is None
-        )
-        reasoning_flag = bool(
-            (requested_reasoning is not False)
-            and (requested_reasoning or requested_reasoning_effort or default_reasoning)
-            and native_reasoning
-        )
+        reasoning_flag = self._reasoning_flag(formatter, kwargs)
         reasoning_effort = (
             requested_reasoning_effort or DEFAULT_BOOLEAN_REASONING_EFFORT
             if reasoning_flag
@@ -1746,7 +1568,11 @@ class Client:
         except ValueError as exc:
             raise ValueError(f"Invalid multimodal layout: {exc}") from exc
 
-        prompt_text = formatter.strip_template_placeholders(prompt_text)
+        prompt_text, layout_segments, token_segments = splice_replays(
+            formatter.strip_template_placeholders(prompt_text),
+            layout_segments,
+            replays,
+        )
 
         prompt_bytes = prompt_text.encode("utf-8")
         deterministic = bool(kwargs.get("deterministic", False))
@@ -1816,6 +1642,7 @@ class Client:
             "audio_buffers": audio_buffers,
             "capabilities": capabilities_payload,
             "layout": layout_segments,
+            "token_segments": token_segments,
             "sampling_params": {
                 "temperature": temperature,
                 "top_p": top_p,
@@ -1887,6 +1714,23 @@ class Client:
         return prompt_payload, capture_payload
 
     @staticmethod
+    def _reasoning_flag(formatter: ChatFormatter, kwargs: dict[str, Any]) -> bool:
+        """The thinking flag a chat request with these parameters is rendered with."""
+        requested_reasoning = kwargs.get("reasoning")
+        requested_reasoning_effort = kwargs.get("reasoning_effort")
+        native_reasoning = formatter.supports_native_thinking()
+        default_reasoning = (
+            native_reasoning
+            and requested_reasoning is None
+            and requested_reasoning_effort is None
+        )
+        return bool(
+            (requested_reasoning is not False)
+            and (requested_reasoning or requested_reasoning_effort or default_reasoning)
+            and native_reasoning
+        )
+
+    @staticmethod
     def _generation_value(
         kwargs: dict[str, Any],
         defaults: dict[str, Any],
@@ -1902,29 +1746,8 @@ class Client:
     async def _asubmit_request(
         self, request_id: int, model_id: str, messages: list[dict], **kwargs: Any
     ):
-        """Prepares and submits the request over the pynng IPC channel."""
-        info = await self._model_registry.get_info(model_id)
-        engine_model_id = info.model_id
-        prompt_payload, _ = self._prepare_prompt_payload(
-            model_id=engine_model_id,
-            model_path=info.model_path,
-            formatter=info.formatter,
-            messages=messages,
-            **kwargs,
-        )
-        response_channel_id = self._ipc_state.response_channel_id or request_id
-        logger.debug(
-            f"Submitting request {request_id} for model {engine_model_id} with response channel id: {response_channel_id}"
-        )
-        request_bytes = _build_request_payload(
-            request_id=request_id,
-            model_id=engine_model_id,
-            model_path=info.model_path,
-            request_type="generation",
-            response_channel_id=response_channel_id,
-            prompts=[prompt_payload],
-        )
-        await self._ipc_state.send_request(request_bytes)
+        """Prepares and submits a single-conversation request."""
+        await self._asubmit_request_batch(request_id, model_id, [messages], **kwargs)
 
     async def _asubmit_request_batch(
         self,
@@ -1947,6 +1770,7 @@ class Client:
                 model_path=info.model_path,
                 formatter=info.formatter,
                 messages=messages,
+                replay_model=engine_model_id if info.takes_token_segments() else None,
                 **prompt_kwargs,
             )
             prompt_payloads.append(prompt_payload)
