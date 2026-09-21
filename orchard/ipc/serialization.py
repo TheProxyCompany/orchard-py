@@ -29,16 +29,11 @@ _REQUEST_TYPE_CODES = {
     "image_generation": 9,
 }
 
-# A request asks for the engine's flow-controlled response route by this name:
-# the engine then pushes the deltas to the client's own endpoint
-# (endpoints.response_pull_path) and waits for a client that falls behind.
-# Publish/subscribe, the engine's route for a request without this field, drops
-# the oldest queued deltas instead, with no error on either side. An engine
-# that predates the field ignores it and publishes as before. Whether a request
-# may ask is IPCState.lossless_responses.
+# The name a request uses to ask for the push/pull response route; see
+# endpoints.response_pull_path and IPCState.lossless_responses.
 RESPONSE_TRANSPORT = "pull_v1"
 
-__all__ = ["RESPONSE_TRANSPORT", "_build_request_payload"]
+__all__ = ["_build_request_payload"]
 
 _METADATA_PREFIX_STRUCT = struct.Struct("<I")
 
