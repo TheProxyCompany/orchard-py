@@ -304,6 +304,9 @@ class ChatCompletionRequest(BaseModel):
             integer=True,
             optional=True,
         )
+        # `max_tokens` is the older OpenAI name for the same cap.
+        if data.get("max_completion_tokens") is None and "max_tokens" in data:
+            data["max_completion_tokens"] = data["max_tokens"]
         # Validate singleton numeric even if not vectorized
         if "max_completion_tokens" in data:
             validate_numeric(

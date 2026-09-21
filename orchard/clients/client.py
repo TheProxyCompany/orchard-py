@@ -1353,7 +1353,9 @@ class Client:
             if delta.generation_len is not None:
                 visible_tokens = max(delta.generation_len - usage.reasoning_tokens, 0)
                 usage.completion_tokens = max(usage.completion_tokens, visible_tokens)
-        usage.total_tokens = usage.prompt_tokens + usage.completion_tokens
+        usage.total_tokens = (
+            usage.prompt_tokens + usage.completion_tokens + usage.reasoning_tokens
+        )
         return usage
 
     @staticmethod

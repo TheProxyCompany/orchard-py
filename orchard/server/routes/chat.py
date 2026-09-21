@@ -37,11 +37,13 @@ from orchard.server.models.chat.output import (
     get_current_timestamp,
 )
 from orchard.server.models.reasoning import DEFAULT_BOOLEAN_REASONING_EFFORT
+from orchard.server.models.tools import ToolCall, ToolCallFunction
 from orchard.server.routes._common import (
     _ModelNotReadyError,
     managed_stream_session,
     resolve_model,
 )
+from orchard.server.routes.responses import _process_state_event_for_output
 from orchard.server.utils.batching import normalize_chat_request
 
 logger = logging.getLogger(__name__)
@@ -299,8 +301,10 @@ async def handle_completion_request(
             input_tokens=response_data["prompt_tokens"],
             output_tokens=response_data["completion_tokens"],
             reasoning_tokens=response_data["reasoning_tokens"],
+            cached_tokens=response_data["cached_tokens"],
             total_tokens=response_data["prompt_tokens"]
-            + response_data["completion_tokens"],
+            + response_data["completion_tokens"]
+            + response_data["reasoning_tokens"],
         )
         final_response = ChatCompletionResponse(
             id=generate_chat_completion_id(),
@@ -358,6 +362,7 @@ async def gather_non_streaming_batch_response(
             {
                 "content": "",
                 "reasoning": {},
+                "tool_items": {},
                 "tokens": [],
                 "finish_reason": "unknown",
                 "completion_tokens": 0,
@@ -374,6 +379,7 @@ async def gather_non_streaming_batch_response(
         for candidate_count in prompt_fanout_counts
     ]
     prompt_token_totals: list[int] = [0 for _ in prompt_fanout_counts]
+    cached_token_totals: list[int] = [0 for _ in prompt_fanout_counts]
 
     remaining_sequences = total_expected
 
@@ -433,6 +439,11 @@ async def gather_non_streaming_batch_response(
                 prompt_token_count = delta.get("prompt_token_count", 0)
                 if prompt_token_count > 0 and prompt_token_totals[prompt_index] == 0:
                     prompt_token_totals[prompt_index] = prompt_token_count
+                # The prompt is prefilled once and shared by its candidates.
+                cached_token_totals[prompt_index] = max(
+                    cached_token_totals[prompt_index],
+                    int(delta.get("cached_token_count") or 0),
+                )
 
                 state_events = delta.get("state_events") or []
                 if os.getenv("ORCHARD_DUMP_DELTAS"):
@@ -485,6 +496,8 @@ async def gather_non_streaming_batch_response(
                     # Reasoning-item spans are the reply's think block, aggregated as
                     # Client._aggregate_structured_items does.
                     for event in state_events:
+                        if event.get("item_type") == "tool_call":
+                            _process_state_event_for_output(event, state["tool_items"])
                         if event.get("item_type") != "reasoning":
                             continue
                         identifier = str(event.get("identifier") or "reasoning")
@@ -740,16 +753,32 @@ async def gather_non_streaming_batch_response(
                     "thinking": thinking_flags[prompt_idx],
                 }
 
+            tool_calls = [
+                ToolCall(
+                    function=ToolCallFunction(
+                        name=item["function_name"], arguments=item["arguments"]
+                    )
+                )
+                for _, item in sorted(candidate_state["tool_items"].items())
+                if item["function_name"]
+            ]
+            # A reply that calls a tool ends with "tool_calls" in chat completions; the
+            # engine ends it with "stop" or "tool_use", by tool-call format.
+            finish_reason = candidate_state["finish_reason"]
+            if tool_calls and finish_reason in ("stop", "tool_use"):
+                finish_reason = "tool_calls"
+
             choices.append(
                 ChatCompletionChoice(
                     index=choice_index,
                     message=ChatMessage(
                         role="assistant",
                         content=choice_content,
+                        tool_calls=tool_calls,
                         reasoning_content="\n".join(reasoning) if reasoning else None,
                         generation=generation,
                     ),
-                    finish_reason=candidate_state["finish_reason"],
+                    finish_reason=finish_reason,
                     logprobs=logprobs_object,
                 )
             )
@@ -759,6 +788,7 @@ async def gather_non_streaming_batch_response(
         "prompt_tokens": total_prompt_tokens,
         "completion_tokens": total_completion_tokens,
         "reasoning_tokens": total_reasoning_tokens,
+        "cached_tokens": sum(cached_token_totals),
     }
 
 

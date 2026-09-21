@@ -535,6 +535,22 @@ def test_chat_aggregate_keeps_raw_content_without_state_events() -> None:
     assert client._aggregate_response(deltas).text == "hello world"
 
 
+def test_chat_usage_total_counts_reasoning_tokens() -> None:
+    usage = Client._extract_usage(
+        [
+            ClientDelta(
+                request_id=1,
+                prompt_token_count=16,
+                generation_len=8208,
+                reasoning_tokens=8192,
+            )
+        ]
+    )
+
+    assert (usage.completion_tokens, usage.reasoning_tokens) == (16, 8192)
+    assert usage.total_tokens == 16 + 8208
+
+
 @pytest.mark.asyncio
 async def test_chat_stream_close_cancels_request(monkeypatch) -> None:
     client = _make_client()
