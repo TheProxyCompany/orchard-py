@@ -81,8 +81,8 @@ MATRIX = [
 ]
 
 
-def select_models(spec: str | None, matrix: list[Model] = MATRIX) -> list[Model]:
-    """The rows of ``matrix`` named in ``spec``, in matrix order.
+def select_models(spec: str | None) -> list[Model]:
+    """The rows of ``MATRIX`` named in ``spec``, in matrix order.
 
     ``spec`` is a comma-separated list of template types; None or blank keeps
     the whole matrix. An unknown name raises instead of silently selecting
@@ -90,15 +90,15 @@ def select_models(spec: str | None, matrix: list[Model] = MATRIX) -> list[Model]
     """
     names = [name.strip() for name in (spec or "").split(",") if name.strip()]
     if not names:
-        return list(matrix)
-    known = {model.template_type for model in matrix}
+        return list(MATRIX)
+    known = {model.template_type for model in MATRIX}
     unknown = sorted(set(names) - known)
     if unknown:
         raise ValueError(
             f"ORCHARD_TEST_MODELS names unknown template type(s) {unknown}; "
             f"known: {sorted(known)}"
         )
-    return [model for model in matrix if model.template_type in names]
+    return [model for model in MATRIX if model.template_type in names]
 
 
 MODELS = select_models(os.environ.get("ORCHARD_TEST_MODELS"))
