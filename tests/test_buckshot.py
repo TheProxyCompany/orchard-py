@@ -9,16 +9,15 @@ Opt-in (it duplicates the per-model matrices): python -m pytest -m buckshot -q -
 """
 
 import asyncio
-import os
 import shutil
 import subprocess
 import time
-from pathlib import Path
 
 import pytest
 
 from orchard.engine.io import get_engine_file_paths
 from orchard.engine.multiprocess import pid_is_alive, read_pid_file
+from tests.conftest import LOG_DIR
 from tests.functional.cases.registry import cases_for_model as functional_cases
 from tests.functional.cases.registry import run_cases as run_functional
 from tests.golden import golden_io
@@ -48,13 +47,7 @@ def _snapshot_hung_engine() -> str:
     sampler = shutil.which("sample")
     if sampler is None:
         return f"engine pid {pid} is alive (no `sample` tool to capture its stacks)"
-    # Same directory tests/conftest.py writes the engine log to.
-    log_dir = Path(
-        os.environ.get("ORCHARD_TEST_LOG_DIR")
-        or Path(__file__).parent.parent / "logs_test"
-    )
-    log_dir.mkdir(parents=True, exist_ok=True)
-    out = log_dir / "engine_hang.sample.txt"
+    out = LOG_DIR / "engine_hang.sample.txt"
     subprocess.run(
         [sampler, str(pid), "2", "-mayDie", "-file", str(out)],
         capture_output=True,
