@@ -228,12 +228,9 @@ class ChatCompletionRequest(BaseModel):
             minimum: float | int | None,
             maximum: float | int | None,
             integer: bool = False,
-            optional: bool = True,
         ) -> None:
             if raw is None:
-                if optional:
-                    return
-                raise ValueError(f"'{name}' is required")
+                return
 
             def _check_once(v: Any) -> None:
                 if integer:
@@ -246,12 +243,9 @@ class ChatCompletionRequest(BaseModel):
                     raise ValueError(f"'{name}' out of range: {val} > {maximum}")
 
             if isinstance(raw, list):
-                for idx, item in enumerate(raw):
-                    if item is None:
-                        if optional:
-                            continue
-                        raise ValueError(f"'{name}[{idx}]' is required")
-                    _check_once(item)
+                for item in raw:
+                    if item is not None:
+                        _check_once(item)
             else:
                 _check_once(raw)
 
@@ -262,7 +256,6 @@ class ChatCompletionRequest(BaseModel):
             minimum=0.0,
             maximum=2.0,
             integer=False,
-            optional=False,
         )
         validate_numeric(
             "top_p",
@@ -270,7 +263,6 @@ class ChatCompletionRequest(BaseModel):
             minimum=0.0,
             maximum=1.0,
             integer=False,
-            optional=True,
         )
         validate_numeric(
             "min_p",
@@ -278,7 +270,6 @@ class ChatCompletionRequest(BaseModel):
             minimum=0.0,
             maximum=1.0,
             integer=False,
-            optional=True,
         )
         validate_numeric(
             "top_k",
@@ -286,7 +277,6 @@ class ChatCompletionRequest(BaseModel):
             minimum=1,
             maximum=100,
             integer=True,
-            optional=True,
         )
         validate_numeric(
             "top_logprobs",
@@ -294,7 +284,6 @@ class ChatCompletionRequest(BaseModel):
             minimum=0,
             maximum=20,
             integer=True,
-            optional=True,
         )
         validate_numeric(
             "best_of",
@@ -302,7 +291,6 @@ class ChatCompletionRequest(BaseModel):
             minimum=1,
             maximum=None,
             integer=True,
-            optional=True,
         )
         # `max_tokens` is the older OpenAI name for the same cap.
         if data.get("max_completion_tokens") is None and "max_tokens" in data:
@@ -315,7 +303,6 @@ class ChatCompletionRequest(BaseModel):
                 minimum=1,
                 maximum=None,
                 integer=True,
-                optional=True,
             )
 
         return data
