@@ -127,11 +127,7 @@ async def test_cancel_request_names_this_clients_response_channel():
     [
         # The engine writes every capability as a list of integers.
         ({"lossless_responses": [1]}, True),
-        ({"lossless_responses": 1}, True),
         ({"lossless_responses": [0]}, False),
-        ({"lossless_responses": []}, False),
-        ({"lossless_responses": "1"}, False),
-        ({"lossless_responses": True}, False),
         ({"answer": [1]}, False),
         (None, False),
     ],

@@ -24,9 +24,6 @@ logger = logging.getLogger(__name__)
 EVENT_TOPIC_PREFIX = b"__PIE_EVENT__:"
 ENGINE_LIVENESS_POLL_INTERVAL_S = 5.0
 RESPONSE_RECV_TIMEOUT_MS = 1000
-# The capability an engine lists, with value 1, once it reaps stalled response
-# routes with an explicit error and reports a response endpoint it cannot reach.
-LOSSLESS_RESPONSES_CAPABILITY = "lossless_responses"
 
 
 class IPCDispatcher:
@@ -123,10 +120,7 @@ class IPCState:
         (name to a list of integers) for "lossless_responses": 1."""
         if not isinstance(capabilities, dict):
             return
-        value = capabilities.get(LOSSLESS_RESPONSES_CAPABILITY)
-        if isinstance(value, list | tuple):
-            value = value[0] if value else None
-        if type(value) is int and value == 1:
+        if capabilities.get("lossless_responses") == [1]:
             self.engine_advertises_lossless = True
 
     @property
