@@ -5,13 +5,10 @@ The same two tests run under minijinja in orchard-rs (src/formatter/mod.rs).
 
 from __future__ import annotations
 
-import os
-from pathlib import Path
 from typing import Any
 
 import pytest
 
-import orchard.formatter.formatter as formatter_module
 from orchard.formatter.formatter import ChatFormatter
 
 PROFILES = [
@@ -34,15 +31,6 @@ PROFILES = [
 MARKER = "\ue0000\ue001"
 # The client renames `assistant` to `agent` before rendering; both must work.
 ROLES = ["assistant", "agent"]
-
-
-@pytest.fixture(autouse=True)
-def _profile_root(monkeypatch: pytest.MonkeyPatch) -> None:
-    # ORCHARD_PROFILES_DIR checks another Pantheon checkout than the bundled one.
-    override = os.environ.get("ORCHARD_PROFILES_DIR")
-    if override:
-        monkeypatch.setattr(formatter_module, "_PROFILE_ROOT", Path(override))
-        monkeypatch.setattr(formatter_module, "_PROFILE_DIRS", None)
 
 
 def _formatter(model_type: str) -> ChatFormatter:
