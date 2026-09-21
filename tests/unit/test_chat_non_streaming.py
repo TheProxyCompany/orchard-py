@@ -152,3 +152,15 @@ def test_max_tokens_is_the_cap_under_its_older_name() -> None:
     ]
     with pytest.raises(ValueError, match="max_completion_tokens"):
         request(max_tokens=0)
+
+
+def test_a_request_without_temperature_is_accepted() -> None:
+    """OpenAI's `temperature` is optional; the route then samples with the model
+    profile's defaults (`"temperature" not in request.model_fields_set`)."""
+    from orchard.server.models.chat.request import ChatCompletionRequest
+
+    request = ChatCompletionRequest(
+        model="m", messages=[{"role": "user", "content": "hi"}]
+    )
+
+    assert "temperature" not in request.model_fields_set
