@@ -204,8 +204,8 @@
     {
       "type": "response.output_token",
       "sequence_number": 25,
-      "token_id": 30609,
-      "content": "Adding"
+      "token_id": 61,
+      "content": "I"
     },
     {
       "type": "response.reasoning.delta",
@@ -213,13 +213,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "Adding"
+      "delta": "I"
     },
     {
       "type": "response.output_token",
       "sequence_number": 27,
-      "token_id": 742,
-      "content": " these"
+      "token_id": 41410,
+      "content": " need to"
     },
     {
       "type": "response.reasoning.delta",
@@ -227,13 +227,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " these"
+      "delta": " need to"
     },
     {
       "type": "response.output_token",
       "sequence_number": 29,
-      "token_id": 1137,
-      "content": " numbers"
+      "token_id": 1039,
+      "content": " add"
     },
     {
       "type": "response.reasoning.delta",
@@ -241,13 +241,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " numbers"
+      "delta": " add"
     },
     {
       "type": "response.output_token",
       "sequence_number": 31,
-      "token_id": 46,
-      "content": ":"
+      "token_id": 44285,
+      "content": " these two"
     },
     {
       "type": "response.reasoning.delta",
@@ -255,13 +255,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": ":"
+      "delta": " these two"
     },
     {
       "type": "response.output_token",
       "sequence_number": 33,
-      "token_id": 225,
-      "content": " "
+      "token_id": 1137,
+      "content": " numbers"
     },
     {
       "type": "response.reasoning.delta",
@@ -269,13 +269,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " "
+      "delta": " numbers"
     },
     {
       "type": "response.output_token",
       "sequence_number": 35,
-      "token_id": 1194,
-      "content": "17"
+      "token_id": 46,
+      "content": ":"
     },
     {
       "type": "response.reasoning.delta",
@@ -283,13 +283,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "17"
+      "delta": ":"
     },
     {
       "type": "response.output_token",
       "sequence_number": 37,
-      "token_id": 41293,
-      "content": " + "
+      "token_id": 225,
+      "content": " "
     },
     {
       "type": "response.reasoning.delta",
@@ -297,13 +297,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " + "
+      "delta": " "
     },
     {
       "type": "response.output_token",
       "sequence_number": 39,
-      "token_id": 1720,
-      "content": "26"
+      "token_id": 1194,
+      "content": "17"
     },
     {
       "type": "response.reasoning.delta",
@@ -311,13 +311,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "26"
+      "delta": "17"
     },
     {
       "type": "response.output_token",
       "sequence_number": 41,
-      "token_id": 41229,
-      "content": " = "
+      "token_id": 41293,
+      "content": " + "
     },
     {
       "type": "response.reasoning.delta",
@@ -325,13 +325,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " = "
+      "delta": " + "
     },
     {
       "type": "response.output_token",
       "sequence_number": 43,
-      "token_id": 4020,
-      "content": "43"
+      "token_id": 1720,
+      "content": "26"
     },
     {
       "type": "response.reasoning.delta",
@@ -339,7 +339,7 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "43"
+      "delta": "26"
     },
     {
       "type": "response.output_token",
@@ -358,8 +358,8 @@
     {
       "type": "response.output_token",
       "sequence_number": 47,
-      "token_id": 489,
-      "content": "The"
+      "token_id": 1194,
+      "content": "17"
     },
     {
       "type": "response.reasoning.delta",
@@ -367,13 +367,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": "The"
+      "delta": "17"
     },
     {
       "type": "response.output_token",
       "sequence_number": 49,
-      "token_id": 1812,
-      "content": " question"
+      "token_id": 41293,
+      "content": " + "
     },
     {
       "type": "response.reasoning.delta",
@@ -381,13 +381,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " question"
+      "delta": " + "
     },
     {
       "type": "response.output_token",
       "sequence_number": 51,
-      "token_id": 6416,
-      "content": " specifically"
+      "token_id": 1720,
+      "content": "26"
     },
     {
       "type": "response.reasoning.delta",
@@ -395,13 +395,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " specifically"
+      "delta": "26"
     },
     {
       "type": "response.output_token",
       "sequence_number": 53,
-      "token_id": 7930,
-      "content": " asks"
+      "token_id": 41229,
+      "content": " = "
     },
     {
       "type": "response.reasoning.delta",
@@ -409,13 +409,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " asks"
+      "delta": " = "
     },
     {
       "type": "response.output_token",
       "sequence_number": 55,
-      "token_id": 41203,
-      "content": " for the"
+      "token_id": 4020,
+      "content": "43"
     },
     {
       "type": "response.reasoning.delta",
@@ -423,13 +423,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " for the"
+      "delta": "43"
     },
     {
       "type": "response.output_token",
       "sequence_number": 57,
-      "token_id": 628,
-      "content": " number"
+      "token_id": 41182,
+      "content": ".\n"
     },
     {
       "type": "response.reasoning.delta",
@@ -437,13 +437,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " number"
+      "delta": ".\n"
     },
     {
       "type": "response.output_token",
       "sequence_number": 59,
-      "token_id": 41247,
-      "content": ", and the"
+      "token_id": 489,
+      "content": "The"
     },
     {
       "type": "response.reasoning.delta",
@@ -451,13 +451,13 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": ", and the"
+      "delta": "The"
     },
     {
       "type": "response.output_token",
       "sequence_number": 61,
-      "token_id": 868,
-      "content": " result"
+      "token_id": 2367,
+      "content": " answer"
     },
     {
       "type": "response.reasoning.delta",
@@ -465,7 +465,7 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "delta": " result"
+      "delta": " answer"
     },
     {
       "type": "response.output_token",
@@ -521,7 +521,7 @@
       "item_id": "reasoning_0",
       "output_index": 0,
       "content_index": 0,
-      "text": "The user is asking for the sum of 17 and 26.\nAdding these numbers: 17 + 26 = 43.\nThe question specifically asks for the number, and the result is 43."
+      "text": "The user is asking for the sum of 17 and 26.\nI need to add these two numbers: 17 + 26.\n17 + 26 = 43.\nThe answer is 43."
     },
     {
       "type": "response.output_item.done",
@@ -535,7 +535,7 @@
         "content": [
           {
             "type": "reasoning_text",
-            "text": "The user is asking for the sum of 17 and 26.\nAdding these numbers: 17 + 26 = 43.\nThe question specifically asks for the number, and the result is 43."
+            "text": "The user is asking for the sum of 17 and 26.\nI need to add these two numbers: 17 + 26.\n17 + 26 = 43.\nThe answer is 43."
           }
         ],
         "encrypted_content": null
@@ -644,7 +644,7 @@
             "content": [
               {
                 "type": "reasoning_text",
-                "text": "The user is asking for the sum of 17 and 26.\nAdding these numbers: 17 + 26 = 43.\nThe question specifically asks for the number, and the result is 43."
+                "text": "The user is asking for the sum of 17 and 26.\nI need to add these two numbers: 17 + 26.\n17 + 26 = 43.\nThe answer is 43."
               }
             ],
             "encrypted_content": null

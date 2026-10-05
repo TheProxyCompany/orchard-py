@@ -3,8 +3,14 @@
 What the suites certify is the *architecture* in the engine — the Pantheon
 template_type — not a vendor's checkpoint name. One row per architecture;
 use the smallest checkpoint that exercises it. Add a model by adding a row.
+
+``ORCHARD_TEST_MODELS`` (comma-separated template types, e.g. ``gpt_oss`` or
+``gemma4,moondream3``) narrows the matrix for one session: ``MODELS`` holds
+only the named rows, so the engine fixture preloads only those checkpoints and
+every matrix test parametrizes over only them. Unset means the whole matrix.
 """
 
+import os
 from dataclasses import dataclass
 
 
@@ -17,7 +23,7 @@ class Model:
     tools: bool  # native tool calling
 
 
-MODELS = [
+MATRIX = [
     Model(
         "llama3",
         "meta-llama/Llama-3.1-8B-Instruct",
@@ -73,6 +79,29 @@ MODELS = [
         "gpt_oss", "openai/gpt-oss-20b", thinking=True, vision=False, tools=True
     ),  # MXFP4 expert weights
 ]
+
+
+def select_models(spec: str | None) -> list[Model]:
+    """The rows of ``MATRIX`` named in ``spec``, in matrix order.
+
+    ``spec`` is a comma-separated list of template types; None or blank keeps
+    the whole matrix. An unknown name raises instead of silently selecting
+    nothing, so a typo fails at collection, before any engine starts.
+    """
+    names = [name.strip() for name in (spec or "").split(",") if name.strip()]
+    if not names:
+        return list(MATRIX)
+    known = {model.template_type for model in MATRIX}
+    unknown = sorted(set(names) - known)
+    if unknown:
+        raise ValueError(
+            f"ORCHARD_TEST_MODELS names unknown template type(s) {unknown}; "
+            f"known: {sorted(known)}"
+        )
+    return [model for model in MATRIX if model.template_type in names]
+
+
+MODELS = select_models(os.environ.get("ORCHARD_TEST_MODELS"))
 
 # Modal tool models the pipeline suite activates. Hydrate them one at a
 # time on top of the resident chat matrix: concurrent hydration spikes

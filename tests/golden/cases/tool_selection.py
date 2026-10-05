@@ -114,7 +114,6 @@ async def test_tool_selection(client: Client, model: Model):
         input=conversation,
         core_tools=TOOLS,
         tool_choice="required",
-        deterministic=True,
         max_output_tokens=512,
         reasoning=reasoning,
         prefix_cache=False,
