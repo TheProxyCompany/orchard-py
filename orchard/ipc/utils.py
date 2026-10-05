@@ -6,6 +6,21 @@ logger = logging.getLogger(__name__)
 ResponseDeltaDict = dict[str, Any]
 
 
+def content_only_message_events(text: str) -> list[dict[str, Any]]:
+    """The state events of a reply that sent none: its content as one message.
+
+    A sequence without a text state machine (or an engine older than state
+    events) sends only ``content``. Whether a reply is one of those is known
+    when it ends, so the Responses paths collect ``content`` until then and
+    hand the text to their state-event handling as the message it is.
+    """
+    message = {"item_type": "message", "output_index": 0, "identifier": "message"}
+    return [
+        {**message, "event_type": "item_started"},
+        {**message, "event_type": "content_delta", "delta": text},
+    ]
+
+
 def release_delta_resources(delta_item: ResponseDeltaDict) -> None:
     """Release any shared-memory resources associated with a delta."""
     if not delta_item:

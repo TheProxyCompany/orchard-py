@@ -7,7 +7,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from orchard.ipc.utils import ResponseDeltaDict
+from orchard.ipc.utils import ResponseDeltaDict, content_only_message_events
 from orchard.server.models.reasoning import (
     DEFAULT_BOOLEAN_REASONING_EFFORT,
 )
@@ -717,11 +717,20 @@ async def iter_response_events(
     error_detail: str | None = None
     finish_reason: str | None = None
     usage = ResponseUsage(input_tokens=0, output_tokens=0, total_tokens=0)
+    # `content` is the reply only for a sequence that never sends state events,
+    # which is known when the stream ends; it is collected until the first one.
+    pending_content = ""
+    saw_state_events = False
 
     async for delta in delta_iterator:
         if error := delta.get("error_message"):
             error_detail = str(error)
             break
+
+        if delta.get("state_events"):
+            saw_state_events = True
+        elif not saw_state_events and isinstance(delta.get("content"), str):
+            pending_content += delta["content"]
 
         if stream_tokens:
             for token_id in delta.get("tokens") or []:
@@ -752,6 +761,11 @@ async def iter_response_events(
 
         if delta.get("is_final_delta", False):
             break
+
+    if error_detail is None and not saw_state_events and pending_content:
+        for event in content_only_message_events(pending_content):
+            for mapped_event in _process_state_event_for_streaming(event, stream_state):
+                yield mapped_event
 
     for mapped_event in _emit_stream_fallback_item_done(stream_state):
         yield mapped_event

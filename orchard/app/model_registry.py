@@ -48,6 +48,18 @@ class ModelInfo:
         """Whether the engine that loaded this model accepts `tokens` layout segments."""
         return "token_segments" in (self.capabilities or {})
 
+    @property
+    def releases_held_text(self) -> bool:
+        """Whether the engine that loaded this model completes its text stream.
+
+        The state events of a reply hold back text that could still become a
+        stop sequence. An engine that advertises ``released_text`` hands that
+        text over in the final delta when a reply ends without a stop (token
+        limit, cancel), so the message ``content_delta`` spans are the whole
+        message. An engine without it never sends that text as a span.
+        """
+        return "released_text" in (self.capabilities or {})
+
 
 @dataclass(slots=True)
 class ModelEntry:

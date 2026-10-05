@@ -274,6 +274,7 @@ async def handle_completion_request(
                         total_expected_sequences,
                         canonical_id,
                         thinking_flags,
+                        released_text=model_info.releases_held_text,
                     ):
                         yield chunk
                     request_completed = True
@@ -294,6 +295,7 @@ async def handle_completion_request(
             final_candidate_counts,
             canonical_id,
             thinking_flags,
+            released_text=model_info.releases_held_text,
         )
         usage = ChatCompletionUsage(
             input_tokens=response_data["prompt_tokens"],
@@ -344,12 +346,16 @@ async def gather_non_streaming_batch_response(
     prompt_final_counts: list[int],
     generation_model: str | None = None,
     thinking_flags: Sequence[bool] = (),
+    *,
+    released_text: bool = False,
 ) -> dict[str, Any]:
     """Collects deltas for all sequences belonging to a parent request.
 
     `generation_model` is the canonical id of the model asked and `thinking_flags`
     the thinking mode each prompt was rendered with: given a model, every returned
     message carries a `generation` record made of both and the reply's token ids.
+
+    ``released_text`` selects the complete engine text stream.
     """
 
     total_expected = sum(prompt_fanout_counts)
@@ -468,20 +474,27 @@ async def gather_non_streaming_batch_response(
                             and event.get("item_type") == "message"
                         )
                     ]
-                    # Top-level content is used only when it extends the span
-                    # join: a stop matched mid-token ships its tail solely in
-                    # content (the span holds the pre-match prefix). A
-                    # span-less delta's content is reasoning text or the raw
-                    # stop text and must stay excluded; a coalesced delta's
-                    # content covers only the last tick and must lose to the
-                    # joined spans.
                     joined = "".join(span_deltas)
-                    content_field = delta.get("content") or ""
-                    delta_content = (
-                        content_field
-                        if span_deltas and content_field.startswith(joined)
-                        else joined
-                    )
+                    if released_text:
+                        # The spans are the whole message. Top-level content runs ahead
+                        # of them and spells the stop sequence they leave out; see
+                        # ModelInfo.releases_held_text.
+                        delta_content = joined
+                    else:
+                        # Engines without released_text: main's rule, unchanged; delete
+                        # with the capability.
+                        # Top-level content is used only when it extends the span join:
+                        # a stop matched mid-token ships its tail solely in content (the
+                        # span holds the pre-match prefix). A span-less delta's content
+                        # is reasoning text or the raw stop text and must stay excluded;
+                        # a coalesced delta's content covers only the last tick and must
+                        # lose to the joined spans.
+                        content_field = delta.get("content") or ""
+                        delta_content = (
+                            content_field
+                            if span_deltas and content_field.startswith(joined)
+                            else joined
+                        )
                     # Reasoning-item spans are the reply's think block, aggregated as
                     # Client._aggregate_structured_items does.
                     for event in state_events:
@@ -556,6 +569,11 @@ async def gather_non_streaming_batch_response(
                         )
 
                     chosen_token_str = delta_content
+                    if released_text and delta_content:
+                        # The entry describes the sampled token, whose text is
+                        # top-level content; a span can hold part of it back
+                        # or carry text of an earlier token.
+                        chosen_token_str = delta.get("content") or ""
                     chosen_token_logprob = -999.0
                     for item in top_logprobs_data:
                         if (
@@ -762,6 +780,53 @@ async def gather_non_streaming_batch_response(
     }
 
 
+class _StreamedMessageText:
+    """What the stream shows of each delta of one candidate.
+
+    The rule of ``gather_non_streaming_batch_response``, applied as the deltas
+    arrive. ``content`` ahead of the first state event is collected, not shown,
+    and is the text only if no event ever comes.
+    """
+
+    __slots__ = ("pending_content", "saw_state_events", "streamed")
+
+    def __init__(self) -> None:
+        self.pending_content = ""
+        self.saw_state_events = False
+        self.streamed = False
+
+    def of(self, delta: ResponseDeltaDict) -> str:
+        text = ""
+        state_events = delta.get("state_events") or []
+        if state_events:
+            self.saw_state_events = True
+            message_events = [
+                event for event in state_events if event.get("item_type") == "message"
+            ]
+            text = "".join(
+                str(event.get("delta", ""))
+                for event in message_events
+                if event.get("event_type") == "content_delta"
+            )
+            if not text and not self.streamed:
+                # A message that arrives whole, as the value of its completion.
+                text = next(
+                    (
+                        str(event["value"])
+                        for event in message_events
+                        if event.get("event_type") == "item_completed"
+                        and "value" in event
+                    ),
+                    "",
+                )
+        elif not self.saw_state_events:
+            self.pending_content += delta.get("content") or ""
+            if delta.get("is_final_delta", False):
+                text = self.pending_content
+        self.streamed = self.streamed or bool(text)
+        return text
+
+
 async def stream_response_generator(
     request_id: int,
     queue: asyncio.Queue[ResponseDeltaDict],
@@ -770,6 +835,8 @@ async def stream_response_generator(
     expected_sequences: int,
     generation_model: str,
     thinking_flags: list[bool],
+    *,
+    released_text: bool,
 ) -> AsyncIterable[dict[str, str]]:
     """
     Generates Server-Sent Events (SSE) from the response queue.
@@ -782,6 +849,9 @@ async def stream_response_generator(
     reply (see `gather_non_streaming_batch_response`).
     """
     tokens_by_candidate: defaultdict[tuple[int, int], list[int]] = defaultdict(list)
+    message_text_by_candidate: defaultdict[tuple[int, int], _StreamedMessageText] = (
+        defaultdict(_StreamedMessageText)
+    )
     completed_sequences: set[int] = set()
     completed_candidate_slots: set[tuple[int, int]] = set()
     remaining_sequences = expected_sequences
@@ -812,7 +882,11 @@ async def stream_response_generator(
                         role=None
                         if tokens_by_candidate[candidate_key]
                         else "assistant",
-                        content=delta_dict.get("content", None),
+                        # Without released_text the stream stays what it
+                        # was: content as it comes.
+                        content=message_text_by_candidate[candidate_key].of(delta_dict)
+                        if released_text
+                        else delta_dict.get("content", None),
                     ),
                     finish_reason=None,
                     logprobs=None,
