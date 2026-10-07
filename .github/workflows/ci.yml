@@ -37,7 +37,7 @@ jobs:
         with:
           repository: TheProxyCompany/proxy-inference-engine
           # Root #38's reviewed engine; testing main would certify another package.
-          ref: 7c52109727936decb097f36f0490a93e6125fd2e
+          ref: a62e10ed529b713a311e60090fb0fcace00ff2de
           token: ${{ secrets.GH_PAT }}
           path: .ci/proxy-inference-engine
           submodules: recursive
@@ -45,7 +45,7 @@ jobs:
       - name: Verify reviewed PIE revision
         working-directory: .ci/proxy-inference-engine
         run: |
-          pie_expected=7c52109727936decb097f36f0490a93e6125fd2e
+          pie_expected=a62e10ed529b713a311e60090fb0fcace00ff2de
           pie_actual="$(git rev-parse HEAD)"
           echo "PIE revision: $pie_actual"
           test "$pie_actual" = "$pie_expected"
@@ -73,4 +73,20 @@ jobs:
       - name: Run full Orchard PY suite
         run: |
           source .venv/bin/activate
-          PIE_LOCAL_BUILD="$PWD/.ci/proxy-inference-engine/release" python -m pytest tests/functional tests/golden tests/unit -v --tb=short -x
+          export PIE_LOCAL_BUILD="$PWD/.ci/proxy-inference-engine/release"
+          python - <<'PY'
+          import fcntl
+          import subprocess
+          import sys
+
+          # Shared Apple Silicon runners also host explicit local acceptance
+          # runs. Serialize GPU tests without stopping another owned engine.
+          with open("/tmp/proxy-gpu.lease", "a") as lease:
+              print("Waiting for the runner GPU lease", flush=True)
+              fcntl.flock(lease, fcntl.LOCK_EX)
+              print("Runner GPU lease acquired", flush=True)
+              subprocess.run([
+                  sys.executable, "-m", "pytest", "tests/functional",
+                  "tests/golden", "tests/unit", "-v", "--tb=short", "-x",
+              ], check=True)
+          PY

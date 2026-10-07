@@ -74,8 +74,20 @@ async def test_chat_completion_multi_token_non_streaming(live_server, text_model
     assert usage.get("input_tokens", 0) > 0, (
         "Expected 'input_tokens' to be greater than 0"
     )
-    assert usage.get("total_tokens") == usage.get("input_tokens", 0) + usage.get(
-        "output_tokens", 0
+    # Orchard exposes visible output and reasoning separately. The OpenAI
+    # completion count includes both, so both views must conserve all tokens.
+    assert usage["total_tokens"] == (
+        usage["input_tokens"] + usage["output_tokens"] + usage["reasoning_tokens"]
+    )
+    assert usage["prompt_tokens"] == usage["input_tokens"]
+    assert usage["completion_tokens"] == (
+        usage["output_tokens"] + usage["reasoning_tokens"]
+    )
+    assert usage["total_tokens"] == (
+        usage["prompt_tokens"] + usage["completion_tokens"]
+    )
+    assert usage["completion_tokens_details"]["reasoning_tokens"] == (
+        usage["reasoning_tokens"]
     )
 
 
