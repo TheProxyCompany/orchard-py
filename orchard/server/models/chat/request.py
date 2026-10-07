@@ -31,6 +31,10 @@ class ChatMessage(BaseModel):
 
     role: str | None = Field(default="", description="The role of the messages author.")
     content: str | None = Field(description="The contents of the message.")
+    tool_call_id: str | None = Field(
+        default=None, description="The tool call answered by a tool message."
+    )
+    name: str | None = Field(default=None, description="Optional author or tool name.")
     tool_calls: list[ToolCall] = Field(
         default_factory=list,
         description="The tool calls that were made in the message.",
@@ -55,6 +59,10 @@ class ChatMessage(BaseModel):
             result["role"] = self.role
         if self.content is not None:
             result["content"] = self.content
+        if self.tool_call_id is not None:
+            result["tool_call_id"] = self.tool_call_id
+        if self.name is not None:
+            result["name"] = self.name
         if self.tool_calls:
             result["tool_calls"] = [
                 tool_call.model_dump() for tool_call in self.tool_calls
@@ -131,13 +139,14 @@ class ChatCompletionRequest(BaseModel):
         ChatCompletionTextResponseFormat
         | ChatCompletionJSONSchemaResponseFormat
         | ChatCompletionJsonObjectResponseFormat
+        | list[
+            ChatCompletionTextResponseFormat
+            | ChatCompletionJSONSchemaResponseFormat
+            | ChatCompletionJsonObjectResponseFormat
+            | None
+        ]
         | None
-    ) | list[
-        ChatCompletionTextResponseFormat
-        | ChatCompletionJSONSchemaResponseFormat
-        | ChatCompletionJsonObjectResponseFormat
-        | None
-    ] = Field(
+    ) = Field(
         default=None,
         description="The format of the response.",
     )
@@ -211,7 +220,7 @@ class ChatCompletionRequest(BaseModel):
 
         def coerce_int(name: str, value: Any) -> int:
             if isinstance(value, bool):
-                raise ValueError(f"'{name}' must be an integer, got bool")
+                raise ValueError(f"'{name}' must be an integer, got bool")  # noqa: TRY004 - Pydantic requires ValueError for validation.
             if isinstance(value, int):
                 return value
             if isinstance(value, str):
@@ -225,8 +234,8 @@ class ChatCompletionRequest(BaseModel):
             name: str,
             raw: Any,
             *,
-            minimum: float | int | None,
-            maximum: float | int | None,
+            minimum: float | None,
+            maximum: float | None,
             integer: bool = False,
             optional: bool = True,
         ) -> None:
@@ -258,7 +267,7 @@ class ChatCompletionRequest(BaseModel):
         # Validate ranges for vectorized params
         validate_numeric(
             "temperature",
-            data.get("temperature"),
+            data.get("temperature", cls.model_fields["temperature"].default),
             minimum=0.0,
             maximum=2.0,
             integer=False,
@@ -324,9 +333,8 @@ class ChatCompletionRequest(BaseModel):
             return data
         reasoning = data.get("reasoning")
         reasoning_effort = data.get("reasoning_effort")
-        if reasoning in (None, [], {}):
-            if reasoning_effort not in (None, [], {}):
-                data["reasoning"] = reasoning_effort
+        if reasoning in (None, [], {}) and reasoning_effort not in (None, [], {}):
+            data["reasoning"] = reasoning_effort
         return data
 
     @field_validator("messages", mode="after")
