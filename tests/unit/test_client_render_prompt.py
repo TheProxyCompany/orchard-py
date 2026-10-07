@@ -547,7 +547,7 @@ def test_chat_usage_total_counts_reasoning_tokens() -> None:
         ]
     )
 
-    assert (usage.completion_tokens, usage.reasoning_tokens) == (16, 8192)
+    assert (usage.completion_tokens, usage.reasoning_tokens) == (8208, 8192)
     assert usage.total_tokens == 16 + 8208
 
 

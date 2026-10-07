@@ -573,7 +573,10 @@ class Client:
                 client_delta = ClientDelta.model_validate(sanitized_delta)
                 should_stop = False
                 if client_delta.is_final:
-                    if expected_final_prompt_count <= 1 or client_delta.prompt_index is None:
+                    if (
+                        expected_final_prompt_count <= 1
+                        or client_delta.prompt_index is None
+                    ):
                         should_stop = True
                     else:
                         completed_prompt_indexes.add(client_delta.prompt_index)
@@ -1377,11 +1380,12 @@ class Client:
                     usage.reasoning_tokens, delta.reasoning_tokens
                 )
             if delta.generation_len is not None:
-                visible_tokens = max(delta.generation_len - usage.reasoning_tokens, 0)
-                usage.completion_tokens = max(usage.completion_tokens, visible_tokens)
-        usage.total_tokens = (
-            usage.prompt_tokens + usage.completion_tokens + usage.reasoning_tokens
-        )
+                # Completion is the whole generated sequence. Reasoning is a
+                # subset of that sequence, including when no visible text exists.
+                usage.completion_tokens = max(
+                    usage.completion_tokens, delta.generation_len
+                )
+        usage.total_tokens = usage.prompt_tokens + usage.completion_tokens
         return usage
 
     @staticmethod
