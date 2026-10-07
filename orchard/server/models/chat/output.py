@@ -72,7 +72,7 @@ class ChatCompletionUsage(BaseModel):
         description="Input plus all generated tokens, including reasoning."
     )
     cached_tokens: int = Field(
-        default=0, exclude=True, description="Input tokens read from the prefix cache."
+        default=0, description="Input tokens read from the prefix cache."
     )
 
     @computed_field
@@ -89,6 +89,11 @@ class ChatCompletionUsage(BaseModel):
     @property
     def prompt_tokens_details(self) -> dict[str, int]:
         return {"cached_tokens": min(self.cached_tokens, self.input_tokens)}
+
+    @computed_field
+    @property
+    def completion_tokens_details(self) -> dict[str, int]:
+        return {"reasoning_tokens": self.reasoning_tokens}
 
 
 # --- Main Response Model ---
