@@ -3,6 +3,8 @@ import json
 import httpx
 import pytest
 
+from tests.functional.cases._budget import completion_budget
+
 pytestmark = pytest.mark.asyncio
 
 async def test_unicode_payload_round_trip(
@@ -25,7 +27,7 @@ async def test_unicode_payload_round_trip(
         ],
         "temperature": 0.0,
         "reasoning": False,
-        "max_completion_tokens": 10,
+        "max_completion_tokens": completion_budget(text_model_id, 10),
         "stream": True,
     }
 

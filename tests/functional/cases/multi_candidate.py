@@ -4,6 +4,7 @@ from collections import defaultdict
 import httpx
 import pytest
 
+from tests.functional.cases._budget import completion_budget
 from tests.functional.cases._timeout import HTTP_TIMEOUT_S
 
 pytestmark = pytest.mark.asyncio
@@ -20,7 +21,7 @@ async def test_chat_completion_multi_candidate_non_streaming(
         "messages": [
             {"role": "user", "content": "Provide three brief facts about the moon."}
         ],
-        "max_completion_tokens": 10,
+        "max_completion_tokens": completion_budget(text_model_id, 10),
         "temperature": 0.0,
         "reasoning": False,
         "stream": False,
@@ -57,7 +58,7 @@ async def test_chat_completion_multi_candidate_streaming(live_server, text_model
                 "content": "Stream three short tips for studying effectively.",
             }
         ],
-        "max_completion_tokens": 10,
+        "max_completion_tokens": completion_budget(text_model_id, 10),
         "temperature": 0.0,
         "reasoning": False,
         "stream": True,

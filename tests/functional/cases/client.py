@@ -6,8 +6,10 @@ import pytest
 
 from orchard.clients import Client
 from orchard.engine import ClientDelta, ClientResponse
+from tests.functional.cases._budget import completion_budget
 
 pytestmark = pytest.mark.asyncio
+
 
 @pytest.mark.parametrize(
     "prompt",
@@ -32,14 +34,28 @@ async def test_client_chat_non_streaming(
         stream=False,
         temperature=0.0,
         reasoning=False,
-        max_generated_tokens=5,
+        max_generated_tokens=completion_budget(any_model_id, 5),
     )
     print(f"User: {prompt}")
     assert isinstance(response, ClientResponse)
     assert response.text.strip()
     print(f"{any_model_id}: {response.text}")
     assert response.usage.completion_tokens > 0
-    assert response.usage.completion_tokens == 5
+    if completion_budget(any_model_id, 5) == 5:
+        assert response.usage.completion_tokens == 5
+    else:
+        # The five-token cap still needs its own accounting check: required
+        # reasoning can consume all five tokens before any visible answer.
+        capped = await client.achat(
+            any_model_id,
+            [{"role": "user", "content": prompt}],
+            stream=False,
+            temperature=0.0,
+            reasoning=False,
+            max_generated_tokens=5,
+        )
+        assert isinstance(capped, ClientResponse)
+        assert capped.usage.completion_tokens == 5
 
 
 async def test_client_chat_non_streaming_batched_waits_for_all_prompts(
@@ -60,7 +76,7 @@ async def test_client_chat_non_streaming_batched_waits_for_all_prompts(
         stream=False,
         temperature=0.0,
         reasoning=False,
-        max_generated_tokens=10,
+        max_generated_tokens=completion_budget(any_model_id, 10),
     )
 
     assert isinstance(responses, list)
@@ -72,6 +88,7 @@ async def test_client_chat_non_streaming_batched_waits_for_all_prompts(
         assert response.finish_reason is not None
         assert response.deltas
         assert response.deltas[-1].is_final
+
 
 @pytest.mark.parametrize(
     "prompt",
@@ -89,7 +106,7 @@ async def test_client_chat_streaming(
         stream=True,
         temperature=0.7,
         reasoning=False,
-        max_generated_tokens=96,
+        max_generated_tokens=completion_budget(any_model_id, 96),
     )
     print(f"User: {prompt}")
     print(f"{any_model_id}: ", end="", flush=True)

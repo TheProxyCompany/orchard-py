@@ -1,6 +1,7 @@
 import httpx
 import pytest
 
+from tests.functional.cases._budget import completion_budget
 from tests.functional.cases._timeout import HTTP_TIMEOUT_S
 
 pytestmark = pytest.mark.asyncio
@@ -21,7 +22,7 @@ async def test_chat_completion_respects_stop_sequence(
         "temperature": 0.0,
         "reasoning": False,
         "stream": False,
-        "max_completion_tokens": 32,
+        "max_completion_tokens": completion_budget(text_model_id, 32),
         "stop": ["blue"],
         "logprobs": True,
         "top_logprobs": 10,

@@ -3,6 +3,7 @@ import json
 import httpx
 import pytest
 
+from tests.functional.cases._budget import completion_budget
 from tests.functional.cases._timeout import HTTP_TIMEOUT_S
 from tests.helpers import parse_sse_events
 
@@ -49,7 +50,7 @@ async def test_responses_tool_call_non_streaming(live_server, text_model_id):
         "tool_choice": "required",
         "temperature": 0.0,
         "reasoning": False,
-        "max_output_tokens": 128,
+        "max_output_tokens": completion_budget(text_model_id, 128),
     }
 
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
@@ -99,7 +100,7 @@ async def test_responses_tool_call_streaming(live_server, text_model_id):
         "tool_choice": "required",
         "temperature": 0.0,
         "reasoning": False,
-        "max_output_tokens": 128,
+        "max_output_tokens": completion_budget(text_model_id, 128),
         "stream": True,
     }
 
@@ -171,7 +172,7 @@ async def test_responses_tool_result_continuation(live_server, text_model_id):
         "tool_choice": "required",
         "temperature": 0.0,
         "reasoning": False,
-        "max_output_tokens": 128,
+        "max_output_tokens": completion_budget(text_model_id, 128),
     }
 
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
@@ -216,7 +217,7 @@ async def test_responses_tool_result_continuation(live_server, text_model_id):
         "tool_choice": "none",
         "temperature": 0.0,
         "reasoning": False,
-        "max_output_tokens": 128,
+        "max_output_tokens": completion_budget(text_model_id, 128),
     }
 
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
