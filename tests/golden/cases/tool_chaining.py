@@ -61,6 +61,9 @@ async def test_tool_chaining(client: Client, model: Model):
     if not model.tools:
         return
     reasoning = {"effort": "medium"} if model.thinking else None
+    # The mandatory-thinking golden has 516 generated tokens in turn 2.
+    # The cap includes private reasoning, so leave room for that exact stream.
+    token_budget = 1024 if model.thinking == "required" else 512
     print(
         f"\n\033[1;33m━━━ {model.template_type} · tool chaining · key → chest ━━━\033[0m",
         flush=True,
@@ -81,7 +84,7 @@ async def test_tool_chaining(client: Client, model: Model):
         core_tools=TOOLS,
         tool_choice="required",
         deterministic=True,
-        max_output_tokens=512,
+        max_output_tokens=token_budget,
         reasoning=reasoning,
         prefix_cache=False,
     )
@@ -131,7 +134,7 @@ async def test_tool_chaining(client: Client, model: Model):
         core_tools=TOOLS,
         tool_choice="required",
         deterministic=True,
-        max_output_tokens=512,
+        max_output_tokens=token_budget,
         reasoning=reasoning,
         prefix_cache=False,
     )
@@ -182,7 +185,7 @@ async def test_tool_chaining(client: Client, model: Model):
         core_tools=TOOLS,
         tool_choice="none",
         deterministic=True,
-        max_output_tokens=512,
+        max_output_tokens=token_budget,
         reasoning=reasoning,
         prefix_cache=False,
     )
