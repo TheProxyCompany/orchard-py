@@ -461,3 +461,30 @@ For full engine/client verification inside the Proxy Company hyper-repo, run:
 ## License
 
 Apache-2.0
+
+## Native streaming voice and diarization
+
+`await client.audio.duplex()` opens the native MoshiRAG/Mimi transport;
+`await client.audio.diarization()` opens NVIDIA Nemotron 3. Supply the bundled
+`orchard-duplex` / `orchard-diarize` executables through `PIE_LOCAL_BUILD/bin`,
+`PATH`, or `ORCHARD_DUPLEX_BINARY` / `ORCHARD_DIARIZATION_BINARY`. Inference is
+implemented by the same Rust Orchard backends used by the app.
+
+```python
+async with await client.audio.duplex() as voice:
+    await voice.push_audio(0, [0.0] * 1920)  # 80 ms, mono float32 at 24 kHz
+    epoch = voice.epoch
+    await voice.reference("The test flag is purple.", expected_epoch=epoch)
+    async for event in voice:
+        # Handle PCM, generated voice text, reference application and metrics.
+        # Feed microphone frames from another task while draining this stream.
+        ...
+```
+
+References condition the voice model's wording; they are not verbatim TTS.
+`await voice.interrupt()` advances the output epoch so old PCM and late tool
+results can be discarded. Text events are generated voice text, not microphone
+transcripts. Use the ASR client separately for microphone transcription.
+Diarization channels are anonymous speaker observations, not inferred identities.
+After `await diarizer.finish()`, continue consuming events to retain final
+speaker segments; the async context manager closes the native process.
