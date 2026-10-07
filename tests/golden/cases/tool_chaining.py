@@ -1,9 +1,6 @@
 import json
 
 import pytest
-from tests.golden.golden_io import assert_or_record
-from tests.helpers import drain_stream, print_usage_summary, render_prompt_blue
-from tests.models import Model
 
 from orchard.clients.client import Client
 from orchard.server.models.responses import (
@@ -11,6 +8,9 @@ from orchard.server.models.responses import (
     OutputMessage,
     OutputStatus,
 )
+from tests.golden.golden_io import assert_or_record
+from tests.helpers import drain_stream, print_usage_summary, render_prompt_blue
+from tests.models import Model
 
 pytestmark = pytest.mark.asyncio
 
@@ -126,12 +126,16 @@ async def test_tool_chaining(client: Client, model: Model):
         {"type": "function_call", "call_id": find.call_id, "name": find.name, "arguments": find.arguments},
         {"type": "function_call_output", "call_id": find.call_id, "output": json.dumps({"key": KEY})},
     ]
+    # This turn's existing LFM2.5 recording uses 496 reasoning + 20 visible
+    # tokens. Give the tool-chaining scenario explicit room for both; keep all
+    # its exact-output and dependent-tool assertions unchanged.
+    turn2_token_limit = 768 if model.template_type == "lfm2_5" else 512
     turn2_request = dict(
         input=conversation,
         core_tools=TOOLS,
         tool_choice="required",
         deterministic=True,
-        max_output_tokens=512,
+        max_output_tokens=turn2_token_limit,
         reasoning=reasoning,
         prefix_cache=False,
     )
@@ -141,6 +145,18 @@ async def test_tool_chaining(client: Client, model: Model):
         model.checkpoint, stream=True, stream_tokens=True, **turn2_request
     )
     turn2 = await drain_stream(stream)
+    completed = [event for event in turn2["events"] if event.type == "response.completed"]
+    assert len(completed) == 1, "turn2: expected one completed response"
+    usage = completed[0].response.usage
+    assert usage is not None, "turn2: missing token usage"
+    reasoning_tokens = (
+        usage.output_tokens_details.reasoning_tokens if usage.output_tokens_details else 0
+    )
+    generated_tokens = usage.output_tokens + reasoning_tokens
+    assert generated_tokens <= turn2_token_limit, (
+        f"turn2: {generated_tokens} generated tokens (including reasoning) "
+        f"exceed {turn2_token_limit}"
+    )
     assert_or_record(model.template_type, "tool_chaining", "turn2", turn2["events"])
 
     assert turn2["order"][0] == "response.created"

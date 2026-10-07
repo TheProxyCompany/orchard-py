@@ -2,6 +2,7 @@ import httpx
 import pytest
 
 from tests.functional.cases._timeout import HTTP_TIMEOUT_S
+from tests.functional.cases._token_budget import semantic_token_limit
 
 pytestmark = pytest.mark.asyncio
 
@@ -18,7 +19,7 @@ async def test_chat_completion_best_of_selects_top_n(live_server, text_model_id)
                 "content": "List one fun fact about penguins.",
             }
         ],
-        "max_completion_tokens": 8,
+        "max_completion_tokens": semantic_token_limit(text_model_id, 8),
         "temperature": 0.2,
         "reasoning": False,
         "stream": False,

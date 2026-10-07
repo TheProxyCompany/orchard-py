@@ -10,6 +10,7 @@ from orchard.clients import Client
 from orchard.server.models.responses.output import ResponseObject
 from orchard.server.models.responses.tools import Function
 from tests.conftest import ALL_MODELS
+from tests.functional.cases._token_budget import semantic_token_limit
 
 pytestmark = pytest.mark.asyncio
 
@@ -44,7 +45,7 @@ async def test_client_responses_non_streaming_text(
         input="Say hello in one sentence.",
         temperature=0.0,
         reasoning=False,
-        max_output_tokens=32,
+        max_output_tokens=semantic_token_limit(model_id, 32),
     )
 
     assert isinstance(result, ResponseObject)
@@ -71,7 +72,7 @@ async def test_client_responses_non_streaming_message_items(
         ],
         temperature=0.0,
         reasoning=False,
-        max_output_tokens=8,
+        max_output_tokens=semantic_token_limit(model_id, 8),
     )
     assert isinstance(result, ResponseObject)
     assert result.status.value == "completed"
@@ -86,7 +87,7 @@ async def test_client_responses_streaming_text(client: Client, model_id: str) ->
         stream=True,
         temperature=0.0,
         reasoning=False,
-        max_output_tokens=64,
+        max_output_tokens=semantic_token_limit(model_id, 64),
     )
     assert hasattr(stream, "__aiter__")
 
@@ -245,7 +246,7 @@ async def test_client_responses_instructions(client: Client, model_id: str) -> N
         instructions=SYSTEM_PROMPT_COMPLIANCE_INSTRUCTIONS,
         temperature=0.0,
         reasoning=False,
-        max_output_tokens=64,
+        max_output_tokens=semantic_token_limit(model_id, 64),
     )
     assert isinstance(result, ResponseObject)
     assert result.status.value == "completed"
@@ -260,7 +261,7 @@ async def test_client_responses_sync_wrapper(client: Client, model_id: str) -> N
         input="Say hello in one short sentence.",
         temperature=0.0,
         reasoning=False,
-        max_output_tokens=32,
+        max_output_tokens=semantic_token_limit(model_id, 32),
     )
     assert isinstance(non_streaming, ResponseObject)
     assert non_streaming.status.value == "completed"
@@ -272,7 +273,7 @@ async def test_client_responses_sync_wrapper(client: Client, model_id: str) -> N
         stream=True,
         temperature=0.0,
         reasoning=False,
-        max_output_tokens=32,
+        max_output_tokens=semantic_token_limit(model_id, 32),
     )
     assert isinstance(streaming, Iterator)
 
@@ -291,7 +292,7 @@ async def test_client_responses_text_helpers(client: Client, model_id: str) -> N
             input="Write one short sentence about the sky.",
             temperature=0.0,
             reasoning=False,
-            max_output_tokens=32,
+            max_output_tokens=semantic_token_limit(model_id, 32),
         )
     ]
     assert "".join(async_chunks).strip()
@@ -303,7 +304,7 @@ async def test_client_responses_text_helpers(client: Client, model_id: str) -> N
                 input="Write one short sentence about the ocean.",
                 temperature=0.0,
                 reasoning=False,
-                max_output_tokens=32,
+                max_output_tokens=semantic_token_limit(model_id, 32),
             )
         )
     )
