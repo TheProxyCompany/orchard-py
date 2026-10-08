@@ -2,6 +2,7 @@ import httpx
 import pytest
 
 from tests.functional.cases._timeout import HTTP_TIMEOUT_S
+from tests.functional.cases._token_budget import semantic_token_limit
 
 pytestmark = pytest.mark.asyncio
 
@@ -21,7 +22,7 @@ async def test_chat_completion_respects_stop_sequence(
         "temperature": 0.0,
         "reasoning": False,
         "stream": False,
-        "max_completion_tokens": 32,
+        "max_completion_tokens": semantic_token_limit(text_model_id, 32),
         "stop": ["blue"],
         "logprobs": True,
         "top_logprobs": 10,
