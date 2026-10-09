@@ -190,7 +190,7 @@ class ResponseUsage(BaseModel):
         description="The number of tokens constituting the input prompt(s)."
     )
     output_tokens: int = Field(
-        description="The total number of non-reasoning tokens generated across all completion choices."
+        description="The total number of generated tokens, including reasoning."
     )
     total_tokens: int = Field(
         description="The sum of `input_tokens` and `output_tokens`."

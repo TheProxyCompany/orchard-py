@@ -289,9 +289,7 @@ def _update_usage_from_delta(
         )
 
     output_tokens = _coerce_int(delta.get("generation_len"))
-    if output_tokens is not None:
-        output_tokens = max(output_tokens - (reasoning_tokens or 0), 0)
-    else:
+    if output_tokens is None:
         output_tokens = _coerce_int(
             usage_dict.get("output_tokens", usage_dict.get("completion_tokens"))
         )

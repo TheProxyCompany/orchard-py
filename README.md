@@ -461,3 +461,39 @@ For full engine/client verification inside the Proxy Company hyper-repo, run:
 ## License
 
 Apache-2.0
+
+## Native streaming voice and diarization
+
+`await client.audio.duplex()` opens the native MoshiRAG/Mimi transport;
+`await client.audio.diarization()` opens NVIDIA Nemotron 3. Supply the bundled
+`orchard-duplex` / `orchard-diarize` executables through `PIE_LOCAL_BUILD/bin`,
+`PATH`, or `ORCHARD_DUPLEX_BINARY` / `ORCHARD_DIARIZATION_BINARY`. Both
+executables are thin Rust transports: PIE owns Moshi/Mimi and Nemotron3 model
+weights, streaming state, inference, and backend libraries. Python manages
+commands and bounded event queues.
+By default MoshiRAG chooses its own spoken words and advances only when supplied
+PCM arrives (`autonomous=True`, `realtime=False`).
+
+```python
+async with await client.audio.duplex() as voice:
+    await voice.push_audio(0, [0.0] * 1920)  # 80 ms, mono float32 at 24 kHz
+    epoch = voice.epoch
+    await voice.reference("The test flag is purple.", expected_epoch=epoch)
+    async for event in voice:
+        # Handle PCM, generated voice text, reference application and metrics.
+        # Feed microphone frames from another task while draining this stream.
+        ...
+```
+
+References condition the voice model's wording; they are not verbatim TTS.
+In the default autonomous mode, `await voice.speak(text)` also submits factual
+reference conditioning; use `reference()` when tracking its application version.
+`await voice.interrupt()` advances the output epoch so old PCM and late tool
+results can be discarded. Automatic timeline resets also advance `voice.epoch`;
+queued events from older epochs are discarded. Drain the event stream continuously:
+if a full queue contains no audio frame to drop, the session reports an overflow
+error and closes its transport. Text events are generated voice text, not microphone
+transcripts. Use the ASR client separately for microphone transcription.
+Diarization channels are anonymous speaker observations, not inferred identities.
+After `await diarizer.finish()`, continue consuming events to retain final
+speaker segments; the async context manager closes the native process.

@@ -33,7 +33,9 @@ async def test_short_total_cap_keeps_reasoning_and_answer_tokens_bounded():
         def __init__(self, visible, reasoning, text):
             self.response = ClientResponse(
                 text=text,
-                usage=UsageStats(completion_tokens=visible, reasoning_tokens=reasoning),
+                usage=UsageStats(
+                    completion_tokens=visible + reasoning, reasoning_tokens=reasoning
+                ),
             )
 
         async def achat(self, model, messages, **options):

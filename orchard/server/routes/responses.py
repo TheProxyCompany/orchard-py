@@ -14,6 +14,7 @@ from sse_starlette.sse import EventSourceResponse
 from orchard.clients.responses import (
     _emit_stream_fallback_item_done,
     _parse_tool_call_completion_value,
+    _update_usage_from_delta,
     finish_reason_to_incomplete,
 )
 from orchard.formatter.multimodal import (
@@ -67,7 +68,6 @@ from orchard.server.models.responses import (
 )
 from orchard.server.routes._common import (
     _ModelNotReadyError,
-    extract_usage,
     managed_stream_session,
     resolve_model,
 )
@@ -165,7 +165,7 @@ async def handle_response_request(
             tools=core_tools_payload,
         )
     except Exception as exc:  # pragma: no cover - defensive
-        logger.exception("Failed to render chat template: %s", exc)
+        logger.exception("Failed to render chat template")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to render chat template.",
@@ -421,9 +421,8 @@ async def handle_response_request(
     except Exception as exc:  # pragma: no cover - defensive
         await exit_stack.aclose()
         logger.exception(
-            "Failed to process multimodal response request %d: %s",
+            "Failed to process multimodal response request %d",
             current_request_id,
-            exc,
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -440,13 +439,7 @@ async def gather_non_streaming_response(
 
     # Track output items by output_index
     output_items: dict[int, dict[str, Any]] = {}
-    usage_counts = {
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "total_tokens": 0,
-        "cached_tokens": 0,
-        "reasoning_tokens": 0,
-    }
+    usage = ResponseUsage(input_tokens=0, output_tokens=0, total_tokens=0)
     error_detail: str | None = None
     finish_reason: str | None = None
     completed_at: int | None = None
@@ -496,7 +489,7 @@ async def gather_non_streaming_response(
                     _process_state_event_for_output(event, output_items)
 
                 # Extract usage from delta
-                extract_usage(delta, usage_counts)
+                _update_usage_from_delta(delta, usage)
 
                 # Track finish reason for incomplete_details
                 if fr := delta.get("finish_reason"):
@@ -530,11 +523,6 @@ async def gather_non_streaming_response(
         )
         raise InferenceError(error_detail)
 
-    if usage_counts["total_tokens"] <= 0:
-        usage_counts["total_tokens"] = (
-            usage_counts["prompt_tokens"] + usage_counts["completion_tokens"]
-        )
-
     if not saw_state_events and pending_content:
         for event in content_only_message_events(pending_content):
             _process_state_event_for_output(event, output_items)
@@ -547,11 +535,15 @@ async def gather_non_streaming_response(
 
     return {
         "output": output,
-        "prompt_tokens": usage_counts["prompt_tokens"],
-        "completion_tokens": usage_counts["completion_tokens"],
-        "total_tokens": usage_counts["total_tokens"],
-        "cached_tokens": usage_counts["cached_tokens"],
-        "reasoning_tokens": usage_counts["reasoning_tokens"],
+        "prompt_tokens": usage.input_tokens,
+        "completion_tokens": usage.output_tokens,
+        "total_tokens": usage.total_tokens,
+        "cached_tokens": usage.input_tokens_details.cached_tokens
+        if usage.input_tokens_details
+        else 0,
+        "reasoning_tokens": usage.output_tokens_details.reasoning_tokens
+        if usage.output_tokens_details
+        else 0,
         "completed_at": completed_at,
         "incomplete_details": incomplete_details,
         "stop_token_id": stop_token_id,
@@ -736,39 +728,13 @@ async def stream_response_generator(
                     ):
                         yield sse_event
 
-                # Extract usage info
-                if usage := delta.get("usage"):
-                    if isinstance(usage, dict):
-                        stream_state.usage = ResponseUsage(
-                            input_tokens=usage.get("input_tokens", 0),
-                            output_tokens=usage.get("output_tokens", 0),
-                            total_tokens=usage.get("total_tokens", 0),
-                            input_tokens_details=InputTokensDetails(
-                                cached_tokens=usage.get("cached_tokens", 0),
-                            ),
-                            output_tokens_details=OutputTokensDetails(
-                                reasoning_tokens=usage.get("reasoning_tokens", 0),
-                            ),
-                        )
-
-                # Extract token details from delta (PIE sends these at top level)
-                cached_tokens = delta.get("cached_token_count")
-                reasoning_tokens = delta.get("reasoning_tokens")
-                if cached_tokens is not None or reasoning_tokens is not None:
-                    current_usage = stream_state.usage or ResponseUsage(
+                # The SDK and HTTP Responses paths share the canonical
+                # whole-generation accounting; reasoning remains a subset.
+                if stream_state.usage is None:
+                    stream_state.usage = ResponseUsage(
                         input_tokens=0, output_tokens=0, total_tokens=0
                     )
-                    stream_state.usage = ResponseUsage(
-                        input_tokens=current_usage.input_tokens,
-                        output_tokens=current_usage.output_tokens,
-                        total_tokens=current_usage.total_tokens,
-                        input_tokens_details=InputTokensDetails(
-                            cached_tokens=cached_tokens or 0,
-                        ),
-                        output_tokens_details=OutputTokensDetails(
-                            reasoning_tokens=reasoning_tokens or 0,
-                        ),
-                    )
+                _update_usage_from_delta(delta, stream_state.usage)
 
                 # Track finish reason for incomplete detection
                 if fr := delta.get("finish_reason"):

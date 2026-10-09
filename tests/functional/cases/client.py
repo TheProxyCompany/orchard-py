@@ -42,7 +42,9 @@ async def test_client_chat_non_streaming(
     assert isinstance(response, ClientResponse)
     # This is the short-total-cap case, not an answer-completeness case.
     # A mandatory-thinking model may spend all five tokens reasoning.
-    generated = response.usage.completion_tokens + response.usage.reasoning_tokens
+    # Canonical completion usage includes its reasoning-token subset.
+    generated = response.usage.completion_tokens
+    assert response.usage.reasoning_tokens <= generated
     assert generated == 5
     if not requires_reasoning(any_model_id):
         assert response.text.strip()
@@ -97,7 +99,7 @@ async def test_client_chat_streaming(
         stream=True,
         temperature=0.7,
         reasoning=False,
-        max_generated_tokens=96,
+        max_generated_tokens=semantic_token_limit(any_model_id, 96),
     )
     print(f"User: {prompt}")
     print(f"{any_model_id}: ", end="", flush=True)

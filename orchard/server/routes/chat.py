@@ -37,13 +37,12 @@ from orchard.server.models.chat.output import (
     get_current_timestamp,
 )
 from orchard.server.models.reasoning import DEFAULT_BOOLEAN_REASONING_EFFORT
-from orchard.server.models.tools import ToolCall, ToolCallFunction
+from orchard.server.models.tools import ToolCall
 from orchard.server.routes._common import (
     _ModelNotReadyError,
     managed_stream_session,
     resolve_model,
 )
-from orchard.server.routes.responses import _process_state_event_for_output
 from orchard.server.utils.batching import normalize_chat_request
 
 logger = logging.getLogger(__name__)
@@ -277,6 +276,10 @@ async def handle_completion_request(
                         canonical_id,
                         thinking_flags,
                         released_text=model_info.releases_held_text,
+                        include_usage=bool(
+                            request.stream_options
+                            and request.stream_options.include_usage
+                        ),
                     ):
                         yield chunk
                     request_completed = True
@@ -335,7 +338,7 @@ async def handle_completion_request(
         ) from exc
     except Exception as e:
         await exit_stack.aclose()
-        logger.error("Error submitting request: %s", e, exc_info=True)
+        logger.exception("Error submitting request")
         raise HTTPException(
             status_code=500,
             detail="An unexpected error occurred during completion.",
@@ -368,7 +371,7 @@ async def gather_non_streaming_batch_response(
             {
                 "content": "",
                 "reasoning": {},
-                "tool_items": {},
+                "tool_calls": {},
                 "tokens": [],
                 "finish_reason": "unknown",
                 "completion_tokens": 0,
@@ -445,13 +448,17 @@ async def gather_non_streaming_batch_response(
                 prompt_token_count = delta.get("prompt_token_count", 0)
                 if prompt_token_count > 0 and prompt_token_totals[prompt_index] == 0:
                     prompt_token_totals[prompt_index] = prompt_token_count
-                # The prompt is prefilled once and shared by its candidates.
+
                 cached_token_totals[prompt_index] = max(
                     cached_token_totals[prompt_index],
                     int(delta.get("cached_token_count") or 0),
                 )
-
                 state_events = delta.get("state_events") or []
+                _collect_tool_calls(
+                    state["tool_calls"],
+                    state_events,
+                    f"call_{request_id}_{prompt_index}_{candidate_index}",
+                )
                 if os.getenv("ORCHARD_DUMP_DELTAS"):
                     logger.info(
                         "DELTA-DUMP req=%s p=%s c=%s content=%r spans=%r final=%r",
@@ -509,8 +516,6 @@ async def gather_non_streaming_batch_response(
                     # Reasoning-item spans are the reply's think block, aggregated as
                     # Client._aggregate_structured_items does.
                     for event in state_events:
-                        if event.get("item_type") == "tool_call":
-                            _process_state_event_for_output(event, state["tool_items"])
                         if event.get("item_type") != "reasoning":
                             continue
                         identifier = str(event.get("identifier") or "reasoning")
@@ -598,10 +603,10 @@ async def gather_non_streaming_batch_response(
                                 )
                             )
                             is not None
+                            and isinstance(raw_logprob, (int, float))
                         ):
-                            if isinstance(raw_logprob, (int | float)):
-                                chosen_token_logprob = float(raw_logprob)
-                                break
+                            chosen_token_logprob = float(raw_logprob)
+                            break
 
                     logprob_entry = ChatCompletionLogProbs(
                         token=chosen_token_str,
@@ -771,32 +776,26 @@ async def gather_non_streaming_batch_response(
                     "thinking": thinking_flags[prompt_idx],
                 }
 
-            tool_calls = [
-                ToolCall(
-                    function=ToolCallFunction(
-                        name=item["function_name"], arguments=item["arguments"]
-                    )
-                )
-                for _, item in sorted(candidate_state["tool_items"].items())
-                if item["function_name"]
-            ]
-            # A reply that calls a tool ends with "tool_calls" in chat completions; the
-            # engine ends it with "stop" or "tool_use", by tool-call format.
-            finish_reason = candidate_state["finish_reason"]
-            if tool_calls and finish_reason in ("stop", "tool_use"):
-                finish_reason = "tool_calls"
-
             choices.append(
                 ChatCompletionChoice(
                     index=choice_index,
                     message=ChatMessage(
                         role="assistant",
                         content=choice_content,
-                        tool_calls=tool_calls,
                         reasoning_content="\n".join(reasoning) if reasoning else None,
                         generation=generation,
+                        tool_calls=[
+                            ToolCall.model_validate(call)
+                            for _, call in sorted(candidate_state["tool_calls"].items())
+                            if call.get("completed")
+                        ],
                     ),
-                    finish_reason=finish_reason,
+                    finish_reason="tool_calls"
+                    if any(
+                        call.get("completed")
+                        for call in candidate_state["tool_calls"].values()
+                    )
+                    else candidate_state["finish_reason"],
                     logprobs=logprobs_object,
                 )
             )
@@ -808,6 +807,63 @@ async def gather_non_streaming_batch_response(
         "reasoning_tokens": total_reasoning_tokens,
         "cached_tokens": sum(cached_token_totals),
     }
+
+
+def _collect_tool_calls(
+    calls: dict[int, dict[str, Any]], events: list[dict[str, Any]], prefix: str
+) -> list[int]:
+    """Collect structured calls; completion values replace non-JSON partial argument syntax.
+
+    Only completed calls are executable. A cut-off argument stream is never promoted into
+    a tool request. The returned indices are newly completed calls, emitted once on SSE.
+    """
+    completed: list[int] = []
+    for event in events:
+        if event.get("item_type") != "tool_call":
+            continue
+        index = int(event.get("output_index") or 0)
+        identifier = str(event.get("identifier") or "")
+        call = calls.setdefault(
+            index,
+            {
+                "id": f"{prefix}_{index}",
+                "type": "function",
+                "function": {"name": "", "arguments": ""},
+            },
+        )
+        if identifier.startswith("tool_call:"):
+            call["function"]["name"] = identifier.removeprefix("tool_call:")
+        if event.get("event_type") == "content_delta" and identifier == "arguments":
+            call["function"]["arguments"] += str(event.get("delta", ""))
+        if event.get("event_type") != "item_completed" or "value" not in event:
+            continue
+        value = event["value"]
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except json.JSONDecodeError:
+                if identifier != "arguments":
+                    continue
+        if isinstance(value, dict) and identifier != "arguments":
+            if value.get("name") is not None:
+                call["function"]["name"] = str(value["name"])
+            if "arguments" in value:
+                arguments = value["arguments"]
+                call["function"]["arguments"] = (
+                    arguments
+                    if isinstance(arguments, str)
+                    else json.dumps(arguments, ensure_ascii=False)
+                )
+            if not call.get("completed"):
+                call["completed"] = True
+                completed.append(index)
+        elif identifier == "arguments":
+            call["function"]["arguments"] = (
+                value
+                if isinstance(value, str)
+                else json.dumps(value, ensure_ascii=False)
+            )
+    return completed
 
 
 class _StreamedMessageText:
@@ -867,6 +923,7 @@ async def stream_response_generator(
     thinking_flags: list[bool],
     *,
     released_text: bool,
+    include_usage: bool = False,
 ) -> AsyncIterable[dict[str, str]]:
     """
     Generates Server-Sent Events (SSE) from the response queue.
@@ -882,6 +939,13 @@ async def stream_response_generator(
     message_text_by_candidate: defaultdict[tuple[int, int], _StreamedMessageText] = (
         defaultdict(_StreamedMessageText)
     )
+    tool_calls_by_candidate: defaultdict[tuple[int, int], dict[int, dict[str, Any]]] = (
+        defaultdict(dict)
+    )
+    prompt_tokens: defaultdict[int, int] = defaultdict(int)
+    cached_tokens: defaultdict[int, int] = defaultdict(int)
+    generated_tokens: defaultdict[tuple[int, int], int] = defaultdict(int)
+    reasoning_tokens: defaultdict[tuple[int, int], int] = defaultdict(int)
     completed_sequences: set[int] = set()
     completed_candidate_slots: set[tuple[int, int]] = set()
     remaining_sequences = expected_sequences
@@ -904,6 +968,19 @@ async def stream_response_generator(
                 candidate_key = (prompt_index, candidate_index)
 
                 normalise_delta_payload(delta_dict)
+                prompt_tokens[prompt_index] = max(
+                    prompt_tokens[prompt_index],
+                    int(delta_dict.get("prompt_token_count") or 0),
+                )
+                cached_tokens[prompt_index] = max(
+                    cached_tokens[prompt_index],
+                    int(delta_dict.get("cached_token_count") or 0),
+                )
+                complete_calls = _collect_tool_calls(
+                    tool_calls_by_candidate[candidate_key],
+                    delta_dict.get("state_events") or [],
+                    f"call_{request_id}_{prompt_index}_{candidate_index}",
+                )
 
                 chunk_choice = ChatCompletionChunkChoice(
                     index=candidate_index,
@@ -931,10 +1008,41 @@ async def stream_response_generator(
                 token_list = delta_dict.get("tokens", [])
                 tokens_by_candidate[candidate_key].extend(token_list)
 
-                yield {"data": chunk.model_dump_json(exclude_none=True)}
+                payload = chunk.model_dump(exclude_none=True)
+                if complete_calls:
+                    payload["choices"][0]["delta"]["tool_calls"] = [
+                        {
+                            "index": list(tool_calls_by_candidate[candidate_key]).index(
+                                index
+                            ),
+                            **{
+                                key: value
+                                for key, value in tool_calls_by_candidate[
+                                    candidate_key
+                                ][index].items()
+                                if key != "completed"
+                            },
+                        }
+                        for index in complete_calls
+                    ]
+                yield {"data": json.dumps(payload, ensure_ascii=False)}
 
                 if delta_dict.get("is_final_delta", False):
-                    finish_reason = delta_dict.get("finish_reason", "stop")
+                    finish_reason = (
+                        "tool_calls"
+                        if any(
+                            call.get("completed")
+                            for call in tool_calls_by_candidate[candidate_key].values()
+                        )
+                        else delta_dict.get("finish_reason", "stop")
+                    )
+                    generated_tokens[candidate_key] = int(
+                        delta_dict.get("generation_len")
+                        or len(tokens_by_candidate[candidate_key])
+                    )
+                    reasoning_tokens[candidate_key] = int(
+                        delta_dict.get("reasoning_tokens") or 0
+                    )
                     sequence_id = delta_dict.get("sequence_id")
 
                     if (
@@ -978,5 +1086,23 @@ async def stream_response_generator(
                 queue.task_done()
                 release_delta_resources(delta_dict)
 
+    if include_usage:
+        generated = sum(generated_tokens.values())
+        reasoning = sum(reasoning_tokens.values())
+        usage = ChatCompletionUsage(
+            input_tokens=sum(prompt_tokens.values()),
+            output_tokens=max(generated - reasoning, 0),
+            reasoning_tokens=reasoning,
+            cached_tokens=sum(cached_tokens.values()),
+            total_tokens=sum(prompt_tokens.values()) + generated,
+        )
+        chunk = ChatCompletionChunk(
+            id=chat_completion_id,
+            created=created_at,
+            model=model_name,
+            choices=[],
+            usage=usage,
+        )
+        yield {"data": chunk.model_dump_json(exclude_none=True)}
     yield {"data": "[DONE]"}
     logger.info("SSE stream for request %d completed", request_id)

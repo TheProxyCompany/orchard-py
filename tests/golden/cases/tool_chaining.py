@@ -4,7 +4,6 @@ import pytest
 
 from orchard.clients.client import Client
 from orchard.server.models.responses import (
-    OutputFunctionCall,
     OutputMessage,
     OutputStatus,
 )
@@ -152,7 +151,9 @@ async def test_tool_chaining(client: Client, model: Model):
     reasoning_tokens = (
         usage.output_tokens_details.reasoning_tokens if usage.output_tokens_details else 0
     )
-    generated_tokens = usage.output_tokens + reasoning_tokens
+    # Canonical output usage already includes the reasoning-token subset.
+    generated_tokens = usage.output_tokens
+    assert reasoning_tokens <= generated_tokens
     assert generated_tokens <= turn2_token_limit, (
         f"turn2: {generated_tokens} generated tokens (including reasoning) "
         f"exceed {turn2_token_limit}"

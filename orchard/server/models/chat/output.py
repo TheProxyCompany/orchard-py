@@ -68,16 +68,13 @@ class ChatCompletionUsage(BaseModel):
         default=0,
         description="The total number of reasoning tokens generated across all completion choices.",
     )
-    cached_tokens: int = Field(
-        default=0,
-        description="How many of the input tokens the engine reused from its prefix cache.",
-    )
     total_tokens: int = Field(
-        description="Every token of the request: input, output and reasoning."
+        description="Input plus all generated tokens, including reasoning."
+    )
+    cached_tokens: int = Field(
+        default=0, description="Input tokens read from the prefix cache."
     )
 
-    # The same counts under the names OpenAI's chat completions usage carries, so an
-    # OpenAI-compatible caller can read them. There, completion_tokens includes reasoning.
     @computed_field
     @property
     def prompt_tokens(self) -> int:
@@ -91,7 +88,7 @@ class ChatCompletionUsage(BaseModel):
     @computed_field
     @property
     def prompt_tokens_details(self) -> dict[str, int]:
-        return {"cached_tokens": self.cached_tokens}
+        return {"cached_tokens": min(self.cached_tokens, self.input_tokens)}
 
     @computed_field
     @property

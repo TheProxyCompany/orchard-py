@@ -16,6 +16,7 @@ jobs:
     timeout-minutes: 60
     env:
       PATH: /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+      RUSTUP_TOOLCHAIN: "1.97.1"
 
     steps:
       - name: Checkout orchard-py
@@ -32,12 +33,28 @@ jobs:
           brew list ccache || brew install ccache
           brew list rust || brew install rust
 
+      - name: Install pinned Rust toolchain
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.cargo/bin:$PATH"
+          if ! command -v rustup >/dev/null; then
+            export PATH="$(brew --prefix rustup)/bin:$PATH"
+          fi
+          rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
+          rust_bin="$(dirname "$(rustup which rustc)")"
+          echo "$rust_bin" >> "$GITHUB_PATH"
+          echo "CARGO=$(rustup which cargo)" >> "$GITHUB_ENV"
+          echo "RUSTC=$(rustup which rustc)" >> "$GITHUB_ENV"
+          echo "RUSTDOC=$(rustup which rustdoc)" >> "$GITHUB_ENV"
+          rustup run "$RUSTUP_TOOLCHAIN" rustc --version
+          rustup run "$RUSTUP_TOOLCHAIN" cargo --version
+
       - name: Checkout reviewed PIE and its private dependencies
         uses: actions/checkout@v6
         with:
           repository: TheProxyCompany/proxy-inference-engine
           # Root #38's reviewed engine; testing main would certify another package.
-          ref: a62e10ed529b713a311e60090fb0fcace00ff2de
+          ref: 99db56ba14ed69abbbb77fc523dddd4e66e575f4
           token: ${{ secrets.GH_PAT }}
           path: .ci/proxy-inference-engine
           submodules: recursive
@@ -45,7 +62,7 @@ jobs:
       - name: Verify reviewed PIE revision
         working-directory: .ci/proxy-inference-engine
         run: |
-          pie_expected=a62e10ed529b713a311e60090fb0fcace00ff2de
+          pie_expected=99db56ba14ed69abbbb77fc523dddd4e66e575f4
           pie_actual="$(git rev-parse HEAD)"
           echo "PIE revision: $pie_actual"
           test "$pie_actual" = "$pie_expected"

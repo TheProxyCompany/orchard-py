@@ -1889,8 +1889,8 @@
           ],
           "usage": {
             "input_tokens": 119,
-            "output_tokens": 18,
-            "total_tokens": 137,
+            "output_tokens": 123,
+            "total_tokens": 242,
             "input_tokens_details": {
               "cached_tokens": 0
             },
@@ -4143,8 +4143,8 @@
           ],
           "usage": {
             "input_tokens": 119,
-            "output_tokens": 18,
-            "total_tokens": 137,
+            "output_tokens": 148,
+            "total_tokens": 267,
             "input_tokens_details": {
               "cached_tokens": 0
             },

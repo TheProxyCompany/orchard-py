@@ -16,6 +16,8 @@ from typing import Any, Literal, TypeVar, overload
 
 from orchard.app.ipc_dispatch import IPCState, QueueRegistration
 from orchard.app.model_registry import ModelRegistry
+from orchard.clients.diarization import DiarizationSession
+from orchard.clients.duplex import DuplexSession
 from orchard.clients.replay import splice_replays, take_replays
 from orchard.clients.responses import (
     ResponseEvent,
@@ -58,6 +60,32 @@ class ModalArtifact:
 class AudioClient:
     def __init__(self, client: Client):
         self._client = client
+
+    async def duplex(
+        self,
+        model_id: str = "kyutai/moshika-rag-candle-bf16",
+        *,
+        binary: str | os.PathLike[str] | None = None,
+        options: dict[str, Any] | None = None,
+        ready_timeout: float = 300.0,
+    ) -> DuplexSession:
+        """Open independent native microphone/speech streams alongside PIE requests."""
+        return await DuplexSession.open(
+            model_id, binary=binary, options=options, ready_timeout=ready_timeout
+        )
+
+    async def diarization(
+        self,
+        model_id: str = "nvidia/Nemotron-3-Diarization",
+        *,
+        binary: str | os.PathLike[str] | None = None,
+        options: dict[str, Any] | None = None,
+        ready_timeout: float = 300.0,
+    ) -> DiarizationSession:
+        """Track anonymous speakers independently of speech generation and ASR."""
+        return await DiarizationSession.open(
+            model_id, binary=binary, options=options, ready_timeout=ready_timeout
+        )
 
     async def agenerate(
         self,
@@ -545,9 +573,10 @@ class Client:
                 client_delta = ClientDelta.model_validate(sanitized_delta)
                 should_stop = False
                 if client_delta.is_final:
-                    if expected_final_prompt_count <= 1:
-                        should_stop = True
-                    elif client_delta.prompt_index is None:
+                    if (
+                        expected_final_prompt_count <= 1
+                        or client_delta.prompt_index is None
+                    ):
                         should_stop = True
                     else:
                         completed_prompt_indexes.add(client_delta.prompt_index)
@@ -1351,11 +1380,12 @@ class Client:
                     usage.reasoning_tokens, delta.reasoning_tokens
                 )
             if delta.generation_len is not None:
-                visible_tokens = max(delta.generation_len - usage.reasoning_tokens, 0)
-                usage.completion_tokens = max(usage.completion_tokens, visible_tokens)
-        usage.total_tokens = (
-            usage.prompt_tokens + usage.completion_tokens + usage.reasoning_tokens
-        )
+                # Completion is the whole generated sequence. Reasoning is a
+                # subset of that sequence, including when no visible text exists.
+                usage.completion_tokens = max(
+                    usage.completion_tokens, delta.generation_len
+                )
+        usage.total_tokens = usage.prompt_tokens + usage.completion_tokens
         return usage
 
     @staticmethod
