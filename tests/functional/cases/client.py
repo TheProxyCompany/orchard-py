@@ -6,10 +6,12 @@ import pytest
 
 from orchard.clients import Client
 from orchard.engine import ClientDelta, ClientResponse
-from tests.functional.cases._token_budget import semantic_token_limit
+from tests.functional.cases._token_budget import (
+    requires_reasoning,
+    semantic_token_limit,
+)
 
 pytestmark = pytest.mark.asyncio
-
 
 @pytest.mark.parametrize(
     "prompt",
@@ -34,28 +36,20 @@ async def test_client_chat_non_streaming(
         stream=False,
         temperature=0.0,
         reasoning=False,
-        max_generated_tokens=semantic_token_limit(any_model_id, 5),
+        max_generated_tokens=5,
     )
     print(f"User: {prompt}")
     assert isinstance(response, ClientResponse)
-    assert response.text.strip()
-    print(f"{any_model_id}: {response.text}")
-    assert response.usage.completion_tokens > 0
-    if semantic_token_limit(any_model_id, 5) == 5:
+    # This is the short-total-cap case, not an answer-completeness case.
+    # A mandatory-thinking model may spend all five tokens reasoning.
+    # Canonical completion usage includes its reasoning-token subset.
+    generated = response.usage.completion_tokens
+    assert response.usage.reasoning_tokens <= generated
+    assert generated == 5
+    if not requires_reasoning(any_model_id):
+        assert response.text.strip()
         assert response.usage.completion_tokens == 5
-    else:
-        # The five-token cap still needs its own accounting check: required
-        # reasoning can consume all five tokens before any visible answer.
-        capped = await client.achat(
-            any_model_id,
-            [{"role": "user", "content": prompt}],
-            stream=False,
-            temperature=0.0,
-            reasoning=False,
-            max_generated_tokens=5,
-        )
-        assert isinstance(capped, ClientResponse)
-        assert capped.usage.completion_tokens == 5
+    print(f"{any_model_id}: {response.text}")
 
 
 async def test_client_chat_non_streaming_batched_waits_for_all_prompts(
@@ -88,7 +82,6 @@ async def test_client_chat_non_streaming_batched_waits_for_all_prompts(
         assert response.finish_reason is not None
         assert response.deltas
         assert response.deltas[-1].is_final
-
 
 @pytest.mark.parametrize(
     "prompt",

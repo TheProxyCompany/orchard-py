@@ -4,7 +4,6 @@ import pytest
 
 from orchard.clients.client import Client
 from orchard.server.models.responses import (
-    OutputFunctionCall,
     OutputMessage,
     OutputStatus,
 )

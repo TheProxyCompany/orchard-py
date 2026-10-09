@@ -220,7 +220,7 @@ class ChatCompletionRequest(BaseModel):
 
         def coerce_int(name: str, value: Any) -> int:
             if isinstance(value, bool):
-                raise ValueError(f"'{name}' must be an integer, got bool")  # noqa: TRY004 - Pydantic requires ValueError for validation.
+                raise ValueError(f"'{name}' must be an integer, got bool")
             if isinstance(value, int):
                 return value
             if isinstance(value, str):
