@@ -1,4 +1,4 @@
-"""The exact NVIDIA Nemotron3 eight-speaker architecture through native Orchard.
+"""The exact NVIDIA Nemotron3 eight-speaker architecture through native PIE.
 
 Speaker IDs are anonymous and session-local. Bind a Life Map entity only with
 confirmed identity, preserving all overlapping tracks and model probabilities.
@@ -24,7 +24,7 @@ def capabilities() -> dict[str, Any]:
 
 
 class DiarizationSession(_NativeAudioSession):
-    """Streaming probabilities and speaker segments from the native AOSC/FIFO model."""
+    """Streaming probabilities and speaker segments from PIE-owned AOSC/FIFO state."""
 
     _program = "orchard-diarize"
     _environment = "ORCHARD_DIARIZATION_BINARY"

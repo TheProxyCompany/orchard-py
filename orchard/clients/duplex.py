@@ -1,9 +1,8 @@
-"""Full-duplex audio through Orchard's native Moshi/Mimi architecture.
+"""Full-duplex audio through PIE's native Moshi/Mimi architecture.
 
-This module owns a Rust Orchard transport process, not a Python model runtime.
-It uses the same pinned model/profile and native session implementation as the
-Rust client and app. Output text belongs to the assistant's speech; it is never
-a microphone transcript.
+This module owns a Rust Orchard transport process. PIE owns model tensors,
+inference, and residency. Output text belongs to the assistant's speech;
+it is never a microphone transcript.
 """
 
 from __future__ import annotations
@@ -25,10 +24,23 @@ import yaml
 SAMPLE_RATE = 24000
 FRAME_SAMPLES = 1920
 DEFAULT_MODEL = "kyutai/moshika-rag-candle-bf16"
+_EPOCH_EVENTS = frozenset(
+    {
+        "audio",
+        "text_delta",
+        "speech_queued",
+        "speech_done",
+        "interrupted",
+        "reset",
+        "reference_queued",
+        "reference_applied",
+        "retrieval_requested",
+    }
+)
 
 
 def capabilities() -> dict[str, Any]:
-    """Return the shared Pantheon architecture and selectable checkpoints."""
+    """Return the shared Pantheon catalog; native PIE currently supports MoshiRAG."""
     path = files("orchard").joinpath("formatter/profiles/moshi/capabilities.yaml")
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
@@ -78,6 +90,7 @@ class _NativeAudioSession:
         self._stderr: deque[str] = deque(maxlen=32)
         self._done = False
         self._closed = False
+        self._shutdown: asyncio.Task[None] | None = None
         self._ready: asyncio.Future[dict[str, Any]] = (
             asyncio.get_running_loop().create_future()
         )
@@ -131,11 +144,19 @@ class _NativeAudioSession:
         failure: BaseException | None = None
         try:
             async for line in self._process.stdout:
+                if self._done:
+                    # Keep draining after overflow so the child's stdout cannot
+                    # block its graceful close or process.wait().
+                    continue
                 event = json.loads(line)
                 if not isinstance(event, dict):
                     raise TypeError("Native audio event must be a JSON object")
                 kind = event.get("type")
                 request_id = event.get("id")
+                if kind != "request_error" and "epoch" in event:
+                    # Native timeline rollover has no command ACK. Even an ACK
+                    # whose caller timed out must advance stale-output filtering.
+                    self.epoch = max(self.epoch, int(event["epoch"]))
                 if kind in {"audio_ack", "control_ack", "request_error"}:
                     future = self._pending.pop(request_id, None)
                     if future is not None and not future.done():
@@ -146,7 +167,6 @@ class _NativeAudioSession:
                                 )
                             )
                         else:
-                            self.epoch = max(self.epoch, int(event.get("epoch", 0)))
                             future.set_result(event)
                     continue
                 if kind == "ready" and not self._ready.done():
@@ -168,7 +188,21 @@ class _NativeAudioSession:
                         if old_audio is not None:
                             self._events.remove(old_audio)
                         else:
-                            self._events.popleft()
+                            failure = RuntimeError(
+                                "Native audio consumer is not draining its bounded event queue"
+                            )
+                            self._events.clear()
+                            self._events.extend(
+                                [
+                                    {"type": "error", "message": str(failure)},
+                                    {"type": "closed"},
+                                ]
+                            )
+                            self._done = True
+                            self._reject_pending(failure)
+                            self._begin_close()
+                            self._condition.notify_all()
+                            continue
                     self._events.append(event)
                     self._condition.notify_all()
         except asyncio.CancelledError as exc:
@@ -182,36 +216,44 @@ class _NativeAudioSession:
                     "Orchard duplex process closed"
                     + (": " + "\n".join(self._stderr) if self._stderr else "")
                 )
-            if not self._ready.done():
-                self._ready.set_exception(failure)
-            for future in self._pending.values():
-                if not future.done():
-                    future.set_exception(failure)
-            self._pending.clear()
+            self._reject_pending(failure)
             async with self._condition:
                 self._done = True
                 self._condition.notify_all()
+
+    def _reject_pending(self, failure: BaseException) -> None:
+        if not self._ready.done():
+            self._ready.set_exception(failure)
+        for future in self._pending.values():
+            if not future.done():
+                future.set_exception(failure)
+        self._pending.clear()
 
     async def _request(self, command: dict[str, Any]) -> dict[str, Any]:
         if self._done or self._closed:
             raise RuntimeError("Orchard duplex session is closed")
         assert self._process.stdin is not None
         async with self._write_lock:
+            if self._done or self._closed:
+                raise RuntimeError("Orchard duplex session is closed")
             request_id = self._next_id
             self._next_id += 1
             future: asyncio.Future[dict[str, Any]] = (
                 asyncio.get_running_loop().create_future()
             )
             self._pending[request_id] = future
-            payload = json.dumps(
-                {"id": request_id, **command}, allow_nan=False, separators=(",", ":")
-            )
-            self._process.stdin.write(payload.encode("utf-8") + b"\n")
             try:
+                payload = json.dumps(
+                    {"id": request_id, **command}, allow_nan=False, separators=(",", ":")
+                )
+                self._process.stdin.write(payload.encode("utf-8") + b"\n")
                 await self._process.stdin.drain()
             except BaseException:
                 self._pending.pop(request_id, None)
-                future.cancel()
+                if future.done() and not future.cancelled():
+                    future.exception()
+                else:
+                    future.cancel()
                 raise
         try:
             return await asyncio.wait_for(future, 10.0)
@@ -239,31 +281,57 @@ class _NativeAudioSession:
                 if not self._events:
                     return
                 event = self._events.popleft()
-            if event.get("type") == "audio" and int(event.get("epoch", 0)) < self.epoch:
+            if (
+                event.get("type") in _EPOCH_EVENTS
+                and int(event.get("epoch", 0)) < self.epoch
+            ):
                 continue
             yield event
 
     def __aiter__(self) -> AsyncIterator[dict[str, Any]]:
         return self.events()
 
-    async def close(self) -> None:
-        if self._closed:
-            return
-        self._closed = True
-        if self._process.stdin is not None and not self._process.stdin.is_closing():
-            with contextlib.suppress(BrokenPipeError, ConnectionResetError):
-                self._process.stdin.write(b'{"type":"close"}\n')
-                await self._process.stdin.drain()
+    def _begin_close(self) -> asyncio.Task[None]:
+        if self._shutdown is None:
+            self._closed = True
+            self._shutdown = asyncio.create_task(
+                self._stop_process(), name="orchard-duplex-close"
+            )
+            # Automatic overflow shutdown may have no caller awaiting close.
+            # Retrieving an exception here does not prevent close from raising it.
+            self._shutdown.add_done_callback(
+                lambda task: None if task.cancelled() else task.exception()
+            )
+        return self._shutdown
+
+    async def _stop_process(self) -> None:
+        async def close_input() -> None:
+            async with self._write_lock:
+                if self._process.stdin is not None and not self._process.stdin.is_closing():
+                    self._process.stdin.write(b'{"type":"close"}\n')
+                    await self._process.stdin.drain()
+
+        # A blocked writer must not prevent close from reaching termination.
+        with contextlib.suppress(BrokenPipeError, ConnectionResetError, TimeoutError):
+            await asyncio.wait_for(close_input(), 1.0)
+        if self._process.stdin is not None:
             self._process.stdin.close()
         try:
             await asyncio.wait_for(self._process.wait(), 10.0)
         except TimeoutError:
-            self._process.terminate()
+            with contextlib.suppress(ProcessLookupError):
+                self._process.terminate()
             try:
                 await asyncio.wait_for(self._process.wait(), 5.0)
             except TimeoutError:
-                self._process.kill()
+                with contextlib.suppress(ProcessLookupError):
+                    self._process.kill()
                 await self._process.wait()
+
+    async def close(self) -> None:
+        # Caller cancellation cannot cancel the one process cleanup task. The
+        # reader never awaits this task, so automatic shutdown cannot self-join.
+        await asyncio.shield(self._begin_close())
         await asyncio.gather(self._reader, self._errors, return_exceptions=True)
         if self._ready.done() and not self._ready.cancelled():
             self._ready.exception()  # Consume a startup error after a readiness timeout.
@@ -276,7 +344,11 @@ class _NativeAudioSession:
 
 
 class DuplexSession(_NativeAudioSession):
-    """Native Moshi duplex speech with external backbone words and barge-in epochs."""
+    """Native autonomous MoshiRAG speech with factual references and barge-in epochs.
+
+    Default options advance only on supplied PCM. ``speak`` conditions the
+    reference channel in this mode; the model chooses its own spoken wording.
+    """
 
     async def speak(self, text: str, *, replace: bool = False) -> int:
         receipt = await self._request(

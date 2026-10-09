@@ -33,11 +33,21 @@ for line in sys.stdin:
         break
     if kind == "interrupt":
         emit(type="audio", epoch=0, pcm=[0.1])
+        emit(type="text_delta", epoch=0, sequence=1, text="old words")
+        emit(type="reference_applied", epoch=0, version=1, steps=1, encode_ms=1.0)
         emit(type="control_ack", id=command["id"], epoch=1)
         emit(type="audio", epoch=1, pcm=[0.2])
     elif kind == "reference":
-        emit(type="request_error", id=command["id"], message="Speech reference belongs to an interrupted epoch")
+        if mode == "rollover" and command["expected_epoch"] == 1:
+            emit(type="control_ack", id=command["id"], epoch=1, version=7)
+        else:
+            emit(type="request_error", id=command["id"], message="Speech reference belongs to an interrupted epoch")
     elif kind == "speak":
+        if mode == "control_overflow":
+            for index in range(65):
+                emit(type="reference_queued", epoch=0, version=index)
+            emit(type="control_ack", id=command["id"], epoch=0)
+            continue
         for index in range(100):
             emit(type="audio", epoch=0, sequence=index, pcm=[0.1])
         emit(type="speech_done", epoch=0)
@@ -47,6 +57,14 @@ for line in sys.stdin:
         emit(type="closed")
         break
     elif kind == "audio":
+        if mode == "rollover":
+            emit(type="text_delta", epoch=0, sequence=1, text="old words")
+            emit(type="reset", epoch=1, reason="timeline_limit")
+            emit(type="retrieval_requested", epoch=1, sequence=2)
+            emit(type="text_delta", epoch=0, sequence=3, text="late old words")
+            emit(type="text_delta", epoch=1, sequence=4, text="new words")
+        if mode == "late_ack":
+            emit(type="control_ack", id=9999, epoch=2)
         emit(type="audio_ack", id=command["id"], epoch=0)
 """
     )
@@ -92,6 +110,51 @@ async def test_slow_consumer_keeps_bounded_audio_and_completion(audio_program):
         with pytest.raises(ValueError, match="finite"):
             await session.push_audio(0, [float("nan")] * 1920)
     assert session._process.returncode == 0
+
+
+@pytest.mark.asyncio
+async def test_native_rollover_advances_epoch_before_reference_and_filters_old_text(
+    audio_program,
+):
+    async with await DuplexSession.open("rollover", binary=audio_program) as session:
+        await session.push_audio(0, [0.0] * 1920)
+        assert session.epoch == 1
+        assert await session.reference("current fact", expected_epoch=session.epoch) == 7
+        stream = session.events()
+        assert (await anext(stream))["type"] == "ready"
+        assert (await anext(stream))["type"] == "reset"
+        assert (await anext(stream))["type"] == "retrieval_requested"
+        assert (await anext(stream))["text"] == "new words"
+
+
+@pytest.mark.asyncio
+async def test_ack_without_a_waiter_still_advances_the_epoch(audio_program):
+    async with await DuplexSession.open("late_ack", binary=audio_program) as session:
+        await session.push_audio(0, [0.0] * 1920)
+        assert session.epoch == 2
+
+
+@pytest.mark.asyncio
+async def test_control_overflow_reports_terminal_error_and_closes_child(audio_program):
+    session = await DuplexSession.open("control_overflow", binary=audio_program)
+    try:
+        with pytest.raises(RuntimeError, match="bounded event queue"):
+            await session.speak("65 control events")
+        events = [event async for event in session]
+        assert [event["type"] for event in events] == ["error", "closed"]
+        assert "bounded event queue" in events[0]["message"]
+        assert session._pending == {}
+        assert len(session._events) <= 64
+        # Automatic shutdown must complete even before the caller invokes close.
+        assert await asyncio.wait_for(session._process.wait(), 2.0) == 0
+        await asyncio.wait_for(asyncio.gather(session._reader, session._errors), 2.0)
+        shutdown = session._shutdown
+        await asyncio.gather(session.close(), session.close())
+        assert session._shutdown is shutdown
+        assert shutdown is not None and shutdown.done()
+        assert session._reader.done() and session._errors.done()
+    finally:
+        await session.close()
 
 
 @pytest.mark.asyncio
