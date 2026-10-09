@@ -1,8 +1,8 @@
 import httpx
 import pytest
 
-from tests.functional.cases._budget import completion_budget
 from tests.functional.cases._timeout import HTTP_TIMEOUT_S
+from tests.functional.cases._token_budget import semantic_token_limit
 
 pytestmark = pytest.mark.asyncio
 
@@ -15,7 +15,7 @@ async def test_chat_completion_batched_homogeneous(live_server, text_model_id):
             [{"role": "user", "content": "Say hello politely."}],
             [{"role": "user", "content": "Give me a fun fact about space."}],
         ],
-        "max_completion_tokens": completion_budget(text_model_id, 10),
+        "max_completion_tokens": semantic_token_limit(text_model_id, 10),
         "temperature": 0.0,
         "reasoning": False,
         "stream": False,

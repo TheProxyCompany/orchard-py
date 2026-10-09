@@ -3,7 +3,7 @@ import json
 import httpx
 import pytest
 
-from tests.functional.cases._budget import completion_budget
+from tests.functional.cases._token_budget import semantic_token_limit
 
 pytestmark = pytest.mark.asyncio
 
@@ -27,7 +27,7 @@ async def test_unicode_payload_round_trip(
         ],
         "temperature": 0.0,
         "reasoning": False,
-        "max_completion_tokens": completion_budget(text_model_id, 10),
+        "max_completion_tokens": semantic_token_limit(text_model_id, 10),
         "stream": True,
     }
 

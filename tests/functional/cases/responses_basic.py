@@ -1,8 +1,8 @@
 import httpx
 import pytest
 
-from tests.functional.cases._budget import completion_budget
 from tests.functional.cases._timeout import HTTP_TIMEOUT_S
+from tests.functional.cases._token_budget import semantic_token_limit
 from tests.helpers import parse_sse_events
 
 pytestmark = pytest.mark.asyncio
@@ -24,7 +24,7 @@ async def test_responses_non_streaming_string_input(live_server, text_model_id):
         "input": "Say hello in one sentence.",
         "temperature": 0.0,
         "reasoning": False,
-        "max_output_tokens": completion_budget(text_model_id, 32),
+        "max_output_tokens": semantic_token_limit(text_model_id, 32),
     }
 
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
@@ -71,7 +71,7 @@ async def test_responses_non_streaming_message_items(live_server, text_model_id)
         ],
         "temperature": 0.0,
         "reasoning": False,
-        "max_output_tokens": completion_budget(text_model_id, 8),
+        "max_output_tokens": semantic_token_limit(text_model_id, 8),
     }
 
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
@@ -126,7 +126,7 @@ async def test_responses_streaming_event_sequence(live_server, text_model_id):
         "input": "Say hello in one sentence.",
         "temperature": 0.0,
         "reasoning": False,
-        "max_output_tokens": completion_budget(text_model_id, 32),
+        "max_output_tokens": semantic_token_limit(text_model_id, 32),
         "stream": True,
     }
 
@@ -168,7 +168,7 @@ async def test_responses_streaming_delta_accumulation(live_server, text_model_id
         "input": "Count from 1 to 5.",
         "temperature": 0.0,
         "reasoning": False,
-        "max_output_tokens": completion_budget(text_model_id, 64),
+        "max_output_tokens": semantic_token_limit(text_model_id, 64),
         "stream": True,
     }
 
@@ -200,7 +200,7 @@ async def test_responses_streaming_completed_snapshot(live_server, text_model_id
         "input": "Test. Respond with 'test received'",
         "temperature": 0.0,
         "reasoning": False,
-        "max_output_tokens": completion_budget(text_model_id, 64),
+        "max_output_tokens": semantic_token_limit(text_model_id, 64),
         "stream": True,
     }
 
@@ -298,7 +298,7 @@ async def test_responses_instructions(live_server, text_model_id):
         "instructions": SYSTEM_PROMPT_COMPLIANCE_INSTRUCTIONS,
         "temperature": 0.0,
         "reasoning": False,
-        "max_output_tokens": completion_budget(text_model_id, 64),
+        "max_output_tokens": semantic_token_limit(text_model_id, 64),
     }
 
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
