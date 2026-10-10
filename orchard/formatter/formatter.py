@@ -128,6 +128,47 @@ def _normalize_tool_call_arguments(
     return normalized
 
 
+def _sorted_keys(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {key: _sorted_keys(value[key]) for key in sorted(value)}
+    if isinstance(value, list):
+        return [_sorted_keys(item) for item in value]
+    return value
+
+
+def _stable_tool_schemas(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Sort the keys of each tool's parameter schema.
+
+    Clients reserialize the same schema with different key orders; an
+    unsorted schema renders a different prompt prefix and misses the cache.
+    Array order (required, enum, anyOf) carries meaning and is kept.
+    """
+    stable = []
+    for tool in tools:
+        if not isinstance(tool, dict):
+            stable.append(tool)
+            continue
+        tool = dict(tool)
+        if isinstance(tool.get("parameters"), dict):
+            tool["parameters"] = _sorted_keys(tool["parameters"])
+        function = tool.get("function")
+        if isinstance(function, dict) and isinstance(function.get("parameters"), dict):
+            tool["function"] = {
+                **function,
+                "parameters": _sorted_keys(function["parameters"]),
+            }
+        properties = tool.get("properties")
+        if isinstance(properties, dict) and isinstance(
+            properties.get("arguments"), dict
+        ):
+            tool["properties"] = {
+                **properties,
+                "arguments": _sorted_keys(properties["arguments"]),
+            }
+        stable.append(tool)
+    return stable
+
+
 class ChatFormatter:
     """
     Handles the application of chat templates to conversation histories.
@@ -281,7 +322,7 @@ class ChatFormatter:
             "prefill": prefill,
             "capabilities": self.capabilities,
             "model_config": self.tokenizer_config,
-            "tools": tools,
+            "tools": _stable_tool_schemas(tools) if tools else tools,
             "reasoning_effort": reasoning_effort or "medium",
         }
         return self.template.render(**context)

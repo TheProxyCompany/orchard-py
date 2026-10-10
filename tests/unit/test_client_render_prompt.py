@@ -1566,3 +1566,72 @@ async def test_arender_prompt_explicit_sampling_overrides_profile_defaults() -> 
     assert rendered["sampling_params"]["temperature"] == 0.0
     assert rendered["sampling_params"]["top_p"] == 1.0
     assert rendered["sampling_params"]["top_k"] == -1
+
+
+@pytest.mark.parametrize(
+    ("model_type", "tool_shape"),
+    [
+        ("qwen3_5", "orchard"),
+        ("qwen3_5", "openai"),
+        ("olmo_hybrid", "openai"),
+    ],
+)
+def test_tool_schema_key_order_does_not_change_the_prompt(
+    tmp_path, model_type: str, tool_shape: str
+) -> None:
+    schema = {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "Search text"},
+            "filters": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "city": {"type": "string"},
+                        "days": {"type": "integer", "minimum": 1},
+                    },
+                },
+            },
+        },
+        "required": ["query", "filters"],
+    }
+
+    def reverse_keys(value: Any) -> Any:
+        if isinstance(value, dict):
+            return {k: reverse_keys(v) for k, v in reversed(list(value.items()))}
+        if isinstance(value, list):
+            return [reverse_keys(item) for item in value]
+        return value
+
+    def tool(parameters: dict[str, Any]) -> dict[str, Any]:
+        if tool_shape == "openai":
+            return {
+                "type": "function",
+                "function": {
+                    "name": "search",
+                    "description": "Search.",
+                    "parameters": parameters,
+                },
+            }
+        return {
+            "name": "search",
+            "type": "object",
+            "description": "Search.",
+            "properties": {"name": {"const": "search"}, "arguments": parameters},
+            "strict": True,
+            "required": ["name", "arguments"],
+        }
+
+    model_path = tmp_path / model_type
+    model_path.mkdir()
+    (model_path / "config.json").write_text(json.dumps({"model_type": model_type}))
+    formatter = ChatFormatter(str(model_path))
+    messages = [{"role": "user", "content": "hello"}]
+
+    original = formatter.apply_template(messages, tools=[tool(schema)])
+    reordered = formatter.apply_template(messages, tools=[tool(reverse_keys(schema))])
+
+    assert "Search text" in original
+    assert reordered == original
+    assert schema["required"] == ["query", "filters"]
