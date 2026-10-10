@@ -233,7 +233,11 @@ class IPCState:
         timeout: float | None = 2.0,
     ) -> dict[str, Any]:
         response = await self.send_management_command(
-            {"type": "cancel_request", "request_id": request_id},
+            {
+                "type": "cancel_request",
+                "request_id": request_id,
+                "response_channel_id": self.response_channel_id or request_id,
+            },
             timeout=timeout,
         )
         status = str(response.get("status") or "").lower()

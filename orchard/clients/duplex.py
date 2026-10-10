@@ -80,6 +80,67 @@ class _NativeAudioSession:
     _environment = "ORCHARD_DUPLEX_BINARY"
     _default_model = DEFAULT_MODEL
 
+    @classmethod
+    def effective_options(cls, options: dict[str, Any] | None) -> dict[str, Any]:
+        return dict(options or {})
+
+    @classmethod
+    async def prepare(
+        cls,
+        model_id: str | None = None,
+        *,
+        binary: str | os.PathLike[str] | None = None,
+        options: dict[str, Any] | None = None,
+        ready_timeout: float = 300.0,
+    ) -> dict[str, Any]:
+        """Wait for PIE residency using the session's adapter, without opening it."""
+        model_id = model_id or cls._default_model
+        command = [
+            _binary(binary, cls._program, cls._environment),
+            "--model",
+            model_id,
+            "--prepare-only",
+            "--options-json",
+            json.dumps(cls.effective_options(options), allow_nan=False),
+        ]
+        process = await asyncio.create_subprocess_exec(
+            *command,
+            stdin=asyncio.subprocess.DEVNULL,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            limit=1_048_576,
+        )
+        try:
+            stdout, stderr = await asyncio.wait_for(
+                process.communicate(), ready_timeout
+            )
+            if process.returncode != 0:
+                raise RuntimeError(
+                    f"Native model preparation failed: {stdout.decode(errors='replace').strip()} {stderr.decode(errors='replace').strip()}"
+                )
+            if len(stdout) > 1_048_576:
+                raise RuntimeError("Native preparation receipt exceeds 1 MiB")
+            receipt = json.loads(stdout)
+            if (
+                not isinstance(receipt, dict)
+                or receipt.get("type") != "prepared"
+                or receipt.get("model_id") != model_id
+            ):
+                raise RuntimeError(
+                    "Native model preparation returned no matching residency receipt"
+                )
+            return receipt
+        finally:
+            if process.returncode is None:
+                with contextlib.suppress(ProcessLookupError):
+                    process.terminate()
+                try:
+                    await asyncio.wait_for(process.wait(), 2.0)
+                except TimeoutError:
+                    with contextlib.suppress(ProcessLookupError):
+                        process.kill()
+                    await process.wait()
+
     def __init__(self, process: asyncio.subprocess.Process) -> None:
         self._process = process
         self._write_lock = asyncio.Lock()
@@ -102,6 +163,8 @@ class _NativeAudioSession:
         )
         self.epoch = 0
         self._frame_samples = FRAME_SAMPLES
+        self._supports_grounded_response = False
+        self._supports_response_hold = False
 
     @classmethod
     async def open(
@@ -117,8 +180,12 @@ class _NativeAudioSession:
             "--model",
             model_id or cls._default_model,
         ]
-        if options is not None:
-            command.extend(["--options-json", json.dumps(options, allow_nan=False)])
+        command.extend(
+            [
+                "--options-json",
+                json.dumps(cls.effective_options(options), allow_nan=False),
+            ]
+        )
         process = await asyncio.create_subprocess_exec(
             *command,
             stdin=asyncio.subprocess.PIPE,
@@ -171,6 +238,12 @@ class _NativeAudioSession:
                     continue
                 if kind == "ready" and not self._ready.done():
                     self._frame_samples = int(event.get("frame_samples", FRAME_SAMPLES))
+                    self._supports_grounded_response = (
+                        event.get("supports_grounded_response") is True
+                    )
+                    self._supports_response_hold = (
+                        event.get("supports_response_hold") is True
+                    )
                     self._ready.set_result(event)
                 elif kind == "error":
                     failure = RuntimeError(
@@ -244,7 +317,9 @@ class _NativeAudioSession:
             self._pending[request_id] = future
             try:
                 payload = json.dumps(
-                    {"id": request_id, **command}, allow_nan=False, separators=(",", ":")
+                    {"id": request_id, **command},
+                    allow_nan=False,
+                    separators=(",", ":"),
                 )
                 self._process.stdin.write(payload.encode("utf-8") + b"\n")
                 await self._process.stdin.drain()
@@ -307,7 +382,10 @@ class _NativeAudioSession:
     async def _stop_process(self) -> None:
         async def close_input() -> None:
             async with self._write_lock:
-                if self._process.stdin is not None and not self._process.stdin.is_closing():
+                if (
+                    self._process.stdin is not None
+                    and not self._process.stdin.is_closing()
+                ):
                     self._process.stdin.write(b'{"type":"close"}\n')
                     await self._process.stdin.drain()
 
@@ -349,6 +427,70 @@ class DuplexSession(_NativeAudioSession):
     Default options advance only on supplied PCM. ``speak`` conditions the
     reference channel in this mode; the model chooses its own spoken wording.
     """
+
+    @property
+    def supports_grounded_response(self) -> bool:
+        return self._supports_grounded_response
+
+    @property
+    def supports_response_hold(self) -> bool:
+        return self._supports_response_hold
+
+    async def _response_control(self, command: dict[str, Any]) -> int:
+        expected_epoch = command["expected_epoch"]
+        if type(expected_epoch) is not int or not 0 <= expected_epoch < (1 << 64):
+            raise ValueError("Expected epoch must be an unsigned 64-bit integer")
+        if expected_epoch != self.epoch:
+            raise RuntimeError("Response control belongs to an interrupted epoch")
+        receipt = await self._request(command)
+        if (
+            receipt.get("type") != "control_ack"
+            or receipt.get("action") != command["type"]
+            or type(receipt.get("epoch")) is not int
+            or receipt["epoch"] != expected_epoch
+            or self.epoch != expected_epoch
+        ):
+            raise RuntimeError(
+                "Response control acknowledgement has a different action or epoch"
+            )
+        version = receipt.get("version")
+        if type(version) is not int or not 0 < version < (1 << 64):
+            raise RuntimeError(
+                "Response control acknowledgement has no valid reference version"
+            )
+        return version
+
+    async def hold_response(self, *, expected_epoch: int) -> int:
+        """Request a response hold while native audio and listening continue.
+
+        Returns the admitted reference version without advancing the epoch.
+        The acknowledgement does not confirm that native sampling applied the hold.
+        Interrupt and reset retire the hold; a grounded reply supplies its facts.
+        """
+        if not self.supports_response_hold:
+            raise RuntimeError(
+                "This native duplex session does not support response holds"
+            )
+        return await self._response_control(
+            {"type": "hold_response", "expected_epoch": expected_epoch}
+        )
+
+    async def grounded_reply(self, text: str, *, expected_epoch: int) -> int:
+        """Supply facts and request a response in the model's own words.
+
+        Returns the queued reference version, not confirmation of playback.
+        """
+        if not self.supports_grounded_response:
+            raise RuntimeError(
+                "This native duplex session does not support grounded responses"
+            )
+        if not text.strip() or len(text.encode("utf-8")) > 8192:
+            raise ValueError(
+                "Grounded response context must contain 1..8192 UTF-8 bytes"
+            )
+        return await self._response_control(
+            {"type": "grounded_reply", "text": text, "expected_epoch": expected_epoch}
+        )
 
     async def speak(self, text: str, *, replace: bool = False) -> int:
         receipt = await self._request(

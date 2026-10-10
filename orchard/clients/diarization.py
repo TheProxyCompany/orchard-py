@@ -6,6 +6,7 @@ confirmed identity, preserving all overlapping tracks and model probabilities.
 
 from __future__ import annotations
 
+import sys
 from importlib.resources import files
 from typing import Any
 
@@ -29,6 +30,15 @@ class DiarizationSession(_NativeAudioSession):
     _program = "orchard-diarize"
     _environment = "ORCHARD_DIARIZATION_BINARY"
     _default_model = DEFAULT_MODEL
+
+    @classmethod
+    def effective_options(cls, options: dict[str, Any] | None) -> dict[str, Any]:
+        # Preparation and session startup share placement, so an automatic load
+        # does not hydrate a second CPU copy before the Metal session opens.
+        return {
+            "device": "metal" if sys.platform == "darwin" else "cpu",
+            **(options or {}),
+        }
 
     async def finish(self) -> None:
         """Flush accepted audio; continue reading events through the final segments."""

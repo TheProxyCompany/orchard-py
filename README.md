@@ -488,6 +488,15 @@ async with await client.audio.duplex() as voice:
 References condition the voice model's wording; they are not verbatim TTS.
 In the default autonomous mode, `await voice.speak(text)` also submits factual
 reference conditioning; use `reference()` when tracking its application version.
+For an admitted grounded request, `await voice.hold_response(expected_epoch=epoch)`
+submits a response hold while native audio and listening continue. After obtaining
+current facts, `await voice.grounded_reply(facts, expected_epoch=epoch)` requests a response
+in the model's own words. Check `voice.supports_response_hold` and
+`voice.supports_grounded_response` first; older transports report false. Both
+controls return a reference version, preserve the epoch, and reject stale epochs.
+Their acknowledgements confirm admission. Native application and playback require
+separate evidence. Ordinary `reference()` calls do not request a hold. Interrupt
+and reset retire the hold.
 `await voice.interrupt()` advances the output epoch so old PCM and late tool
 results can be discarded. Automatic timeline resets also advance `voice.epoch`;
 queued events from older epochs are discarded. Drain the event stream continuously:

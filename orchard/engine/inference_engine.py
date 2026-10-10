@@ -11,6 +11,7 @@ import subprocess
 import sys
 import threading
 from pathlib import Path
+from typing import Self
 
 import dotenv
 import pynng
@@ -31,6 +32,7 @@ from orchard.engine.io import (
     get_engine_file_paths,
     initialize_sockets,
 )
+from orchard.engine.model_preparation import ModelLoadRequest, native_adapter
 from orchard.engine.multiprocess import (
     pid_is_alive,
     read_pid_file,
@@ -114,7 +116,7 @@ class InferenceEngine:
         client_log_file: Path | None = None,
         engine_log_file: Path | None = None,
         startup_timeout: float = 60.0,
-        load_models: list[str] | None = None,
+        load_models: list[str | ModelLoadRequest] | None = None,
     ):
         check_for_updates_async()  # Fire-and-forget background update check
 
@@ -138,7 +140,7 @@ class InferenceEngine:
             except RuntimeError:
                 asyncio.run(self.load_models(load_models))
 
-    def __enter__(self) -> InferenceEngine:
+    def __enter__(self) -> Self:
         if self._closed:
             raise RuntimeError("InferenceEngine instance already closed.")
         return self
@@ -146,7 +148,7 @@ class InferenceEngine:
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         self.close()
 
-    async def __aenter__(self) -> InferenceEngine:
+    async def __aenter__(self) -> Self:
         # The startup logic is synchronous, so this is straightforward
         if self._closed:
             raise RuntimeError("InferenceEngine instance already closed.")
@@ -158,18 +160,37 @@ class InferenceEngine:
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, self.close)
 
-    async def load_models(self, model_ids: list[str]):
-        model_ids = list(dict.fromkeys(model_ids))
-        logger.info("Loading models: %s", ", ".join(model_ids))
-        await asyncio.gather(*(self.load_model(model_id) for model_id in model_ids))
-        logger.info("Models loaded: %s", ", ".join(model_ids))
+    async def load_models(self, model_ids: list[str | ModelLoadRequest]):
+        unique = {
+            ModelLoadRequest(item).key() if isinstance(item, str) else item.key(): item
+            for item in model_ids
+        }
+        requests = list(unique.values())
+        names = [item if isinstance(item, str) else item.model_id for item in requests]
+        logger.info("Loading models: %s", ", ".join(names))
+        await asyncio.gather(
+            *(
+                self.load_model(item)
+                if isinstance(item, str)
+                else self.load_model(item.model_id, options=item.options)
+                for item in requests
+            )
+        )
+        logger.info("Models loaded: %s", ", ".join(names))
 
-    async def load_model(self, model_id: str):
+    async def load_model(self, model_id: str, *, options: dict | None = None):
         """
         Requests the engine to load a model and waits for it to become ready.
         """
         if not global_context.model_registry:
             raise RuntimeError("Model registry is not initialized.")
+        if adapter := native_adapter(model_id):
+            await adapter.prepare(model_id, options=options)
+            return
+        if options:
+            raise ValueError(
+                "This model adapter does not accept native streaming options"
+            )
         await global_context.model_registry.ensure_loaded(model_id)
 
     def client(self, model_id: str | None = None) -> Client:
@@ -362,8 +383,9 @@ class InferenceEngine:
         return wait_for_engine_ready(
             self._paths.pid_file,
             self._startup_timeout,
-            process_alive_check=lambda: self._launch_process is not None
-            and self._launch_process.poll() is None,
+            process_alive_check=lambda: (
+                self._launch_process is not None and self._launch_process.poll() is None
+            ),
             expected_pid=self._launch_process.pid if self._launch_process else None,
         )
 
