@@ -1,13 +1,98 @@
+import asyncio
 import json
 import os
+import struct
+import tempfile
 import threading
 from types import SimpleNamespace
 
+import pynng
 import pytest
 
 from orchard.app.ipc_dispatch import EVENT_TOPIC_PREFIX, IPCState
 from orchard.engine.global_context import GlobalContext
 from orchard.engine.inference_engine import InferenceEngine
+from orchard.ipc.serialization import _build_request_payload
+
+
+@pytest.mark.asyncio
+async def test_cancel_request_keeps_its_channel_when_request_ids_collide():
+    with tempfile.TemporaryDirectory(prefix="pycancel-", dir="/tmp") as directory:
+        request_url = f"ipc://{directory}/requests"
+        management_url = f"ipc://{directory}/management"
+        contexts = [GlobalContext(), GlobalContext()]
+        states = [IPCState(context) for context in contexts]
+        cancel = None
+        with (
+            pynng.Pull0(listen=request_url, recv_timeout=1000) as requests,
+            pynng.Rep0(listen=management_url, recv_timeout=1000) as management,
+        ):
+            try:
+                routes = []
+                for state in states:
+                    state.response_channel_id = (
+                        InferenceEngine.generate_response_channel_id()
+                    )
+                    state.request_socket = pynng.Push0(
+                        dial=request_url, send_timeout=1000
+                    )
+                    state.management_socket = pynng.Req0(
+                        dial=management_url, send_timeout=1000
+                    )
+                    request_id = await state.get_next_request_id()
+                    await state.send_request(
+                        _build_request_payload(
+                            request_id=request_id,
+                            model_id="transport-only",
+                            model_path=directory,
+                            request_type="generation",
+                            response_channel_id=state.response_channel_id,
+                            prompts=[{"prompt": "no model is loaded"}],
+                        )
+                    )
+                    frame = await asyncio.wait_for(requests.arecv(), 1)
+                    length = struct.unpack_from("<I", frame)[0]
+                    routes.append(json.loads(frame[4 : 4 + length]))
+
+                assert routes[0]["request_id"] == routes[1]["request_id"] == 1
+                channels = [route["response_channel_id"] for route in routes]
+                assert all(channels) and channels[0] != channels[1]
+                for state, route, other in zip(
+                    states, routes, reversed(routes), strict=True
+                ):
+                    cancel = asyncio.create_task(
+                        state.cancel_request(route["request_id"])
+                    )
+                    command = json.loads(await asyncio.wait_for(management.arecv(), 1))
+                    await management.asend(json.dumps({"status": "accepted"}).encode())
+                    assert await asyncio.wait_for(cancel, 1) == {"status": "accepted"}
+                    print(
+                        json.dumps(
+                            {
+                                "request_channel": route["response_channel_id"],
+                                "other_channel": other["response_channel_id"],
+                                "cancel": command,
+                            }
+                        )
+                    )
+                    assert command == {
+                        "type": "cancel_request",
+                        "request_id": 1,
+                        "response_channel_id": route["response_channel_id"],
+                    }
+                    assert (
+                        command["response_channel_id"] != other["response_channel_id"]
+                    )
+            finally:
+                if cancel is not None and not cancel.done():
+                    cancel.cancel()
+                    await asyncio.gather(cancel, return_exceptions=True)
+                for state in states:
+                    assert state.wait_for_inflight_drain(1)
+                    if state.request_socket is not None:
+                        state.request_socket.close()
+                    if state.management_socket is not None:
+                        state.management_socket.close()
 
 
 def test_engine_process_is_alive_reads_pid_file(tmp_path):

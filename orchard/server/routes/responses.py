@@ -11,6 +11,12 @@ from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
 
+from orchard.clients.responses import (
+    _emit_stream_fallback_item_done,
+    _parse_tool_call_completion_value,
+    _update_usage_from_delta,
+    finish_reason_to_incomplete,
+)
 from orchard.formatter.multimodal import (
     build_multimodal_layout,
     build_multimodal_messages,
@@ -18,6 +24,7 @@ from orchard.formatter.multimodal import (
 from orchard.ipc.serialization import _build_request_payload
 from orchard.ipc.utils import (
     ResponseDeltaDict,
+    content_only_message_events,
     release_delta_resources,
 )
 from orchard.server.dependencies import IPCStateDep, ModelRegistryDep
@@ -31,7 +38,6 @@ from orchard.server.models.responses import (
     ContentPartDoneEvent,
     FunctionCallArgumentsDeltaEvent,
     FunctionCallArgumentsDoneEvent,
-    IncompleteDetails,
     InputTokensDetails,
     OutputFunctionCall,
     OutputItemAddedEvent,
@@ -62,7 +68,6 @@ from orchard.server.models.responses import (
 )
 from orchard.server.routes._common import (
     _ModelNotReadyError,
-    extract_usage,
     managed_stream_session,
     resolve_model,
 )
@@ -160,7 +165,7 @@ async def handle_response_request(
             tools=core_tools_payload,
         )
     except Exception as exc:  # pragma: no cover - defensive
-        logger.exception("Failed to render chat template: %s", exc)
+        logger.exception("Failed to render chat template")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to render chat template.",
@@ -416,9 +421,8 @@ async def handle_response_request(
     except Exception as exc:  # pragma: no cover - defensive
         await exit_stack.aclose()
         logger.exception(
-            "Failed to process multimodal response request %d: %s",
+            "Failed to process multimodal response request %d",
             current_request_id,
-            exc,
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -435,18 +439,16 @@ async def gather_non_streaming_response(
 
     # Track output items by output_index
     output_items: dict[int, dict[str, Any]] = {}
-    usage_counts = {
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "total_tokens": 0,
-        "cached_tokens": 0,
-        "reasoning_tokens": 0,
-    }
+    usage = ResponseUsage(input_tokens=0, output_tokens=0, total_tokens=0)
     error_detail: str | None = None
     finish_reason: str | None = None
     completed_at: int | None = None
     stop_token_id: int | None = None
     stop_token: str | None = None
+    # `content` is the reply only for a sequence that never sends state events,
+    # which is known when the reply ends; it is collected until the first one.
+    pending_content = ""
+    saw_state_events = False
 
     while True:
         try:
@@ -479,11 +481,15 @@ async def gather_non_streaming_response(
 
                 # Process state_events from PIE
                 state_events = delta.get("state_events", [])
+                if state_events:
+                    saw_state_events = True
+                elif not saw_state_events:
+                    pending_content += delta.get("content") or ""
                 for event in state_events:
                     _process_state_event_for_output(event, output_items)
 
                 # Extract usage from delta
-                extract_usage(delta, usage_counts)
+                _update_usage_from_delta(delta, usage)
 
                 # Track finish reason for incomplete_details
                 if fr := delta.get("finish_reason"):
@@ -517,28 +523,27 @@ async def gather_non_streaming_response(
         )
         raise InferenceError(error_detail)
 
-    if usage_counts["total_tokens"] <= 0:
-        usage_counts["total_tokens"] = (
-            usage_counts["prompt_tokens"] + usage_counts["completion_tokens"]
-        )
+    if not saw_state_events and pending_content:
+        for event in content_only_message_events(pending_content):
+            _process_state_event_for_output(event, output_items)
 
     # Build final output items
     output = _build_output_items(output_items)
 
     # Determine if response was incomplete
-    incomplete_details = None
-    if finish_reason in ("length", "max_tokens", "max_output_tokens"):
-        incomplete_details = IncompleteDetails(reason="max_output_tokens")
-    elif finish_reason == "content_filter":
-        incomplete_details = IncompleteDetails(reason="content_filter")
+    incomplete_details = finish_reason_to_incomplete(finish_reason)
 
     return {
         "output": output,
-        "prompt_tokens": usage_counts["prompt_tokens"],
-        "completion_tokens": usage_counts["completion_tokens"],
-        "total_tokens": usage_counts["total_tokens"],
-        "cached_tokens": usage_counts["cached_tokens"],
-        "reasoning_tokens": usage_counts["reasoning_tokens"],
+        "prompt_tokens": usage.input_tokens,
+        "completion_tokens": usage.output_tokens,
+        "total_tokens": usage.total_tokens,
+        "cached_tokens": usage.input_tokens_details.cached_tokens
+        if usage.input_tokens_details
+        else 0,
+        "reasoning_tokens": usage.output_tokens_details.reasoning_tokens
+        if usage.output_tokens_details
+        else 0,
         "completed_at": completed_at,
         "incomplete_details": incomplete_details,
         "stop_token_id": stop_token_id,
@@ -664,6 +669,10 @@ async def stream_response_generator(
     error_occurred = False
     error_detail: str | None = None
     finish_reason: str | None = None
+    # `content` is the reply only for a sequence that never sends state events,
+    # which is known when the stream ends; it is collected until the first one.
+    pending_content = ""
+    saw_state_events = False
 
     while True:
         try:
@@ -709,45 +718,23 @@ async def stream_response_generator(
 
                 # Process state_events from PIE
                 state_events = delta.get("state_events") or []
+                if state_events:
+                    saw_state_events = True
+                elif not saw_state_events:
+                    pending_content += delta.get("content") or ""
                 for event in state_events:
                     async for sse_event in _process_state_event_for_streaming(
                         event, stream_state
                     ):
                         yield sse_event
 
-                # Extract usage info
-                if usage := delta.get("usage"):
-                    if isinstance(usage, dict):
-                        stream_state.usage = ResponseUsage(
-                            input_tokens=usage.get("input_tokens", 0),
-                            output_tokens=usage.get("output_tokens", 0),
-                            total_tokens=usage.get("total_tokens", 0),
-                            input_tokens_details=InputTokensDetails(
-                                cached_tokens=usage.get("cached_tokens", 0),
-                            ),
-                            output_tokens_details=OutputTokensDetails(
-                                reasoning_tokens=usage.get("reasoning_tokens", 0),
-                            ),
-                        )
-
-                # Extract token details from delta (PIE sends these at top level)
-                cached_tokens = delta.get("cached_token_count")
-                reasoning_tokens = delta.get("reasoning_tokens")
-                if cached_tokens is not None or reasoning_tokens is not None:
-                    current_usage = stream_state.usage or ResponseUsage(
+                # The SDK and HTTP Responses paths share the canonical
+                # whole-generation accounting; reasoning remains a subset.
+                if stream_state.usage is None:
+                    stream_state.usage = ResponseUsage(
                         input_tokens=0, output_tokens=0, total_tokens=0
                     )
-                    stream_state.usage = ResponseUsage(
-                        input_tokens=current_usage.input_tokens,
-                        output_tokens=current_usage.output_tokens,
-                        total_tokens=current_usage.total_tokens,
-                        input_tokens_details=InputTokensDetails(
-                            cached_tokens=cached_tokens or 0,
-                        ),
-                        output_tokens_details=OutputTokensDetails(
-                            reasoning_tokens=reasoning_tokens or 0,
-                        ),
-                    )
+                _update_usage_from_delta(delta, stream_state.usage)
 
                 # Track finish reason for incomplete detection
                 if fr := delta.get("finish_reason"):
@@ -769,61 +756,18 @@ async def stream_response_generator(
                 if delta:
                     release_delta_resources(delta)
 
+    if not error_occurred and not saw_state_events and pending_content:
+        for event in content_only_message_events(pending_content):
+            async for sse_event in _process_state_event_for_streaming(
+                event, stream_state
+            ):
+                yield sse_event
+
     # Emit completion events for items that didn't receive an item_completed event
     # from PIE. Items that did receive item_completed already have status=COMPLETED
     # (set in _process_state_event_for_streaming) and are skipped here.
-    for output_index, item in sorted(stream_state.items.items()):
-        if item.status != OutputStatus.COMPLETED:
-            item.status = OutputStatus.COMPLETED
-            if item.item_type == "reasoning":
-                item.accumulated_content = item.accumulated_content.strip()
-            # Emit done events based on item type
-            if item.item_type == "message":
-                yield _format_sse_event(
-                    OutputTextDoneEvent(
-                        sequence_number=stream_state.next_sequence_number(),
-                        item_id=item.item_id,
-                        output_index=output_index,
-                        content_index=0,
-                        text=item.accumulated_content,
-                    )
-                )
-                yield _format_sse_event(
-                    ContentPartDoneEvent(
-                        sequence_number=stream_state.next_sequence_number(),
-                        item_id=item.item_id,
-                        output_index=output_index,
-                        content_index=0,
-                        part=OutputTextContent(text=item.accumulated_content),
-                    )
-                )
-            elif item.item_type == "tool_call":
-                yield _format_sse_event(
-                    FunctionCallArgumentsDoneEvent(
-                        sequence_number=stream_state.next_sequence_number(),
-                        item_id=item.item_id,
-                        output_index=output_index,
-                        arguments=item.accumulated_arguments,
-                    )
-                )
-            elif item.item_type == "reasoning":
-                yield _format_sse_event(
-                    ReasoningDoneEvent(
-                        sequence_number=stream_state.next_sequence_number(),
-                        item_id=item.item_id,
-                        output_index=output_index,
-                        content_index=0,
-                        text=item.accumulated_content,
-                    )
-                )
-
-            yield _format_sse_event(
-                OutputItemDoneEvent(
-                    sequence_number=stream_state.next_sequence_number(),
-                    output_index=output_index,
-                    item=item.to_completed(),
-                )
-            )
+    for event in _emit_stream_fallback_item_done(stream_state):
+        yield _format_sse_event(event)
 
     # Emit final response event
     if error_occurred:
@@ -845,22 +789,11 @@ async def stream_response_generator(
         # Set completed_at timestamp
         stream_state.completed_at = get_current_timestamp()
 
-        # Determine if response was incomplete (truncated)
-        is_incomplete = finish_reason in ("length", "max_tokens", "max_output_tokens")
-        if is_incomplete:
+        # Determine if response was incomplete (truncated or filtered)
+        incomplete_details = finish_reason_to_incomplete(finish_reason)
+        if incomplete_details is not None:
             stream_state.status = OutputStatus.INCOMPLETE
-            stream_state.incomplete_details = IncompleteDetails(
-                reason="max_output_tokens"
-            )
-            yield _format_sse_event(
-                ResponseIncompleteEvent(
-                    sequence_number=stream_state.next_sequence_number(),
-                    response=stream_state.snapshot(),
-                )
-            )
-        elif finish_reason == "content_filter":
-            stream_state.status = OutputStatus.INCOMPLETE
-            stream_state.incomplete_details = IncompleteDetails(reason="content_filter")
+            stream_state.incomplete_details = incomplete_details
             yield _format_sse_event(
                 ResponseIncompleteEvent(
                     sequence_number=stream_state.next_sequence_number(),
@@ -1044,26 +977,3 @@ def _format_sse_event(event: Any) -> dict[str, str]:
         "event": event.type,
         "data": event.model_dump_json(exclude_none=True),
     }
-
-
-def _parse_tool_call_completion_value(value: Any) -> tuple[str, str] | None:
-    structured_value = value
-    if isinstance(value, str):
-        try:
-            structured_value = json.loads(value)
-        except json.JSONDecodeError:
-            return None
-
-    if not isinstance(structured_value, dict):
-        return None
-
-    function_name = structured_value.get("name")
-    if not isinstance(function_name, str) or not function_name:
-        return None
-
-    try:
-        arguments = json.dumps(structured_value.get("arguments", {}))
-    except (TypeError, ValueError):
-        return None
-
-    return function_name, arguments

@@ -75,7 +75,6 @@ class IPCState:
         self.active_request_queues: dict[int, QueueRegistration] = {}
 
         self.request_id_counter: int = 0
-        self.dispatcher_task: asyncio.Task | None = None
         self._request_id_lock = threading.Lock()
         self.response_topic_prefix: bytes = b""
         self.response_topic_prefix_len: int = 0
@@ -234,7 +233,11 @@ class IPCState:
         timeout: float | None = 2.0,
     ) -> dict[str, Any]:
         response = await self.send_management_command(
-            {"type": "cancel_request", "request_id": request_id},
+            {
+                "type": "cancel_request",
+                "request_id": request_id,
+                "response_channel_id": self.response_channel_id or request_id,
+            },
             timeout=timeout,
         )
         status = str(response.get("status") or "").lower()

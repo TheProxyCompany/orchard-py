@@ -16,6 +16,7 @@ jobs:
     timeout-minutes: 60
     env:
       PATH: /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+      RUSTUP_TOOLCHAIN: "1.97.1"
 
     steps:
       - name: Checkout orchard-py
@@ -32,11 +33,45 @@ jobs:
           brew list ccache || brew install ccache
           brew list rust || brew install rust
 
-      - name: Clone and build PIE
+      - name: Install pinned Rust toolchain
         run: |
-          rm -rf ../proxy-inference-engine
-          git clone --depth 1 --recurse-submodules "https://${{ secrets.GH_PAT }}@github.com/TheProxyCompany/proxy-inference-engine.git" ../proxy-inference-engine
-          cd ../proxy-inference-engine
+          set -euo pipefail
+          export PATH="$HOME/.cargo/bin:$PATH"
+          if ! command -v rustup >/dev/null; then
+            export PATH="$(brew --prefix rustup)/bin:$PATH"
+          fi
+          rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
+          rust_bin="$(dirname "$(rustup which rustc)")"
+          echo "$rust_bin" >> "$GITHUB_PATH"
+          echo "CARGO=$(rustup which cargo)" >> "$GITHUB_ENV"
+          echo "RUSTC=$(rustup which rustc)" >> "$GITHUB_ENV"
+          echo "RUSTDOC=$(rustup which rustdoc)" >> "$GITHUB_ENV"
+          rustup run "$RUSTUP_TOOLCHAIN" rustc --version
+          rustup run "$RUSTUP_TOOLCHAIN" cargo --version
+
+      - name: Checkout reviewed PIE and its private dependencies
+        uses: actions/checkout@v6
+        with:
+          repository: TheProxyCompany/proxy-inference-engine
+          # Root #38's reviewed engine; testing main would certify another package.
+          ref: 8200bac11ae936b53ca30ce98d29a567a8ded226
+          token: ${{ secrets.GH_PAT }}
+          path: .ci/proxy-inference-engine
+          submodules: recursive
+
+      - name: Verify reviewed PIE revision
+        working-directory: .ci/proxy-inference-engine
+        run: |
+          pie_expected=8200bac11ae936b53ca30ce98d29a567a8ded226
+          pie_actual="$(git rev-parse HEAD)"
+          echo "PIE revision: $pie_actual"
+          test "$pie_actual" = "$pie_expected"
+          git submodule update --init --recursive
+          git submodule status --recursive
+
+      - name: Build PIE
+        working-directory: .ci/proxy-inference-engine
+        run: |
           ./scripts/build.sh -t Release
 
       - name: Set up orchard-py
@@ -55,4 +90,20 @@ jobs:
       - name: Run full Orchard PY suite
         run: |
           source .venv/bin/activate
-          PIE_LOCAL_BUILD="$PWD/../proxy-inference-engine/release" python -m pytest tests/functional tests/golden tests/unit -v --tb=short -x
+          export PIE_LOCAL_BUILD="$PWD/.ci/proxy-inference-engine/release"
+          python - <<'PY'
+          import fcntl
+          import subprocess
+          import sys
+
+          # Shared Apple Silicon runners also host explicit local acceptance
+          # runs. Serialize GPU tests without stopping another owned engine.
+          with open("/tmp/proxy-gpu.lease", "a") as lease:
+              print("Waiting for the runner GPU lease", flush=True)
+              fcntl.flock(lease, fcntl.LOCK_EX)
+              print("Runner GPU lease acquired", flush=True)
+              subprocess.run([
+                  sys.executable, "-m", "pytest", "tests/functional",
+                  "tests/golden", "tests/unit", "-v", "--tb=short", "-x",
+              ], check=True)
+          PY

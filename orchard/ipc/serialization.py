@@ -14,6 +14,8 @@ _SEGMENT_TYPE_TEXT = 0
 _SEGMENT_TYPE_IMAGE = 1
 _SEGMENT_TYPE_AUDIO = 2
 _SEGMENT_TYPE_CAPABILITY = 3
+# Token ids sent as they are; length counts ids in the prompt's token data block.
+_SEGMENT_TYPE_TOKENS = 4
 
 _REQUEST_TYPE_CODES = {
     "generation": 0,
@@ -51,6 +53,12 @@ def _coerce_bytes(value: Any) -> bytes:
     if isinstance(value, memoryview):
         return value.tobytes()
     return str(value).encode("utf-8")
+
+
+def _coerce_str(value: Any) -> str:
+    if isinstance(value, str):
+        return value
+    return _coerce_bytes(value).decode("utf-8")
 
 
 def _encode_media_buffers(buffers: Sequence[bytes]) -> tuple[bytes, int, bytes]:
@@ -104,8 +112,9 @@ def _encode_layout(
     text_len: int,
     image_buffers: Sequence[bytes],
     audio_buffers: Sequence[bytes],
+    token_segments: Sequence[Sequence[int]],
 ) -> tuple[bytes, int]:
-    """Encode layout segments including text, image, audio, and capability types."""
+    """Encode layout segments including text, image, audio, capability, and token types."""
     segments: list[tuple[int, int]] = []
     if not layout:
         segments.append((_SEGMENT_TYPE_TEXT, text_len))
@@ -126,6 +135,8 @@ def _encode_layout(
             elif seg_type == "capability":
                 # Capability segments use length=0 in binary layout (actual data is in JSON)
                 segments.append((_SEGMENT_TYPE_CAPABILITY, 0))
+            elif seg_type == "tokens":
+                segments.append((_SEGMENT_TYPE_TOKENS, length))
             else:
                 raise ValueError(f"Unsupported layout segment type: {seg_type}")
 
@@ -141,8 +152,12 @@ def _encode_layout(
     layout_audio_bytes = sum(
         length for seg_type, length in segments if seg_type == _SEGMENT_TYPE_AUDIO
     )
+    layout_token_lengths = [
+        length for seg_type, length in segments if seg_type == _SEGMENT_TYPE_TOKENS
+    ]
     total_image_bytes = sum(len(image) for image in image_buffers)
     total_audio_bytes = sum(len(audio) for audio in audio_buffers)
+    token_segment_lengths = [len(ids) for ids in token_segments]
 
     if layout_text_bytes != text_len:
         raise ValueError(
@@ -157,6 +172,11 @@ def _encode_layout(
         raise ValueError(
             "Layout audio length mismatch "
             f"(expected {total_audio_bytes}, got {layout_audio_bytes})."
+        )
+    if layout_token_lengths != token_segment_lengths:
+        raise ValueError(
+            "Layout token length mismatch "
+            f"(expected {token_segment_lengths}, got {layout_token_lengths})."
         )
 
     buffer = bytearray(len(segments) * _LAYOUT_SEGMENT_STRUCT.size)
@@ -187,20 +207,17 @@ def _build_request_payload(
     request_type: str | int,
     response_channel_id: int,
     prompts: Sequence[Mapping[str, Any]],
-    request_channel_id: int = 0,
-    parent_request_id: int | None = None,
 ) -> bytes:
     if not prompts:
         raise ValueError("At least one prompt payload is required.")
 
     prompt_payloads = list(prompts)
-    parent_id = parent_request_id or request_id
     metadata = {
-        "request_id": int(parent_id),
+        "request_id": int(request_id),
         "model_id": model_id,
         "model_path": str(model_path),
         "request_type": _normalise_request_type(request_type),
-        "request_channel_id": int(request_channel_id),
+        "request_channel_id": 0,
         "response_channel_id": int(response_channel_id),
     }
     metadata_prompts: list[dict[str, Any]] = []
@@ -234,11 +251,14 @@ def _build_request_payload(
             prompt.get("capabilities", [])
         )
 
+        # Token ids for the layout's tokens segments, in layout order.
+        token_segments = prompt.get("token_segments") or []
         layout_bytes, layout_count = _encode_layout(
             prompt.get("layout", []),
             len(text_buffer),
             image_buffers_raw,
             audio_buffers_raw,
+            token_segments,
         )
 
         def reserve_blob(data: bytes) -> tuple[int, int]:
@@ -260,29 +280,18 @@ def _build_request_payload(
             capability_data_bytes
         )
         layout_offset, _ = reserve_blob(layout_bytes)
-
-        stop_sequences_raw = prompt.get("stop_sequences") or []
-        stop_sequences: list[str] = []
-        for sequence in stop_sequences_raw:
-            if isinstance(sequence, str):
-                stop_sequences.append(sequence)
-            else:
-                stop_sequences.append(_coerce_bytes(sequence).decode("utf-8"))
-
-        tool_schemas_value = prompt.get("tool_schemas_json", "")
-        if isinstance(tool_schemas_value, str):
-            tool_schemas_str = tool_schemas_value
-        else:
-            tool_schemas_str = _coerce_bytes(tool_schemas_value).decode("utf-8")
-        active_tool_schemas_value = prompt.get(
-            "active_tool_schemas_json", tool_schemas_str
+        token_data_offset, token_data_size = reserve_blob(
+            b"".join(struct.pack(f"<{len(ids)}i", *ids) for ids in token_segments)
         )
-        if isinstance(active_tool_schemas_value, str):
-            active_tool_schemas_str = active_tool_schemas_value
-        else:
-            active_tool_schemas_str = _coerce_bytes(active_tool_schemas_value).decode(
-                "utf-8"
-            )
+
+        stop_sequences = [
+            _coerce_str(sequence) for sequence in prompt.get("stop_sequences") or []
+        ]
+
+        tool_schemas_str = _coerce_str(prompt.get("tool_schemas_json", ""))
+        active_tool_schemas_str = _coerce_str(
+            prompt.get("active_tool_schemas_json", tool_schemas_str)
+        )
         if not active_tool_schemas_str:
             active_tool_schemas_str = tool_schemas_str
 
@@ -334,28 +343,19 @@ def _build_request_payload(
         else:
             tool_choice_str = str(tool_choice_value)
 
-        response_format_value = prompt.get("response_format_json", "")
-        if isinstance(response_format_value, str):
-            response_format_str = response_format_value
-        else:
-            response_format_str = _coerce_bytes(response_format_value).decode("utf-8")
-        modal_options_value = prompt.get("modal_options_json", "")
-        if isinstance(modal_options_value, str):
-            modal_options_str = modal_options_value
-        else:
-            modal_options_str = _coerce_bytes(modal_options_value).decode("utf-8")
+        response_format_str = _coerce_str(prompt.get("response_format_json", ""))
+        modal_options_str = _coerce_str(prompt.get("modal_options_json", ""))
 
         task_name_value = prompt.get("task_name")
-        if isinstance(task_name_value, str) or task_name_value is None:
-            task_name_str = task_name_value
-        else:
-            task_name_str = _coerce_bytes(task_name_value).decode("utf-8")
-
+        task_name_str = (
+            None if task_name_value is None else _coerce_str(task_name_value)
+        )
         reasoning_effort_value = prompt.get("reasoning_effort")
-        if isinstance(reasoning_effort_value, str) or reasoning_effort_value is None:
-            reasoning_effort_str = reasoning_effort_value
-        else:
-            reasoning_effort_str = _coerce_bytes(reasoning_effort_value).decode("utf-8")
+        reasoning_effort_str = (
+            None
+            if reasoning_effort_value is None
+            else _coerce_str(reasoning_effort_value)
+        )
 
         prefix_cache_value = prompt.get("prefix_cache")
         prefix_cache = True if prefix_cache_value is None else bool(prefix_cache_value)
@@ -408,6 +408,8 @@ def _build_request_payload(
                 "capabilities": capability_metadata,
                 "layout_offset": layout_offset,
                 "layout_count": layout_count,
+                "token_data_offset": token_data_offset,
+                "token_data_size": token_data_size,
                 "temperature": temperature,
                 "top_p": top_p,
                 "top_k": top_k,

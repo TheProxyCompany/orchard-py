@@ -4,6 +4,7 @@ import httpx
 import pytest
 
 from tests.functional.cases._timeout import HTTP_TIMEOUT_S
+from tests.functional.cases._token_budget import semantic_token_limit
 
 pytestmark = pytest.mark.asyncio
 
@@ -19,7 +20,7 @@ async def test_chat_completion_multi_token_non_streaming(live_server, text_model
         "messages": [{"role": "user", "content": "What is the capital of France?"}],
         "temperature": 0.0,  # Use greedy sampling for a deterministic answer
         "reasoning": False,
-        "max_completion_tokens": 10,
+        "max_completion_tokens": semantic_token_limit(text_model_id, 10),
         "logprobs": True,
         "top_logprobs": 5,
         "stream": False,
@@ -74,8 +75,20 @@ async def test_chat_completion_multi_token_non_streaming(live_server, text_model
     assert usage.get("input_tokens", 0) > 0, (
         "Expected 'input_tokens' to be greater than 0"
     )
-    assert usage.get("total_tokens") == usage.get("input_tokens", 0) + usage.get(
-        "output_tokens", 0
+    # Orchard exposes visible output and reasoning separately. The OpenAI
+    # completion count includes both, so both views must conserve all tokens.
+    assert usage["total_tokens"] == (
+        usage["input_tokens"] + usage["output_tokens"] + usage["reasoning_tokens"]
+    )
+    assert usage["prompt_tokens"] == usage["input_tokens"]
+    assert usage["completion_tokens"] == (
+        usage["output_tokens"] + usage["reasoning_tokens"]
+    )
+    assert usage["total_tokens"] == (
+        usage["prompt_tokens"] + usage["completion_tokens"]
+    )
+    assert usage["completion_tokens_details"]["reasoning_tokens"] == (
+        usage["reasoning_tokens"]
     )
 
 
@@ -90,7 +103,7 @@ async def test_chat_completion_multi_token_streaming(live_server, text_model_id)
         "messages": [
             {"role": "user", "content": "Tell me a very short story in one sentence."}
         ],
-        "max_completion_tokens": 10,
+        "max_completion_tokens": semantic_token_limit(text_model_id, 10),
         "temperature": 0.0,
         "reasoning": False,
         "stream": True,
