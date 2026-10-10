@@ -87,7 +87,14 @@ jobs:
             python -m pip install -e ".[dev]"
           fi
 
+      - name: Check golden diagnostics without starting the engine
+        run: |
+          source .venv/bin/activate
+          python -m unittest tests.unit.test_golden_diagnostics -v
+
       - name: Run full Orchard PY suite
+        env:
+          ORCHARD_GOLDEN_DIFF_DIR: ${{ runner.temp }}/orchard-py-golden-${{ github.run_id }}-${{ github.run_attempt }}
         run: |
           source .venv/bin/activate
           export PIE_LOCAL_BUILD="$PWD/.ci/proxy-inference-engine/release"
@@ -107,3 +114,12 @@ jobs:
                   "tests/golden", "tests/unit", "-v", "--tb=short", "-x",
               ], check=True)
           PY
+
+      - name: Upload golden-drift evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orchard-py-golden-drift-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/orchard-py-golden-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: warn
+          retention-days: 7
