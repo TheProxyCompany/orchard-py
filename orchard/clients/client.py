@@ -1253,10 +1253,10 @@ class Client:
             loop_started = threading.Event()
 
             def _loop_target():
-                self._sync_loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(self._sync_loop)
-                loop_started.set()
-                self._sync_loop.run_forever()
+                with asyncio.Runner() as runner:
+                    self._sync_loop = runner.get_loop()
+                    loop_started.set()
+                    self._sync_loop.run_forever()
 
             self._sync_thread = threading.Thread(
                 target=_loop_target, name="pie-client-sync-bridge", daemon=True
@@ -1271,6 +1271,7 @@ class Client:
         async def _next_delta() -> T:
             return await async_iterator.__anext__()
 
+        future = None
         try:
             while True:
                 if self._ipc_state.engine_dead:
@@ -1291,6 +1292,8 @@ class Client:
                 except StopAsyncIteration:
                     break
         finally:
+            if future is not None and not future.done():
+                future.cancel()
             aclose = getattr(async_iterator, "aclose", None)
             if aclose and self._sync_loop and self._sync_loop.is_running():
                 future = asyncio.run_coroutine_threadsafe(aclose(), self._sync_loop)
