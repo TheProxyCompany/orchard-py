@@ -9,6 +9,7 @@ from types import SimpleNamespace
 import pynng
 import pytest
 
+from orchard import defaults
 from orchard.app.ipc_dispatch import EVENT_TOPIC_PREFIX, IPCState
 from orchard.engine.global_context import GlobalContext
 from orchard.engine.inference_engine import InferenceEngine
@@ -110,6 +111,26 @@ def test_engine_process_is_alive_handles_missing_pid_file(tmp_path):
     ipc_state.engine_pid_file = tmp_path / "missing.pid"
 
     assert not ipc_state.engine_process_is_alive()
+
+
+@pytest.mark.asyncio
+async def test_delta_reader_distinguishes_disconnect_from_live_silence(monkeypatch):
+    state = IPCState(GlobalContext())
+    queue = asyncio.Queue()
+    state._disconnect()
+    with pytest.raises(RuntimeError, match="Engine process disconnected"):
+        await state.next_delta(queue)
+
+    # A terminal callback may arrive after the death latch. Its real request
+    # identity and payload must still be delivered unchanged.
+    terminal = {"request_id": 42, "is_final_delta": True, "finish_reason": "error"}
+    queue.put_nowait(terminal)
+    assert await state.next_delta(queue) is terminal
+
+    live_state = IPCState(GlobalContext())
+    monkeypatch.setattr(defaults, "DELTA_TIMEOUT_S", 0.01)
+    with pytest.raises(TimeoutError, match="Timed out waiting"):
+        await live_state.next_delta(asyncio.Queue())
 
 
 def test_handle_engine_event_routes_model_load_failed():

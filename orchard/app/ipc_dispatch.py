@@ -6,7 +6,7 @@ import logging
 import threading
 import time
 import weakref
-from collections.abc import Callable
+from collections.abc import Callable, Coroutine
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -91,6 +91,7 @@ class IPCState:
 
         self._inflight_lock = threading.Lock()
         self._inflight_ops = 0
+        self._socket_tasks: set[asyncio.Task] = set()
         self._inflight_drained = threading.Event()
         self._inflight_drained.set()
 
@@ -122,6 +123,8 @@ class IPCState:
                 raise RuntimeError(
                     "IPC shutdown in progress; cannot start new socket operations."
                 )
+            if self.engine_dead:
+                raise RuntimeError("Engine process disconnected.")
             self._inflight_ops += 1
             self._inflight_drained.clear()
         try:
@@ -137,14 +140,47 @@ class IPCState:
         timeout, meaning the NNG sockets are not safe to close."""
         return self._inflight_drained.wait(timeout_s)
 
+    async def _run_socket_op[T](
+        self, operation: Callable[[], Coroutine[Any, Any, T]]
+    ) -> T:
+        with self.socket_op():
+            task = asyncio.create_task(operation())
+            with self._inflight_lock:
+                self._socket_tasks.add(task)
+                engine_dead = self.engine_dead
+            if engine_dead:
+                task.cancel()
+            try:
+                return await task
+            except asyncio.CancelledError:
+                caller = asyncio.current_task()
+                if self.engine_dead and caller is not None and not caller.cancelling():
+                    raise RuntimeError("Engine process disconnected.") from None
+                raise
+            finally:
+                with self._inflight_lock:
+                    self._socket_tasks.discard(task)
+
+    def _disconnect(self) -> None:
+        # Latch death before waking response readers: their cleanup may send
+        # cancellation commands. Cancel pending NNG operations on their own
+        # loops and let pynng drain each AIO before the socket can be closed.
+        with self._inflight_lock:
+            self.engine_dead = True
+            tasks = tuple(self._socket_tasks)
+        for task in tasks:
+            try:
+                task.get_loop().call_soon_threadsafe(task.cancel)
+            except RuntimeError:
+                logger.exception("Could not cancel IPC operation on its closed loop.")
+
     async def send_request(self, request_bytes: bytes) -> None:
         socket = self.request_socket
         if socket is None:
             raise RuntimeError("Request socket is not initialized.")
         if self.engine_dead:
             raise RuntimeError("Engine process is dead; cannot submit new requests.")
-        with self.socket_op():
-            await socket.asend(request_bytes)
+        await self._run_socket_op(lambda: socket.asend(request_bytes))
 
     async def get_next_request_id(self) -> int:
         """Atomically increments and returns the next request ID."""
@@ -177,9 +213,7 @@ class IPCState:
         hard_deadline = start + defaults.DELTA_HARD_TIMEOUT_S
         while True:
             if self.engine_dead and queue.empty():
-                raise TimeoutError(
-                    "Engine process died while waiting for a response delta."
-                )
+                raise RuntimeError("Engine process disconnected.")
             now = time.monotonic()
             newest_progress = max(start, self.last_progress_monotonic)
             deadline = min(newest_progress + defaults.DELTA_TIMEOUT_S, hard_deadline)
@@ -207,13 +241,15 @@ class IPCState:
             )
 
         payload = json.dumps(command).encode("utf-8")
-        with self.socket_op():
+
+        async def exchange() -> bytes:
             async with self.management_lock:
                 await socket.asend(payload)
                 if timeout is None:
-                    reply_bytes = await socket.arecv()
-                else:
-                    reply_bytes = await asyncio.wait_for(socket.arecv(), timeout)
+                    return await socket.arecv()
+                return await asyncio.wait_for(socket.arecv(), timeout)
+
+        reply_bytes = await self._run_socket_op(exchange)
 
         try:
             response = json.loads(reply_bytes.decode("utf-8"))
@@ -444,6 +480,7 @@ class IPCState:
         except asyncio.CancelledError:
             logger.info("Response dispatcher task was cancelled.")
         finally:
+            ipc_state._disconnect()
             if ipc_state.active_request_queues:
                 logger.warning(
                     "Response dispatcher exiting with %d active request queues; failing them.",
@@ -472,5 +509,4 @@ class IPCState:
                         request_id,
                     )
             ipc_state.active_request_queues.clear()
-            ipc_state.engine_dead = True
             logger.info("Response dispatcher task finished.")
