@@ -16,6 +16,7 @@ PROFILES = [
     "gemma3",
     "gemma4",
     "gemma4u",
+    "qwen2",
     "qwen3_5",
     "lfm2",
     "lfm2_moe",
@@ -39,6 +40,45 @@ def _formatter(model_type: str) -> ChatFormatter:
 
 def _message(role: str, content: str, **fields: Any) -> dict[str, Any]:
     return {"role": role, "content": content, **fields}
+
+
+def test_qwen2_uses_native_chatml_and_hermes_tool_history() -> None:
+    formatter = _formatter("qwen2")
+    assert not formatter.supports_native_thinking()
+    assert formatter.get_generation_defaults()["repetition_penalty"] == 1.05
+    assert formatter.apply_template([_message("user", "Hello")]) == (
+        "<|im_start|>system\nYou are Qwen, created by Alibaba Cloud. "
+        "You are a helpful assistant.<|im_end|>\n"
+        "<|im_start|>user\nHello<|im_end|>\n<|im_start|>assistant\n"
+    )
+    history = [
+        _message("system", "Be precise."),
+        _message("user", "Find it."),
+        _message(
+            "agent",
+            "",
+            tool_calls=[
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "lookup",
+                        "arguments": '{"q":"São Paulo","limit":2}',
+                    },
+                }
+            ],
+        ),
+        _message("tool", "first"),
+        _message("tool", "second"),
+    ]
+    assert formatter.apply_template(history) == (
+        "<|im_start|>system\nBe precise.<|im_end|>\n"
+        "<|im_start|>user\nFind it.<|im_end|>\n"
+        '<|im_start|>assistant\n<tool_call>\n{"name": "lookup", "arguments": '
+        '{"q": "São Paulo", "limit": 2}}\n</tool_call><|im_end|>\n'
+        "<|im_start|>user\n<tool_response>\nfirst\n</tool_response>"
+        "\n<tool_response>\nsecond\n</tool_response><|im_end|>\n"
+        "<|im_start|>assistant\n"
+    )
 
 
 @pytest.mark.parametrize("role", ROLES)
