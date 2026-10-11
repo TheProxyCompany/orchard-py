@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
 
+from orchard.app.ipc_dispatch import EngineDisconnectedError
 from orchard.clients.replay import splice_replays, take_replays
 from orchard.defaults import MAX_GENERATED_TOKENS
 from orchard.ipc.serialization import _build_request_payload
@@ -325,7 +326,7 @@ async def handle_completion_request(
     except HTTPException:
         await exit_stack.aclose()
         raise
-    except InferenceError as exc:
+    except (InferenceError, EngineDisconnectedError) as exc:
         await exit_stack.aclose()
         logger.error(
             "Inference error during chat request %d: %s",
@@ -395,6 +396,8 @@ async def gather_non_streaming_batch_response(
     while remaining_sequences > 0:
         try:
             delta = await ipc_state.next_delta(queue)
+        except EngineDisconnectedError as exc:
+            raise InferenceError(str(exc)) from exc
         except TimeoutError as exc:
             logger.error(
                 "Timeout waiting for delta for non-streaming request %d", request_id
@@ -951,11 +954,29 @@ async def stream_response_generator(
     remaining_sequences = expected_sequences
     chat_completion_id = generate_chat_completion_id()
     created_at = get_current_timestamp()
+    error_reported = False
     logger.info("Starting SSE stream for request %d", request_id)
 
     while True:
         try:
             delta_dict = await ipc_state.next_delta(queue)
+        except EngineDisconnectedError as exc:
+            logger.error("Engine disconnected during streaming request %d", request_id)
+            if not error_reported:
+                error_chunk = ChatCompletionChunk(
+                    id=chat_completion_id,
+                    created=created_at,
+                    model=model_name,
+                    choices=[
+                        ChatCompletionChunkChoice(
+                            index=0,
+                            delta=ChatMessage(role="assistant", content=str(exc)),
+                            finish_reason="error",
+                        )
+                    ],
+                )
+                yield {"data": error_chunk.model_dump_json(exclude_none=True)}
+            break
         except TimeoutError:
             logger.error(
                 "Timeout waiting for delta for streaming request %d", request_id
@@ -1080,6 +1101,7 @@ async def stream_response_generator(
                         choices=[final_chunk_choice],
                     )
                     yield {"data": final_chunk.model_dump_json(exclude_none=True)}
+                    error_reported = error_reported or finish_reason == "error"
                     if remaining_sequences <= 0:
                         break
             finally:

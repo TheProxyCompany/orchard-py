@@ -11,6 +11,7 @@ from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
 
+from orchard.app.ipc_dispatch import EngineDisconnectedError
 from orchard.clients.responses import (
     _emit_stream_fallback_item_done,
     _parse_tool_call_completion_value,
@@ -407,7 +408,7 @@ async def handle_response_request(
     except HTTPException:
         await exit_stack.aclose()
         raise
-    except InferenceError as exc:
+    except (InferenceError, EngineDisconnectedError) as exc:
         await exit_stack.aclose()
         logger.error(
             "Inference error during response request %d: %s",
@@ -453,6 +454,8 @@ async def gather_non_streaming_response(
     while True:
         try:
             delta = await ipc_state.next_delta(queue)
+        except EngineDisconnectedError as exc:
+            raise InferenceError(str(exc)) from exc
         except builtins.TimeoutError as exc:
             logger.error(
                 "Timeout waiting for response delta for request %d", request_id
@@ -677,6 +680,10 @@ async def stream_response_generator(
     while True:
         try:
             delta = await ipc_state.next_delta(queue)
+        except EngineDisconnectedError as exc:
+            error_occurred = True
+            error_detail = str(exc)
+            break
         except TimeoutError:
             logger.error(
                 "Timeout waiting for delta for streaming request %d", request_id

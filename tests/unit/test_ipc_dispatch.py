@@ -10,7 +10,11 @@ import pynng
 import pytest
 
 from orchard import defaults
-from orchard.app.ipc_dispatch import EVENT_TOPIC_PREFIX, IPCState
+from orchard.app.ipc_dispatch import (
+    EVENT_TOPIC_PREFIX,
+    EngineDisconnectedError,
+    IPCState,
+)
 from orchard.engine.global_context import GlobalContext
 from orchard.engine.inference_engine import InferenceEngine
 from orchard.ipc.serialization import _build_request_payload
@@ -118,7 +122,7 @@ async def test_delta_reader_distinguishes_disconnect_from_live_silence(monkeypat
     state = IPCState(GlobalContext())
     queue = asyncio.Queue()
     state._disconnect()
-    with pytest.raises(RuntimeError, match="Engine process disconnected"):
+    with pytest.raises(EngineDisconnectedError, match="Engine process disconnected"):
         await state.next_delta(queue)
 
     # A terminal callback may arrive after the death latch. Its real request

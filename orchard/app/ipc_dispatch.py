@@ -26,6 +26,10 @@ ENGINE_LIVENESS_POLL_INTERVAL_S = 5.0
 RESPONSE_RECV_TIMEOUT_MS = 1000
 
 
+class EngineDisconnectedError(RuntimeError):
+    """The engine is no longer available for IPC operations."""
+
+
 class IPCDispatcher:
     """
     Simple prefix-based dispatcher for IPC(Inter-Process Communication) messages.
@@ -124,7 +128,7 @@ class IPCState:
                     "IPC shutdown in progress; cannot start new socket operations."
                 )
             if self.engine_dead:
-                raise RuntimeError("Engine process disconnected.")
+                raise EngineDisconnectedError("Engine process disconnected.")
             self._inflight_ops += 1
             self._inflight_drained.clear()
         try:
@@ -155,7 +159,9 @@ class IPCState:
             except asyncio.CancelledError:
                 caller = asyncio.current_task()
                 if self.engine_dead and caller is not None and not caller.cancelling():
-                    raise RuntimeError("Engine process disconnected.") from None
+                    raise EngineDisconnectedError(
+                        "Engine process disconnected."
+                    ) from None
                 raise
             finally:
                 with self._inflight_lock:
@@ -179,7 +185,9 @@ class IPCState:
         if socket is None:
             raise RuntimeError("Request socket is not initialized.")
         if self.engine_dead:
-            raise RuntimeError("Engine process is dead; cannot submit new requests.")
+            raise EngineDisconnectedError(
+                "Engine process is dead; cannot submit new requests."
+            )
         await self._run_socket_op(lambda: socket.asend(request_bytes))
 
     async def get_next_request_id(self) -> int:
@@ -213,7 +221,7 @@ class IPCState:
         hard_deadline = start + defaults.DELTA_HARD_TIMEOUT_S
         while True:
             if self.engine_dead and queue.empty():
-                raise RuntimeError("Engine process disconnected.")
+                raise EngineDisconnectedError("Engine process disconnected.")
             now = time.monotonic()
             newest_progress = max(start, self.last_progress_monotonic)
             deadline = min(newest_progress + defaults.DELTA_TIMEOUT_S, hard_deadline)
@@ -236,7 +244,7 @@ class IPCState:
         if socket is None:
             raise RuntimeError("Management socket is not initialized.")
         if self.engine_dead:
-            raise RuntimeError(
+            raise EngineDisconnectedError(
                 "Engine process is dead; cannot send management commands."
             )
 
