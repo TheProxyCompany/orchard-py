@@ -7,6 +7,7 @@ import threading
 from types import SimpleNamespace
 
 import pynng
+import pynng._aio
 import pytest
 
 from orchard import defaults
@@ -98,6 +99,63 @@ async def test_cancel_request_keeps_its_channel_when_request_ids_collide():
                         state.request_socket.close()
                     if state.management_socket is not None:
                         state.management_socket.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("exit_mode", ["disconnect", "cancel"])
+async def test_management_send_completion_preserves_cancellation(
+    monkeypatch, exit_mode
+):
+    state = IPCState(GlobalContext())
+    original = pynng._aio.AIOHelper._aio_helper_map["asyncio"]
+    injected = False
+    request = None
+
+    def completion_helper(aio):
+        nonlocal injected
+        awaitable, completed = original(aio)
+        if injected:
+            return awaitable, completed
+        injected = True
+        loop = asyncio.get_running_loop()
+
+        def completed_send():
+            # The real NNG send has succeeded, but its Python waiter has not
+            # resumed. Deliver cancellation at this completion boundary.
+            callback = (
+                state._disconnect if exit_mode == "disconnect" else request.cancel
+            )
+            loop.call_soon_threadsafe(callback)
+            completed()
+
+        return awaitable, completed_send
+
+    with tempfile.TemporaryDirectory(prefix="pycancel-", dir="/tmp") as directory:
+        url = f"ipc://{directory}/management"
+        with pynng.Rep0(listen=url), pynng.Req0(dial=url) as socket:
+            state.management_socket = socket
+            monkeypatch.setitem(
+                pynng._aio.AIOHelper._aio_helper_map, "asyncio", completion_helper
+            )
+            request = asyncio.create_task(
+                state.send_management_command({"type": "cancel_request"}, timeout=None)
+            )
+            try:
+                _, pending = await asyncio.wait([request], timeout=1)
+                assert injected
+                assert not pending, "Cancelled send started a management receive"
+                expected = (
+                    EngineDisconnectedError
+                    if exit_mode == "disconnect"
+                    else asyncio.CancelledError
+                )
+                with pytest.raises(expected):
+                    request.result()
+                assert state.wait_for_inflight_drain(0)
+            finally:
+                if not request.done():
+                    request.cancel()
+                await asyncio.gather(request, return_exceptions=True)
 
 
 def test_engine_process_is_alive_reads_pid_file(tmp_path):

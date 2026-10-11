@@ -253,6 +253,11 @@ class IPCState:
         async def exchange() -> bytes:
             async with self.management_lock:
                 await socket.asend(payload)
+                # pynng can consume cancellation when the send finishes first.
+                # Do not start another operation after that cancellation.
+                task = asyncio.current_task()
+                if task is not None and task.cancelling():
+                    raise asyncio.CancelledError
                 if timeout is None:
                     return await socket.arecv()
                 return await asyncio.wait_for(socket.arecv(), timeout)
