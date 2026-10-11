@@ -54,7 +54,7 @@ jobs:
         with:
           repository: TheProxyCompany/proxy-inference-engine
           # Root #38's reviewed engine; testing main would certify another package.
-          ref: 79785cfe2da299fe427c1cbdccb8a1d832b45855
+          ref: 3d45477e6473809ce65da254b73f668d5bff8cad
           token: ${{ secrets.GH_PAT }}
           path: .ci/proxy-inference-engine
           submodules: recursive
@@ -62,7 +62,7 @@ jobs:
       - name: Verify reviewed PIE revision
         working-directory: .ci/proxy-inference-engine
         run: |
-          pie_expected=79785cfe2da299fe427c1cbdccb8a1d832b45855
+          pie_expected=3d45477e6473809ce65da254b73f668d5bff8cad
           pie_actual="$(git rev-parse HEAD)"
           echo "PIE revision: $pie_actual"
           test "$pie_actual" = "$pie_expected"
