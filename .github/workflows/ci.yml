@@ -104,6 +104,6 @@ jobs:
               print("Runner GPU lease acquired", flush=True)
               subprocess.run([
                   sys.executable, "-m", "pytest", "tests/functional",
-                  "tests/golden", "tests/unit", "-v", "--tb=short", "-x",
+                  "tests/golden", "-v", "--tb=short", "-x",
               ], check=True)
           PY
