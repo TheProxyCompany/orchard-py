@@ -28,8 +28,6 @@ _EPOCH_EVENTS = frozenset(
     {
         "audio",
         "text_delta",
-        "speech_queued",
-        "speech_done",
         "interrupted",
         "reset",
         "reference_queued",
@@ -424,8 +422,8 @@ class _NativeAudioSession:
 class DuplexSession(_NativeAudioSession):
     """Native autonomous MoshiRAG speech with factual references and barge-in epochs.
 
-    Default options advance only on supplied PCM. ``speak`` conditions the
-    reference channel in this mode; the model chooses its own spoken wording.
+    Default options advance only on supplied PCM. ``reference`` supplies facts;
+    ``grounded_reply`` also requests a response in the model's own words.
     """
 
     @property
@@ -491,12 +489,6 @@ class DuplexSession(_NativeAudioSession):
         return await self._response_control(
             {"type": "grounded_reply", "text": text, "expected_epoch": expected_epoch}
         )
-
-    async def speak(self, text: str, *, replace: bool = False) -> int:
-        receipt = await self._request(
-            {"type": "speak", "text": text, "replace": replace}
-        )
-        return int(receipt["epoch"])
 
     async def reference(self, text: str, *, expected_epoch: int) -> int:
         """Condition MoshiRAG on current facts; reject stale results after barge-in.
