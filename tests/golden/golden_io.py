@@ -24,6 +24,9 @@ pinning the random value. Timestamps are dropped. Everything behavioral
 
 import json
 import os
+import re
+import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -40,6 +43,50 @@ TIMESTAMP_KEYS = frozenset({"created_at", "completed_at"})  # wall clock -> drop
 # (flush_pending / discard_pending, driven by the golden conftest). A failing
 # test never persists a buggy golden.
 _pending: dict[Path, dict[str, list[dict]]] = {}
+
+
+def _capture_drift(
+    template_type: str,
+    scenario: str,
+    turn: str,
+    variants: list[list[dict]],
+    live: list[dict],
+) -> None:
+    """Save failure evidence without recording or accepting a new baseline.
+
+    Opt in with ORCHARD_GOLDEN_DIFF_DIR. Each mismatch gets a unique directory;
+    repeated or concurrent cases cannot overwrite another failure's evidence.
+    An unavailable diagnostic destination must not hide the golden assertion.
+    """
+    destination = os.environ.get("ORCHARD_GOLDEN_DIFF_DIR")
+    if not destination:
+        return
+    try:
+        root = Path(destination)
+        root.mkdir(parents=True, exist_ok=True)
+        label = re.sub(r"[^A-Za-z0-9_-]", "_", f"{template_type}_{scenario}_{turn}")
+        directory = Path(tempfile.mkdtemp(prefix=label[:96] + "-", dir=root))
+        files = {
+            "expected.json": variants[0],
+            "expected-variants.json": variants,
+            "actual.json": live,
+            "case.json": {
+                "template_type": template_type,
+                "scenario": scenario,
+                "turn": turn,
+                "variant_count": len(variants),
+                "github_sha": os.environ.get("GITHUB_SHA"),
+                "github_run_id": os.environ.get("GITHUB_RUN_ID"),
+                "github_run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
+            },
+        }
+        for name, value in files.items():
+            (directory / name).write_text(
+                json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+            )
+        print(f"[golden] drift evidence: {directory}", flush=True)
+    except OSError as exc:
+        print(f"[golden] could not save drift evidence: {exc}", file=sys.stderr)
 
 
 def normalize(events: list[BaseModel]) -> list[dict]:
@@ -125,6 +172,7 @@ def assert_or_record(
         )
         return
 
+    _capture_drift(template_type, scenario, turn, variants, live)
     recorded = variants[0]
     if len(recorded) != len(live):
         detail = f"event count: golden={len(recorded)} live={len(live)}"
