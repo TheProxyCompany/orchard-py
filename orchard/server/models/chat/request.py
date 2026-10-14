@@ -20,8 +20,8 @@ from orchard.server.models.chat.tools import (
     ChatCompletionTool,
     ChatCompletionToolChoice,
 )
-from orchard.server.models.tools import ToolCall, ToolUseMode
 from orchard.server.models.reasoning import normalize_reasoning_value
+from orchard.server.models.tools import ToolCall, ToolUseMode
 
 ReasoningInput = bool | str | dict[str, Any] | None
 
@@ -31,9 +31,25 @@ class ChatMessage(BaseModel):
 
     role: str | None = Field(default="", description="The role of the messages author.")
     content: str | None = Field(description="The contents of the message.")
+    tool_call_id: str | None = Field(
+        default=None, description="The tool call answered by a tool message."
+    )
+    name: str | None = Field(default=None, description="Optional author or tool name.")
     tool_calls: list[ToolCall] = Field(
         default_factory=list,
         description="The tool calls that were made in the message.",
+    )
+    reasoning_content: str | None = Field(
+        default=None,
+        description="The think-block text of an assistant message.",
+    )
+    generation: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "What the model generated for an assistant message: "
+            "{'model': canonical model id, 'tokens': token ids, 'thinking': bool}. "
+            "Send it back unchanged on later turns."
+        ),
     )
 
     @model_serializer
@@ -43,10 +59,18 @@ class ChatMessage(BaseModel):
             result["role"] = self.role
         if self.content is not None:
             result["content"] = self.content
+        if self.tool_call_id is not None:
+            result["tool_call_id"] = self.tool_call_id
+        if self.name is not None:
+            result["name"] = self.name
         if self.tool_calls:
             result["tool_calls"] = [
                 tool_call.model_dump() for tool_call in self.tool_calls
             ]
+        if self.reasoning_content is not None:
+            result["reasoning_content"] = self.reasoning_content
+        if self.generation is not None:
+            result["generation"] = self.generation
 
         return result
 
@@ -115,13 +139,14 @@ class ChatCompletionRequest(BaseModel):
         ChatCompletionTextResponseFormat
         | ChatCompletionJSONSchemaResponseFormat
         | ChatCompletionJsonObjectResponseFormat
+        | list[
+            ChatCompletionTextResponseFormat
+            | ChatCompletionJSONSchemaResponseFormat
+            | ChatCompletionJsonObjectResponseFormat
+            | None
+        ]
         | None
-    ) | list[
-        ChatCompletionTextResponseFormat
-        | ChatCompletionJSONSchemaResponseFormat
-        | ChatCompletionJsonObjectResponseFormat
-        | None
-    ] = Field(
+    ) = Field(
         default=None,
         description="The format of the response.",
     )
@@ -209,15 +234,12 @@ class ChatCompletionRequest(BaseModel):
             name: str,
             raw: Any,
             *,
-            minimum: float | int | None,
-            maximum: float | int | None,
+            minimum: float | None,
+            maximum: float | None,
             integer: bool = False,
-            optional: bool = True,
         ) -> None:
             if raw is None:
-                if optional:
-                    return
-                raise ValueError(f"'{name}' is required")
+                return
 
             def _check_once(v: Any) -> None:
                 if integer:
@@ -230,23 +252,19 @@ class ChatCompletionRequest(BaseModel):
                     raise ValueError(f"'{name}' out of range: {val} > {maximum}")
 
             if isinstance(raw, list):
-                for idx, item in enumerate(raw):
-                    if item is None:
-                        if optional:
-                            continue
-                        raise ValueError(f"'{name}[{idx}]' is required")
-                    _check_once(item)
+                for item in raw:
+                    if item is not None:
+                        _check_once(item)
             else:
                 _check_once(raw)
 
         # Validate ranges for vectorized params
         validate_numeric(
             "temperature",
-            data.get("temperature"),
+            data.get("temperature", cls.model_fields["temperature"].default),
             minimum=0.0,
             maximum=2.0,
             integer=False,
-            optional=False,
         )
         validate_numeric(
             "top_p",
@@ -254,7 +272,6 @@ class ChatCompletionRequest(BaseModel):
             minimum=0.0,
             maximum=1.0,
             integer=False,
-            optional=True,
         )
         validate_numeric(
             "min_p",
@@ -262,7 +279,6 @@ class ChatCompletionRequest(BaseModel):
             minimum=0.0,
             maximum=1.0,
             integer=False,
-            optional=True,
         )
         validate_numeric(
             "top_k",
@@ -270,7 +286,6 @@ class ChatCompletionRequest(BaseModel):
             minimum=1,
             maximum=100,
             integer=True,
-            optional=True,
         )
         validate_numeric(
             "top_logprobs",
@@ -278,7 +293,6 @@ class ChatCompletionRequest(BaseModel):
             minimum=0,
             maximum=20,
             integer=True,
-            optional=True,
         )
         validate_numeric(
             "best_of",
@@ -286,8 +300,10 @@ class ChatCompletionRequest(BaseModel):
             minimum=1,
             maximum=None,
             integer=True,
-            optional=True,
         )
+        # `max_tokens` is the older OpenAI name for the same cap.
+        if data.get("max_completion_tokens") is None and "max_tokens" in data:
+            data["max_completion_tokens"] = data["max_tokens"]
         # Validate singleton numeric even if not vectorized
         if "max_completion_tokens" in data:
             validate_numeric(
@@ -296,7 +312,6 @@ class ChatCompletionRequest(BaseModel):
                 minimum=1,
                 maximum=None,
                 integer=True,
-                optional=True,
             )
 
         return data
@@ -308,9 +323,8 @@ class ChatCompletionRequest(BaseModel):
             return data
         reasoning = data.get("reasoning")
         reasoning_effort = data.get("reasoning_effort")
-        if reasoning in (None, [], {}):
-            if reasoning_effort not in (None, [], {}):
-                data["reasoning"] = reasoning_effort
+        if reasoning in (None, [], {}) and reasoning_effort not in (None, [], {}):
+            data["reasoning"] = reasoning_effort
         return data
 
     @field_validator("messages", mode="after")
@@ -429,30 +443,6 @@ class ChatCompletionRequest(BaseModel):
             return normalized
         raise ValueError("Invalid tools specification")
 
-    @staticmethod
-    def _normalize_response_format(
-        value: Any,
-        batch_size: int,
-    ) -> list[
-        ChatCompletionTextResponseFormat
-        | ChatCompletionJSONSchemaResponseFormat
-        | ChatCompletionJsonObjectResponseFormat
-        | None
-    ]:
-        if value is None:
-            return [None] * batch_size
-        if isinstance(value, list):
-            if not value:
-                return [None] * batch_size
-            if len(value) == batch_size:
-                return list(value)
-            if len(value) == 1:
-                return [value[0]] * batch_size
-            raise ValueError(
-                f"Length of 'response_format' ({len(value)}) does not match batch size {batch_size}."
-            )
-        return [value] * batch_size
-
     @model_validator(mode="after")
     def _broadcast_parameters(self) -> ChatCompletionRequest:
         batch_size = len(self.messages)
@@ -460,45 +450,35 @@ class ChatCompletionRequest(BaseModel):
 
         normalized_fields: dict[str, list[Any]] = {}
 
-        normalized_fields["max_completion_tokens"] = self._broadcast_list(
-            self.max_completion_tokens, batch_size, "max_completion_tokens"
-        )
-        normalized_fields["temperature"] = self._broadcast_list(
-            self.temperature, batch_size, "temperature"
-        )
-        normalized_fields["top_p"] = self._broadcast_list(
-            self.top_p, batch_size, "top_p"
-        )
-        normalized_fields["top_k"] = self._broadcast_list(
-            self.top_k, batch_size, "top_k"
-        )
-        normalized_fields["min_p"] = self._broadcast_list(
-            self.min_p, batch_size, "min_p"
-        )
-        normalized_fields["deterministic"] = self._broadcast_list(
-            self.deterministic, batch_size, "deterministic"
-        )
-        normalized_fields["logprobs"] = self._broadcast_list(
-            self.logprobs, batch_size, "logprobs"
-        )
-        normalized_fields["top_logprobs"] = self._broadcast_list(
-            self.top_logprobs, batch_size, "top_logprobs"
+        def broadcast(*names: str) -> None:
+            for name in names:
+                normalized_fields[name] = self._broadcast_list(
+                    getattr(self, name), batch_size, name
+                )
+
+        broadcast(
+            "max_completion_tokens",
+            "temperature",
+            "top_p",
+            "top_k",
+            "min_p",
+            "deterministic",
+            "logprobs",
+            "top_logprobs",
         )
         normalized_fields["tools"] = self._normalize_tools(self.tools, batch_size)
-        normalized_fields["response_format"] = self._normalize_response_format(
-            self.response_format, batch_size
+        # An empty response_format list means "none", like None.
+        normalized_fields["response_format"] = self._broadcast_list(
+            self.response_format or None, batch_size, "response_format"
         )
         normalized_fields["stop"] = self._normalize_stop_sequences(
             self.stop, batch_size
         )
-        normalized_fields["task"] = self._broadcast_list(self.task, batch_size, "task")
-        reasoning_inputs = self._broadcast_list(self.reasoning, batch_size, "reasoning")
-        normalized_fields["reasoning"] = reasoning_inputs
+        broadcast("task", "reasoning", "n")
         normalized_fields["reasoning_effort"] = [
             normalize_reasoning_value(value, field_name="reasoning")
-            for value in reasoning_inputs
+            for value in normalized_fields["reasoning"]
         ]
-        normalized_fields["n"] = self._broadcast_list(self.n, batch_size, "n")
 
         raw_best_of = self._broadcast_list(self.best_of, batch_size, "best_of")
         best_of_values: list[int] = []

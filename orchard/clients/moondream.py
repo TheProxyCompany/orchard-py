@@ -62,6 +62,36 @@ class MoondreamClient(Client):
             )
         return float(struct.unpack("<f", raw_bytes)[0])
 
+    def _task_stream(
+        self, content: list[dict[str, Any]], task_name: str, kwargs: dict[str, Any]
+    ) -> Iterator[Any]:
+        """Run one user turn for a Moondream task and return the delta stream."""
+        kwargs["task_name"] = task_name
+        kwargs["stream"] = True
+        response = self.chat(
+            self.model_id, [{"role": "user", "content": content}], **kwargs
+        )
+        if not isinstance(response, Iterator):
+            raise RuntimeError("Expected streaming iterator from chat call.")
+        return response
+
+    def _collect_coords(self, response: Iterator[Any]) -> list[float]:
+        coords: list[float] = []
+        for delta in response:
+            if not isinstance(delta, ClientDelta):
+                continue
+            if (
+                delta.modal_decoder_id
+                and delta.modal_decoder_id.endswith(".coord")
+                and delta.modal_bytes_b64
+            ):
+                try:
+                    coord_value = self._decode_coordinate(delta.modal_bytes_b64)
+                    coords.append(coord_value)
+                except ValueError as exc:
+                    logger.warning("Failed to decode coordinate: %s", exc)
+        return coords
+
     def query(
         self,
         prompt: str,
@@ -114,7 +144,11 @@ class MoondreamClient(Client):
 
         messages = [{"role": "user", "content": content}]
 
-        if spatial_refs and "reasoning" not in kwargs and "reasoning_effort" not in kwargs:
+        if (
+            spatial_refs
+            and "reasoning" not in kwargs
+            and "reasoning_effort" not in kwargs
+        ):
             kwargs["reasoning"] = True
 
         # enforce streaming to process output delta by delta
@@ -244,19 +278,12 @@ class MoondreamClient(Client):
             {"caption": str} or {"caption": generator} if streaming.
         """
         data_url = self._image_to_data_url(image)
-        messages = [
-            {
-                "role": "user",
-                "content": [{"type": "input_image", "image_url": data_url}],
-            }
-        ]
-
-        kwargs["task_name"] = f"caption_{length}"
-        kwargs["stream"] = True  # Always stream internally
-
-        response = self.chat(self.model_id, messages, **kwargs)
-        if not isinstance(response, Iterator):
-            raise RuntimeError("Expected streaming iterator from chat call.")
+        # Always stream internally
+        response = self._task_stream(
+            [{"type": "input_image", "image_url": data_url}],
+            f"caption_{length}",
+            kwargs,
+        )
 
         def generator() -> Iterator[str]:
             for delta in response:
@@ -285,37 +312,15 @@ class MoondreamClient(Client):
             {"points": [{"x": float, "y": float}, ...]}
         """
         data_url = self._image_to_data_url(image)
-        messages = [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "input_image", "image_url": data_url},
-                    {"type": "input_text", "text": object},
-                ],
-            }
-        ]
-
-        kwargs["task_name"] = "point"
-        kwargs["stream"] = True
-
-        response = self.chat(self.model_id, messages, **kwargs)
-        if not isinstance(response, Iterator):
-            raise RuntimeError("Expected streaming iterator from chat call.")
-
-        coords: list[float] = []
-        for delta in response:
-            if not isinstance(delta, ClientDelta):
-                continue
-            if (
-                delta.modal_decoder_id
-                and delta.modal_decoder_id.endswith(".coord")
-                and delta.modal_bytes_b64
-            ):
-                try:
-                    coord_value = self._decode_coordinate(delta.modal_bytes_b64)
-                    coords.append(coord_value)
-                except ValueError as exc:
-                    logger.warning("Failed to decode coordinate: %s", exc)
+        response = self._task_stream(
+            [
+                {"type": "input_image", "image_url": data_url},
+                {"type": "input_text", "text": object},
+            ],
+            "point",
+            kwargs,
+        )
+        coords = self._collect_coords(response)
 
         # Pair up x,y coordinates
         points = [
@@ -351,22 +356,14 @@ class MoondreamClient(Client):
             {"objects": [{"x_min", "y_min", "x_max", "y_max"}, ...]}
         """
         data_url = self._image_to_data_url(image)
-        messages = [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "input_image", "image_url": data_url},
-                    {"type": "input_text", "text": object},
-                ],
-            }
-        ]
-
-        kwargs["task_name"] = "detect"
-        kwargs["stream"] = True
-
-        response = self.chat(self.model_id, messages, **kwargs)
-        if not isinstance(response, Iterator):
-            raise RuntimeError("Expected streaming iterator from chat call.")
+        response = self._task_stream(
+            [
+                {"type": "input_image", "image_url": data_url},
+                {"type": "input_text", "text": object},
+            ],
+            "detect",
+            kwargs,
+        )
 
         coords: list[float] = []
         sizes: list[tuple[float, float]] = []
@@ -431,29 +428,8 @@ class MoondreamClient(Client):
             {"type": "capability", "name": "coord", "data": [eye[0], eye[1]]},
         ]
 
-        messages = [{"role": "user", "content": content}]
-
-        kwargs["task_name"] = "detect_gaze"
-        kwargs["stream"] = True
-
-        response = self.chat(self.model_id, messages, **kwargs)
-        if not isinstance(response, Iterator):
-            raise RuntimeError("Expected streaming iterator from chat call.")
-
-        coords: list[float] = []
-        for delta in response:
-            if not isinstance(delta, ClientDelta):
-                continue
-            if (
-                delta.modal_decoder_id
-                and delta.modal_decoder_id.endswith(".coord")
-                and delta.modal_bytes_b64
-            ):
-                try:
-                    coord_value = self._decode_coordinate(delta.modal_bytes_b64)
-                    coords.append(coord_value)
-                except ValueError as exc:
-                    logger.warning("Failed to decode coordinate: %s", exc)
+        response = self._task_stream(content, "detect_gaze", kwargs)
+        coords = self._collect_coords(response)
 
         if len(coords) >= 2:
             return {"gaze": {"x": coords[0], "y": coords[1]}}

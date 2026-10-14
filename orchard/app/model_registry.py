@@ -1,5 +1,4 @@
 import asyncio
-import json
 import logging
 import os
 import time
@@ -43,6 +42,22 @@ class ModelInfo:
     formatter: ChatFormatter
     capabilities: dict[str, list[int]] | None = None
     minimum_memory_bytes: int | None = None
+
+    def takes_token_segments(self) -> bool:
+        """Whether the engine that loaded this model accepts `tokens` layout segments."""
+        return "token_segments" in (self.capabilities or {})
+
+    @property
+    def releases_held_text(self) -> bool:
+        """Whether the engine that loaded this model completes its text stream.
+
+        The state events of a reply hold back text that could still become a
+        stop sequence. An engine that advertises ``released_text`` hands that
+        text over in the final delta when a reply ends without a stop (token
+        limit, cancel), so the message ``content_delta`` spans are the whole
+        message. An engine without it never sends that text as a span.
+        """
+        return "released_text" in (self.capabilities or {})
 
 
 @dataclass(slots=True)
@@ -434,24 +449,6 @@ class ModelRegistry:
 
         return response
 
-    def list_models(self) -> list[dict[str, str]]:
-        """List all currently loaded models."""
-        catalog = []
-        for canonical_id, entry in self._entries.items():
-            if entry.resolved is None:
-                continue
-            payload = dict(entry.resolved.metadata)
-            payload["canonical_id"] = canonical_id
-            payload["model_path"] = str(entry.resolved.model_path)
-            payload["source"] = entry.resolved.source
-            payload["hf_repo"] = entry.resolved.hf_repo or ""
-            payload["state"] = entry.state.name
-            catalog.append(payload)
-        return catalog
-
-    def resolve(self, model_id: str) -> ResolvedModel:
-        return self._resolver.resolve(model_id)
-
     async def _inspect_model_source(
         self, requested_model_id: str, resolved: ResolvedModel, *, refresh: bool = False
     ) -> ResolvedModel:
@@ -470,16 +467,7 @@ class ModelRegistry:
             "requested_id": requested_model_id,
             "model_path": str(resolved.model_path),
         }
-        payload = json.dumps(command).encode("utf-8")
-        management_socket = ipc_state.management_socket
-        assert management_socket is not None
-
-        with ipc_state.socket_op():
-            async with ipc_state.management_lock:
-                await management_socket.asend(payload)
-                reply_bytes = await management_socket.arecv()
-
-        response = json.loads(reply_bytes.decode("utf-8"))
+        response = await ipc_state.send_management_command(command, timeout=None)
         if response.get("status") != "ok":
             message = response.get("message", "unknown error")
             raise ModelResolutionError(
@@ -557,34 +545,14 @@ class ModelRegistry:
             "model_path": info.model_path,
             "wait_for_completion": False,
         }
-        payload = json.dumps(command).encode("utf-8")
-
-        management_socket = ipc_state.management_socket
-        assert management_socket is not None  # for type-checkers
-
         try:
-            with ipc_state.socket_op():
-                async with ipc_state.management_lock:
-                    await management_socket.asend(payload)
-                    reply_bytes = await self._recv_with_engine_liveness(
-                        management_socket, canonical_id
-                    )
+            response = await ipc_state.send_management_command(command, timeout=None)
         except Exception as exc:
             await self._mark_activation_failed(
                 canonical_id, f"Failed to send load_model command: {exc}"
             )
             raise RuntimeError(
                 f"Failed to send load_model command for '{requested_id}': {exc}"
-            ) from exc
-
-        try:
-            response = json.loads(reply_bytes.decode("utf-8"))
-        except Exception as exc:
-            await self._mark_activation_failed(
-                canonical_id, "Engine returned malformed management response."
-            )
-            raise RuntimeError(
-                "Engine returned malformed management response."
             ) from exc
 
         status = response.get("status")
@@ -735,30 +703,6 @@ class ModelRegistry:
         if pid is None:
             return None, None
         return pid_is_alive(pid), pid
-
-    async def _recv_with_engine_liveness(self, socket, canonical_id: str) -> bytes:
-        """Receive a management reply, failing loudly if the engine dies.
-
-        A bare arecv() on the NNG socket blocks forever when the engine
-        process exits between send and reply — and it holds management_lock,
-        wedging every other model load behind it.
-        """
-        recv_task = asyncio.ensure_future(socket.arecv())
-        try:
-            while True:
-                try:
-                    return await asyncio.wait_for(asyncio.shield(recv_task), 0.25)
-                except TimeoutError:
-                    alive, pid = self._engine_pid_alive()
-                    if alive is False:
-                        pid_suffix = f" (pid={pid})" if pid else ""
-                        raise RuntimeError(
-                            f"Engine process exited while loading "
-                            f"'{canonical_id}'{pid_suffix}."
-                        ) from None
-        finally:
-            if not recv_task.done():
-                recv_task.cancel()
 
     async def _await_activation_with_engine_liveness(
         self,

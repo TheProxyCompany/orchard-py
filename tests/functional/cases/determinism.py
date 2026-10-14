@@ -2,6 +2,7 @@ import httpx
 import pytest
 
 from tests.functional.cases._timeout import HTTP_TIMEOUT_S
+from tests.functional.cases._token_budget import semantic_token_limit
 
 pytestmark = pytest.mark.asyncio
 
@@ -20,7 +21,7 @@ async def test_multi_candidate_determinism(live_server, any_model_id, batch_size
                 "content": "Provide one friendly sentence introducing yourself.",
             }
         ],
-        "max_completion_tokens": 64,
+        "max_completion_tokens": semantic_token_limit(any_model_id, 64),
         "temperature": 0.0,  # Greedy for deterministic output
         "reasoning": False,
         "deterministic": True,

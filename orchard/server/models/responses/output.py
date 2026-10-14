@@ -19,7 +19,6 @@ from orchard.server.models.tools import generate_tool_call_id
 RESPONSE_ID_PREFIX = "resp_"
 RESPONSE_OBJECT = "response"
 MESSAGE_ID_PREFIX = "msg_"
-MESSAGE_OBJECT = "message"
 OUTPUT_TEXT_OBJECT = "output_text"
 FUNCTION_CALL_ID_PREFIX = "fc_"
 
@@ -191,7 +190,7 @@ class ResponseUsage(BaseModel):
         description="The number of tokens constituting the input prompt(s)."
     )
     output_tokens: int = Field(
-        description="The total number of non-reasoning tokens generated across all completion choices."
+        description="The total number of generated tokens, including reasoning."
     )
     total_tokens: int = Field(
         description="The sum of `input_tokens` and `output_tokens`."

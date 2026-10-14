@@ -5,8 +5,12 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class UsageStats(BaseModel):
     prompt_tokens: int = 0
-    completion_tokens: int = 0
-    reasoning_tokens: int = 0
+    completion_tokens: int = Field(
+        default=0, description="All generated tokens, including reasoning."
+    )
+    reasoning_tokens: int = Field(
+        default=0, description="Reasoning tokens, a subset of completion_tokens."
+    )
     total_tokens: int = 0
 
 

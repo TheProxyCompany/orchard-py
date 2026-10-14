@@ -4,6 +4,7 @@ import httpx
 import pytest
 
 from tests.functional.cases._timeout import HTTP_TIMEOUT_S
+from tests.functional.cases._token_budget import semantic_token_limit
 
 pytestmark = pytest.mark.asyncio
 
@@ -28,7 +29,7 @@ async def test_responses_structured_json_schema(live_server, text_model_id):
         "input": "Return the capital of France and population 2148327 as JSON. Use the integer literal 2148327 without a decimal point.",
         "temperature": 0.0,
         "reasoning": False,
-        "max_output_tokens": 64,
+        "max_output_tokens": semantic_token_limit(text_model_id, 64),
         "text": {
             "format": {
                 "type": "json_schema",

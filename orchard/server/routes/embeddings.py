@@ -8,7 +8,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 
-from orchard.app.ipc_dispatch import QueueRegistration
+from orchard.app.ipc_dispatch import EngineDisconnectedError, QueueRegistration
 from orchard.ipc.serialization import _build_request_payload
 from orchard.ipc.utils import (
     ResponseDeltaDict,
@@ -168,7 +168,7 @@ async def create_embeddings(
 
         logger.info("Embedding request %d completed successfully.", current_request_id)
         return final_response
-    except InferenceError as exc:
+    except (InferenceError, EngineDisconnectedError) as exc:
         logger.error(
             "Inference error processing embedding request %d: %s",
             current_request_id,
@@ -202,6 +202,8 @@ async def gather_embedding_response(
     while True:
         try:
             delta = await ipc_state.next_delta(queue)
+        except EngineDisconnectedError as exc:
+            raise InferenceError(str(exc)) from exc
         except TimeoutError as e:
             logger.error(
                 "Timeout waiting for embedding response for request %d", request_id
