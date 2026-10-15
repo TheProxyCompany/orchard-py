@@ -52,11 +52,19 @@ jobs:
           import tomli_w
           from datetime import datetime
           import os
+          import subprocess
 
           with open('pyproject.toml', 'rb') as f:
               data = tomli.load(f)
 
-          current = data['project']['version']
+          # The last release is the newest tag (the last step pushes one per
+          # publish). main only takes pull requests, so the bump is written into
+          # this checkout for the build and never committed.
+          tags = subprocess.run(
+              ['git', 'tag', '--list', 'v20*', '--sort=-v:refname'],
+              capture_output=True, text=True, check=True,
+          ).stdout.split()
+          current = tags[0].removeprefix('v')
           parts = current.split('.')
           year, month, patch = int(parts[0]), int(parts[1]), int(parts[2])
 
@@ -115,10 +123,7 @@ jobs:
           source .venv/bin/activate
           twine upload dist/*
 
-      - name: Commit version bump
+      - name: Tag the release
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add pyproject.toml
-          git commit -m "v${{ steps.version.outputs.version }}"
-          git push
+          git tag "v${{ steps.version.outputs.version }}"
+          git push origin "v${{ steps.version.outputs.version }}"
