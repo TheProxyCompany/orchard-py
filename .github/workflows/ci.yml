@@ -12,12 +12,23 @@ concurrency:
 
 jobs:
   full-suite:
-    runs-on: [self-hosted, ci-cd]
+    runs-on: [self-hosted, terminal-1]
     timeout-minutes: 60
     env:
       PATH: /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+      PIE_REVISION: 59fd4a6447bc3d7741aecb40f1d2934b78dd2391
 
     steps:
+      - name: Require 512 GiB for the full matrix
+        run: |
+          set -euo pipefail
+          memory_bytes="$(sysctl -n hw.memsize)"
+          if [[ ! "$memory_bytes" =~ ^[0-9]+$ ]] || (( memory_bytes < 512 * 1024 * 1024 * 1024 )); then
+            echo "::error::Full Orchard matrix requires at least 512 GiB RAM; found $memory_bytes bytes"
+            exit 1
+          fi
+          echo "Physical RAM: $memory_bytes bytes"
+
       - name: Checkout orchard-py
         uses: actions/checkout@v6
         with:
@@ -32,11 +43,21 @@ jobs:
           brew list ccache || brew install ccache
           brew list rust || brew install rust
 
-      - name: Clone and build PIE
+      - name: Checkout PIE
+        uses: actions/checkout@v6
+        with:
+          repository: TheProxyCompany/proxy-inference-engine
+          path: .ci/proxy-inference-engine
+          ref: ${{ env.PIE_REVISION }}
+          token: ${{ secrets.GH_PAT }}
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Build PIE
+        working-directory: .ci/proxy-inference-engine
         run: |
-          rm -rf ../proxy-inference-engine
-          git clone --depth 1 --recurse-submodules "https://${{ secrets.GH_PAT }}@github.com/TheProxyCompany/proxy-inference-engine.git" ../proxy-inference-engine
-          cd ../proxy-inference-engine
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$PIE_REVISION"
           ./scripts/build.sh -t Release
 
       - name: Set up orchard-py
@@ -54,5 +75,23 @@ jobs:
 
       - name: Run full Orchard PY suite
         run: |
+          set -euo pipefail
           source .venv/bin/activate
-          PIE_LOCAL_BUILD="$PWD/../proxy-inference-engine/release" python -m pytest tests/functional tests/golden tests/unit -v --tb=short -x
+          # Let conftest create a fresh namespace before any Orchard import.
+          env -u ORCHARD_CACHE_ROOT -u ORCHARD_IPC_ROOT \
+            -u PROXY_GPU_LEASE -u PROXY_GPU_LEASE_HELD \
+            PIE_LOCAL_BUILD="$PWD/.ci/proxy-inference-engine/release" \
+            ORCHARD_TEST_LOG_DIR="$PWD/logs_test" \
+            bash scripts/gpu_lease.sh python -m pytest tests/functional tests/golden tests/unit -v --tb=short -x \
+            2>&1 | tee "$RUNNER_TEMP/orchard-py-pytest.log"
+
+      - name: Upload Orchard failure logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orchard-py-logs-${{ github.run_id }}-${{ github.run_attempt }}
+          # engine.test.log captures the native engine's stdout and stderr.
+          path: |
+            logs_test/
+            ${{ runner.temp }}/orchard-py-pytest.log
+          retention-days: 7
