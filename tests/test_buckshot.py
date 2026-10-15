@@ -9,10 +9,15 @@ Opt-in (it duplicates the per-model matrices): python -m pytest -m buckshot -q -
 """
 
 import asyncio
+import shutil
+import subprocess
 import time
 
 import pytest
 
+from orchard.engine.io import get_engine_file_paths
+from orchard.engine.multiprocess import pid_is_alive, read_pid_file
+from tests.conftest import LOG_DIR
 from tests.functional.cases.registry import cases_for_model as functional_cases
 from tests.functional.cases.registry import run_cases as run_functional
 from tests.golden import golden_io
@@ -26,6 +31,30 @@ pytestmark = [
 ]
 
 SUITE_TIMEOUT_S = 480
+
+
+def _snapshot_hung_engine() -> str:
+    """Record where the engine's threads are while a suite is still hung.
+
+    A suite that times out while the rest of the volley completes is a wedged
+    scheduler inside a live engine (a lock cycle, a lost GPU completion). The
+    engine log does not show that; a stack sample does, and it has to be taken
+    here, before teardown stops the engine.
+    """
+    pid = read_pid_file(get_engine_file_paths(None, None).pid_file)
+    if pid is None or not pid_is_alive(pid):
+        return f"engine pid {pid} is not alive"
+    sampler = shutil.which("sample")
+    if sampler is None:
+        return f"engine pid {pid} is alive (no `sample` tool to capture its stacks)"
+    out = LOG_DIR / "engine_hang.sample.txt"
+    subprocess.run(
+        [sampler, str(pid), "2", "-mayDie", "-file", str(out)],
+        capture_output=True,
+        timeout=120,
+        check=False,
+    )
+    return f"engine pid {pid} is alive; thread stacks in {out}"
 
 
 async def test_buckshot_full_matrix(live_server, client, engine):
@@ -90,7 +119,10 @@ async def test_buckshot_full_matrix(live_server, client, engine):
                 print(f"      | {line[:400]}")
 
     hung = [(s, n, round(t)) for s, n, t, _, timed_out in results if timed_out]
-    assert not hung, f"suites timed out at {SUITE_TIMEOUT_S}s: {hung}"
+    if hung:
+        engine_state = await asyncio.to_thread(_snapshot_hung_engine)
+        print(f"BUCKSHOT hang: {engine_state}", flush=True)
+        pytest.fail(f"suites timed out at {SUITE_TIMEOUT_S}s: {hung}; {engine_state}")
 
     failed = [
         (s, n, [f.case_id for f in failures])
