@@ -67,6 +67,7 @@ class IPCState:
         # NNG sockets, initialized by InferenceEngine
         self.request_socket: pynng.Push0 | None = None
         self.response_socket: pynng.Sub0 | None = None
+        self.response_pull_socket: pynng.Pull0 | None = None
         self.management_socket: pynng.Req0 | None = None
         self._management_lock = asyncio.Lock()
         self._management_lock_loop: asyncio.AbstractEventLoop | None = None
@@ -82,6 +83,19 @@ class IPCState:
         self.engine_pid_file: Path | None = None
         self.engine_dead: bool = False
         self.shutdown_requested: bool = False
+        self._warned_published_deltas: bool = False
+
+        # Whether requests may ask for the lossless response route. On that
+        # route the engine keeps a socket, a thread and a queue per client,
+        # and an engine that does not reap them leaks all three, with the
+        # undelivered deltas, for every client process that goes away, until
+        # it stops. So a request asks only when the engine advertises the
+        # capability "lossless_responses" with value 1 (it reaps a stalled
+        # route with an explicit error and reports an endpoint it cannot
+        # reach), or when this process launched the engine itself, which
+        # bounds the leak to this one client for the life of that engine.
+        self.launched_engine: bool = False
+        self.engine_advertises_lossless: bool = False
 
         # Monotonic time of the last engine message that proves generation or
         # activation progress (any response delta, model_loaded/_load_failed).
@@ -96,6 +110,18 @@ class IPCState:
         self._inflight_drained.set()
 
         self.global_context = weakref.ref(global_context)
+
+    @property
+    def lossless_responses(self) -> bool:
+        return self.launched_engine or self.engine_advertises_lossless
+
+    def note_engine_capabilities(self, capabilities: Any) -> None:
+        """Reads a load_model reply's or a model_loaded event's capabilities
+        (name to a list of integers) for "lossless_responses": 1."""
+        if not isinstance(capabilities, dict):
+            return
+        if capabilities.get("lossless_responses") == [1]:
+            self.engine_advertises_lossless = True
 
     @property
     def management_lock(self) -> asyncio.Lock:
@@ -233,8 +259,15 @@ class IPCState:
         *,
         timeout: float | None = 2.0,
     ) -> dict[str, Any]:
+        # Every client counts request ids from 1. An engine that keys its
+        # requests by response channel cancels exactly this client's; an older
+        # one ignores the field and cancels every request with that id.
         response = await self.send_management_command(
-            {"type": "cancel_request", "request_id": request_id},
+            {
+                "type": "cancel_request",
+                "request_id": request_id,
+                "response_channel_id": self.response_channel_id,
+            },
             timeout=timeout,
         )
         status = str(response.get("status") or "").lower()
@@ -306,6 +339,20 @@ class IPCState:
                 "Received delta for unknown/completed request_id %d. Discarding.",
                 request_id,
             )
+
+    def handle_published_response_delta(self, msg_bytes: bytes) -> None:
+        """A delta that arrived over publish/subscribe: the request did not ask
+        for the lossless route, or the engine predates it. An engine that
+        advertises lossless_responses publishes only what it could not push."""
+        if not self._warned_published_deltas and not self.engine_advertises_lossless:
+            self._warned_published_deltas = True
+            logger.warning(
+                "The engine answers over publish/subscribe, which drops response "
+                "deltas without an error when this client falls behind: it does "
+                "not advertise lossless_responses. `orchard upgrade` installs the "
+                "newest engine."
+            )
+        self.handle_response_delta(msg_bytes)
 
     def handle_engine_event(self, msg_bytes: bytes) -> None:
         """Handles engine events broadcasted from the engine."""
@@ -382,62 +429,86 @@ class IPCState:
     @staticmethod
     async def run_ipc_listener(ipc_state: IPCState) -> None:
         """
-        Asynchronously consumes messages from the NNG SUB socket and dispatches
-        them to the appropriate client queues or event waiters.
+        Asynchronously consumes response deltas from the NNG PULL socket and
+        engine events from the NNG SUB socket, and dispatches them to the
+        appropriate client queues or event waiters.
         """
         logger.info("NNG response dispatcher task starting...")
 
         sub_socket = ipc_state.response_socket
-        if not sub_socket:
-            logger.critical("Response socket not initialized. Dispatcher cannot run.")
+        pull_socket = ipc_state.response_pull_socket
+        if not sub_socket or not pull_socket:
+            logger.critical("Response sockets not initialized. Dispatcher cannot run.")
             return
-        sub_socket.recv_timeout = RESPONSE_RECV_TIMEOUT_MS
 
-        dispatcher = IPCDispatcher()
         resp_topic_prefix = f"resp:{ipc_state.response_channel_id:x}:".encode()
         ipc_state.response_topic_prefix = resp_topic_prefix
         ipc_state.response_topic_prefix_len = len(resp_topic_prefix)
 
-        dispatcher.register_handler(resp_topic_prefix, IPCState.handle_response_delta)
-        dispatcher.register_handler(EVENT_TOPIC_PREFIX, IPCState.handle_engine_event)
+        deltas = IPCDispatcher()
+        deltas.register_handler(resp_topic_prefix, IPCState.handle_response_delta)
+        events = IPCDispatcher()
+        events.register_handler(EVENT_TOPIC_PREFIX, IPCState.handle_engine_event)
+        events.register_handler(
+            resp_topic_prefix, IPCState.handle_published_response_delta
+        )
 
-        try:
+        # Either receive loop ending ends the other at its next wakeup.
+        stopping = False
+
+        async def receive(socket: pynng.Socket, dispatcher: IPCDispatcher) -> None:
+            nonlocal stopping
+            socket.recv_timeout = RESPONSE_RECV_TIMEOUT_MS
             last_engine_check = 0.0
-            while True:
-                if ipc_state.shutdown_requested:
-                    logger.info("Dispatcher shutdown requested; exiting IPC listener.")
-                    break
-
-                now = time.monotonic()
-                if now - last_engine_check >= ENGINE_LIVENESS_POLL_INTERVAL_S:
-                    last_engine_check = now
-                    try:
-                        engine_alive = ipc_state.engine_process_is_alive()
-                    except Exception:
-                        # A probe that failed to run is no death verdict. Only a
-                        # confirmed-dead engine may exit the dispatcher, which
-                        # fails every active stream and latches engine_dead.
-                        logger.exception(
-                            "Engine liveness probe failed; retrying at next poll."
-                        )
-                        engine_alive = True
-                    if not engine_alive:
-                        logger.error(
-                            "PIE is no longer alive; shutting down response dispatcher."
+            try:
+                while not stopping:
+                    if ipc_state.shutdown_requested:
+                        logger.info(
+                            "Dispatcher shutdown requested; exiting IPC listener."
                         )
                         break
-                try:
-                    msg = await sub_socket.arecv_msg()
-                    if not dispatcher.dispatch(ipc_state, msg.bytes):
-                        logger.warning("Received IPC message with unregistered prefix.")
-                except pynng.Timeout:
-                    continue
-                except pynng.Closed:
-                    logger.info("Response socket closed, dispatcher shutting down.")
-                    break
-                except Exception:
-                    logger.exception("Unexpected error in NNG message reception loop.")
-                    break
+
+                    now = time.monotonic()
+                    if now - last_engine_check >= ENGINE_LIVENESS_POLL_INTERVAL_S:
+                        last_engine_check = now
+                        try:
+                            engine_alive = ipc_state.engine_process_is_alive()
+                        except Exception:
+                            # A probe that failed to run is no death verdict. Only a
+                            # confirmed-dead engine may exit the dispatcher, which
+                            # fails every active stream and latches engine_dead.
+                            logger.exception(
+                                "Engine liveness probe failed; retrying at next poll."
+                            )
+                            engine_alive = True
+                        if not engine_alive:
+                            logger.error(
+                                "PIE is no longer alive; shutting down response dispatcher."
+                            )
+                            break
+                    try:
+                        msg = await socket.arecv_msg()
+                        if not dispatcher.dispatch(ipc_state, msg.bytes):
+                            logger.warning(
+                                "Received IPC message with unregistered prefix."
+                            )
+                    except pynng.Timeout:
+                        continue
+                    except pynng.Closed:
+                        logger.info("Response socket closed, dispatcher shutting down.")
+                        break
+                    except Exception:
+                        logger.exception(
+                            "Unexpected error in NNG message reception loop."
+                        )
+                        break
+            finally:
+                stopping = True
+
+        try:
+            await asyncio.gather(
+                receive(pull_socket, deltas), receive(sub_socket, events)
+            )
         except asyncio.CancelledError:
             logger.info("Response dispatcher task was cancelled.")
         finally:

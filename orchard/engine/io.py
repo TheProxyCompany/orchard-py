@@ -89,15 +89,37 @@ def close_sockets(ipc_state: IPCState | None) -> None:
     if ipc_state.response_socket:
         ipc_state.response_socket.close()
         ipc_state.response_socket = None
+    if ipc_state.response_pull_socket:
+        ipc_state.response_pull_socket.close()
+        ipc_state.response_pull_socket = None
     if ipc_state.management_socket:
         ipc_state.management_socket.close()
         ipc_state.management_socket = None
+
+
+def remove_response_endpoint(ipc_state: IPCState | None) -> None:
+    """Unlinks this client's response endpoint. NNG removes the file when the
+    listener closes, but the close is skipped at interpreter finalization and
+    when the dispatcher does not stop, and the channel id is random per
+    process, so a file left behind is never listened on again."""
+    if ipc_state and ipc_state.response_channel_id:
+        ipc_endpoints.response_pull_path(ipc_state.response_channel_id).unlink(
+            missing_ok=True
+        )
 
 
 def initialize_sockets(
     ipc_state: IPCState,
     response_channel_id: int,
 ) -> None:
+    # Listen before a request can be sent: the engine dials this endpoint on a
+    # request's first delta and drops that request's deltas while nothing
+    # listens.
+    ipc_state.response_pull_socket = pynng.Pull0()
+    ipc_state.response_pull_socket.recv_max_size = 0
+    ipc_state.response_pull_socket.listen(
+        f"ipc://{ipc_endpoints.response_pull_path(response_channel_id)}"
+    )
     ipc_state.request_socket = pynng.Push0()
     ipc_state.request_socket.recv_max_size = 0
     dial_with_retry(ipc_state.request_socket, ipc_endpoints.REQUEST_URL)
