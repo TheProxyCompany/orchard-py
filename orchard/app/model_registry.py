@@ -44,6 +44,10 @@ class ModelInfo:
     capabilities: dict[str, list[int]] | None = None
     minimum_memory_bytes: int | None = None
 
+    def takes_token_segments(self) -> bool:
+        """Whether the engine that loaded this model accepts `tokens` layout segments."""
+        return "token_segments" in (self.capabilities or {})
+
 
 @dataclass(slots=True)
 class ModelEntry:

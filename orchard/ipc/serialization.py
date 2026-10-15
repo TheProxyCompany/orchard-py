@@ -14,6 +14,8 @@ _SEGMENT_TYPE_TEXT = 0
 _SEGMENT_TYPE_IMAGE = 1
 _SEGMENT_TYPE_AUDIO = 2
 _SEGMENT_TYPE_CAPABILITY = 3
+# Token ids sent as they are; length counts ids in the prompt's token data block.
+_SEGMENT_TYPE_TOKENS = 4
 
 _REQUEST_TYPE_CODES = {
     "generation": 0,
@@ -110,8 +112,9 @@ def _encode_layout(
     text_len: int,
     image_buffers: Sequence[bytes],
     audio_buffers: Sequence[bytes],
+    token_segments: Sequence[Sequence[int]],
 ) -> tuple[bytes, int]:
-    """Encode layout segments including text, image, audio, and capability types."""
+    """Encode layout segments including text, image, audio, capability, and token types."""
     segments: list[tuple[int, int]] = []
     if not layout:
         segments.append((_SEGMENT_TYPE_TEXT, text_len))
@@ -132,6 +135,8 @@ def _encode_layout(
             elif seg_type == "capability":
                 # Capability segments use length=0 in binary layout (actual data is in JSON)
                 segments.append((_SEGMENT_TYPE_CAPABILITY, 0))
+            elif seg_type == "tokens":
+                segments.append((_SEGMENT_TYPE_TOKENS, length))
             else:
                 raise ValueError(f"Unsupported layout segment type: {seg_type}")
 
@@ -147,8 +152,12 @@ def _encode_layout(
     layout_audio_bytes = sum(
         length for seg_type, length in segments if seg_type == _SEGMENT_TYPE_AUDIO
     )
+    layout_token_lengths = [
+        length for seg_type, length in segments if seg_type == _SEGMENT_TYPE_TOKENS
+    ]
     total_image_bytes = sum(len(image) for image in image_buffers)
     total_audio_bytes = sum(len(audio) for audio in audio_buffers)
+    token_segment_lengths = [len(ids) for ids in token_segments]
 
     if layout_text_bytes != text_len:
         raise ValueError(
@@ -163,6 +172,11 @@ def _encode_layout(
         raise ValueError(
             "Layout audio length mismatch "
             f"(expected {total_audio_bytes}, got {layout_audio_bytes})."
+        )
+    if layout_token_lengths != token_segment_lengths:
+        raise ValueError(
+            "Layout token length mismatch "
+            f"(expected {token_segment_lengths}, got {layout_token_lengths})."
         )
 
     buffer = bytearray(len(segments) * _LAYOUT_SEGMENT_STRUCT.size)
@@ -237,11 +251,14 @@ def _build_request_payload(
             prompt.get("capabilities", [])
         )
 
+        # Token ids for the layout's tokens segments, in layout order.
+        token_segments = prompt.get("token_segments") or []
         layout_bytes, layout_count = _encode_layout(
             prompt.get("layout", []),
             len(text_buffer),
             image_buffers_raw,
             audio_buffers_raw,
+            token_segments,
         )
 
         def reserve_blob(data: bytes) -> tuple[int, int]:
@@ -263,6 +280,9 @@ def _build_request_payload(
             capability_data_bytes
         )
         layout_offset, _ = reserve_blob(layout_bytes)
+        token_data_offset, token_data_size = reserve_blob(
+            b"".join(struct.pack(f"<{len(ids)}i", *ids) for ids in token_segments)
+        )
 
         stop_sequences = [
             _coerce_str(sequence) for sequence in prompt.get("stop_sequences") or []
@@ -388,6 +408,8 @@ def _build_request_payload(
                 "capabilities": capability_metadata,
                 "layout_offset": layout_offset,
                 "layout_count": layout_count,
+                "token_data_offset": token_data_offset,
+                "token_data_size": token_data_size,
                 "temperature": temperature,
                 "top_p": top_p,
                 "top_k": top_k,

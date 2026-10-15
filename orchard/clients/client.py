@@ -16,6 +16,7 @@ from typing import Any, Literal, TypeVar, overload
 
 from orchard.app.ipc_dispatch import IPCState, QueueRegistration
 from orchard.app.model_registry import ModelRegistry
+from orchard.clients.replay import splice_replays, take_replays
 from orchard.clients.responses import (
     ResponseEvent,
     ResponsesRequest,
@@ -793,6 +794,7 @@ class Client:
             model_path=info.model_path,
             formatter=info.formatter,
             messages=messages,
+            replay_model=info.model_id if info.takes_token_segments() else None,
             **kwargs,
         )
         return capture_payload
@@ -866,6 +868,58 @@ class Client:
     ) -> dict[str, Any]:
         """Synchronous wrapper for `arender_responses_prompt()`."""
         return self._sync_submit(self.arender_responses_prompt(model_id, **kwargs))
+
+    async def aassistant_message(
+        self,
+        model_id: str,
+        params: dict[str, Any],
+        deltas: Iterable[ClientDelta],
+    ) -> dict[str, Any]:
+        """
+        The assistant message to append to the conversation for a finished reply.
+
+        Besides the visible text it keeps the reply's reasoning and tool calls, and a
+        `generation` record with the exact token ids the model produced. Sent back on
+        the next turn to the same model, the reply is replayed id for id, so the engine
+        reuses its cached keys and values for all of it. Any other model reads the text.
+
+        Args:
+            model_id: The model the reply came from.
+            params: The generation parameters the request was made with.
+            deltas: The reply's deltas: the ones a stream yielded, or a complete
+                   response's `deltas`.
+        """
+        deltas = list(deltas)
+        info = await self._model_registry.get_info(model_id)
+        reasoning, tool_calls = self._aggregate_structured_items(deltas)
+        tokens = [token for delta in deltas for token in delta.tokens]
+
+        message: dict[str, Any] = {
+            "role": "assistant",
+            "content": self._aggregate_message_text(deltas),
+        }
+        if reasoning:
+            message["reasoning_content"] = "\n".join(reasoning)
+        if tool_calls:
+            message["tool_calls"] = [
+                {"type": "function", "function": tool_call} for tool_call in tool_calls
+            ]
+        if tokens:
+            message["generation"] = {
+                "model": info.model_id,
+                "tokens": tokens,
+                "thinking": self._reasoning_flag(info.formatter, params),
+            }
+        return message
+
+    def assistant_message(
+        self,
+        model_id: str,
+        params: dict[str, Any],
+        deltas: Iterable[ClientDelta],
+    ) -> dict[str, Any]:
+        """Synchronous wrapper for `aassistant_message()`."""
+        return self._sync_submit(self.aassistant_message(model_id, params, deltas))
 
     async def achat(
         self,
@@ -1440,24 +1494,18 @@ class Client:
         model_path: str,
         formatter: ChatFormatter,
         messages: list[dict[str, Any]],
+        replay_model: str | None = None,
         **kwargs: Any,
     ) -> tuple[dict[str, Any], dict[str, Any]]:
+        # `replay_model` is the model being asked when its engine takes token segments:
+        # replies that model generated earlier in the conversation are then sent as
+        # their token ids.
+        messages, replays = take_replays(messages, replay_model)
         requested_reasoning_effort = kwargs.get("reasoning_effort")
-        native_reasoning = formatter.supports_native_thinking()
         max_generated_tokens = int(
             kwargs.get("max_generated_tokens", MAX_GENERATED_TOKENS)
         )
-        requested_reasoning = kwargs.get("reasoning")
-        default_reasoning = (
-            native_reasoning
-            and requested_reasoning is None
-            and requested_reasoning_effort is None
-        )
-        reasoning_flag = bool(
-            (requested_reasoning is not False)
-            and (requested_reasoning or requested_reasoning_effort or default_reasoning)
-            and native_reasoning
-        )
+        reasoning_flag = self._reasoning_flag(formatter, kwargs)
         reasoning_effort = (
             requested_reasoning_effort or DEFAULT_BOOLEAN_REASONING_EFFORT
             if reasoning_flag
@@ -1520,7 +1568,11 @@ class Client:
         except ValueError as exc:
             raise ValueError(f"Invalid multimodal layout: {exc}") from exc
 
-        prompt_text = formatter.strip_template_placeholders(prompt_text)
+        prompt_text, layout_segments, token_segments = splice_replays(
+            formatter.strip_template_placeholders(prompt_text),
+            layout_segments,
+            replays,
+        )
 
         prompt_bytes = prompt_text.encode("utf-8")
         deterministic = bool(kwargs.get("deterministic", False))
@@ -1590,6 +1642,7 @@ class Client:
             "audio_buffers": audio_buffers,
             "capabilities": capabilities_payload,
             "layout": layout_segments,
+            "token_segments": token_segments,
             "sampling_params": {
                 "temperature": temperature,
                 "top_p": top_p,
@@ -1661,6 +1714,23 @@ class Client:
         return prompt_payload, capture_payload
 
     @staticmethod
+    def _reasoning_flag(formatter: ChatFormatter, kwargs: dict[str, Any]) -> bool:
+        """The thinking flag a chat request with these parameters is rendered with."""
+        requested_reasoning = kwargs.get("reasoning")
+        requested_reasoning_effort = kwargs.get("reasoning_effort")
+        native_reasoning = formatter.supports_native_thinking()
+        default_reasoning = (
+            native_reasoning
+            and requested_reasoning is None
+            and requested_reasoning_effort is None
+        )
+        return bool(
+            (requested_reasoning is not False)
+            and (requested_reasoning or requested_reasoning_effort or default_reasoning)
+            and native_reasoning
+        )
+
+    @staticmethod
     def _generation_value(
         kwargs: dict[str, Any],
         defaults: dict[str, Any],
@@ -1700,6 +1770,7 @@ class Client:
                 model_path=info.model_path,
                 formatter=info.formatter,
                 messages=messages,
+                replay_model=engine_model_id if info.takes_token_segments() else None,
                 **prompt_kwargs,
             )
             prompt_payloads.append(prompt_payload)
