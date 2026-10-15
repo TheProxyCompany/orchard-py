@@ -78,9 +78,6 @@ class _FakeFormatter:
     def get_audio_placeholder(self) -> str | None:
         return None
 
-    def get_capability_placeholder(self) -> str:
-        return "<|coord|>"
-
     def strip_template_placeholders(self, prompt: str) -> str:
         return prompt.replace(self.image_placeholder, "").replace("<|coord|>", "")
 
@@ -208,7 +205,6 @@ def test_gemma4u_profile_loads_audio_placeholder() -> None:
 
     assert formatter.profile_dir.name == "gemma4u"
     assert formatter.get_audio_placeholder() == "<|audio|>"
-    assert formatter.get_capability_placeholder() is None
     assert formatter.strip_template_placeholders("a<|audio|>b") == "ab"
 
 

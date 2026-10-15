@@ -80,7 +80,9 @@ class InputFunctionCallOutput(BaseModel):
     call_id: str = Field(
         description="The call_id of the function call this is responding to."
     )
-    output: str | list[ContentPart] = Field(description="The output of the function call.")
+    output: str | list[ContentPart] = Field(
+        description="The output of the function call."
+    )
 
 
 class InputReasoning(BaseModel):
@@ -101,16 +103,6 @@ InputItem = Annotated[
     InputMessageItem | InputFunctionCall | InputFunctionCallOutput | InputReasoning,
     Field(discriminator="type"),
 ]
-
-
-# Legacy alias for backwards compatibility
-class InputMessage(BaseModel):
-    """Represents a single input message (legacy format)."""
-
-    role: str = Field(description="Role of the message author.")
-    content: str | list[ContentPart] = Field(
-        description="Message content as raw text or structured content parts."
-    )
 
 
 class ResponseReasoning(BaseModel):
