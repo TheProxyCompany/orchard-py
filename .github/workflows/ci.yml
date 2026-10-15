@@ -19,6 +19,14 @@ jobs:
       PIE_REVISION: 59fd4a6447bc3d7741aecb40f1d2934b78dd2391
 
     steps:
+      - name: Get the App's token
+        id: app
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
       - name: Require 512 GiB for the full matrix
         run: |
           set -euo pipefail
@@ -32,7 +40,7 @@ jobs:
       - name: Checkout orchard-py
         uses: actions/checkout@v6
         with:
-          token: ${{ secrets.GH_PAT }}
+          token: ${{ steps.app.outputs.token }}
           fetch-depth: 0
           submodules: recursive
 
@@ -49,7 +57,7 @@ jobs:
           repository: TheProxyCompany/proxy-inference-engine
           path: .ci/proxy-inference-engine
           ref: ${{ env.PIE_REVISION }}
-          token: ${{ secrets.GH_PAT }}
+          token: ${{ steps.app.outputs.token }}
           persist-credentials: false
           submodules: recursive
 
