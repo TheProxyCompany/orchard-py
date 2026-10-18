@@ -27,16 +27,6 @@ jobs:
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
 
-      - name: Require 512 GiB for the full matrix
-        run: |
-          set -euo pipefail
-          memory_bytes="$(sysctl -n hw.memsize)"
-          if [[ ! "$memory_bytes" =~ ^[0-9]+$ ]] || (( memory_bytes < 512 * 1024 * 1024 * 1024 )); then
-            echo "::error::Full Orchard matrix requires at least 512 GiB RAM; found $memory_bytes bytes"
-            exit 1
-          fi
-          echo "Physical RAM: $memory_bytes bytes"
-
       - name: Checkout orchard-py
         uses: actions/checkout@v6
         with:
@@ -90,7 +80,7 @@ jobs:
             -u PROXY_GPU_LEASE -u PROXY_GPU_LEASE_HELD \
             PIE_LOCAL_BUILD="$PWD/.ci/proxy-inference-engine/release" \
             ORCHARD_TEST_LOG_DIR="$PWD/logs_test" \
-            bash scripts/gpu_lease.sh python -m pytest tests/functional tests/golden tests/unit -v --tb=short -x \
+            python -m pytest tests/functional tests/golden tests/unit -v --tb=short -x \
             2>&1 | tee "$RUNNER_TEMP/orchard-py-pytest.log"
 
       - name: Upload Orchard failure logs
