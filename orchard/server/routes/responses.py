@@ -11,6 +11,11 @@ from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
 
+from orchard.clients.responses import (
+    _emit_stream_fallback_item_done,
+    _parse_tool_call_completion_value,
+    finish_reason_to_incomplete,
+)
 from orchard.formatter.multimodal import (
     build_multimodal_layout,
     build_multimodal_messages,
@@ -31,7 +36,6 @@ from orchard.server.models.responses import (
     ContentPartDoneEvent,
     FunctionCallArgumentsDeltaEvent,
     FunctionCallArgumentsDoneEvent,
-    IncompleteDetails,
     InputTokensDetails,
     OutputFunctionCall,
     OutputItemAddedEvent,
@@ -526,11 +530,7 @@ async def gather_non_streaming_response(
     output = _build_output_items(output_items)
 
     # Determine if response was incomplete
-    incomplete_details = None
-    if finish_reason in ("length", "max_tokens", "max_output_tokens"):
-        incomplete_details = IncompleteDetails(reason="max_output_tokens")
-    elif finish_reason == "content_filter":
-        incomplete_details = IncompleteDetails(reason="content_filter")
+    incomplete_details = finish_reason_to_incomplete(finish_reason)
 
     return {
         "output": output,
@@ -772,58 +772,8 @@ async def stream_response_generator(
     # Emit completion events for items that didn't receive an item_completed event
     # from PIE. Items that did receive item_completed already have status=COMPLETED
     # (set in _process_state_event_for_streaming) and are skipped here.
-    for output_index, item in sorted(stream_state.items.items()):
-        if item.status != OutputStatus.COMPLETED:
-            item.status = OutputStatus.COMPLETED
-            if item.item_type == "reasoning":
-                item.accumulated_content = item.accumulated_content.strip()
-            # Emit done events based on item type
-            if item.item_type == "message":
-                yield _format_sse_event(
-                    OutputTextDoneEvent(
-                        sequence_number=stream_state.next_sequence_number(),
-                        item_id=item.item_id,
-                        output_index=output_index,
-                        content_index=0,
-                        text=item.accumulated_content,
-                    )
-                )
-                yield _format_sse_event(
-                    ContentPartDoneEvent(
-                        sequence_number=stream_state.next_sequence_number(),
-                        item_id=item.item_id,
-                        output_index=output_index,
-                        content_index=0,
-                        part=OutputTextContent(text=item.accumulated_content),
-                    )
-                )
-            elif item.item_type == "tool_call":
-                yield _format_sse_event(
-                    FunctionCallArgumentsDoneEvent(
-                        sequence_number=stream_state.next_sequence_number(),
-                        item_id=item.item_id,
-                        output_index=output_index,
-                        arguments=item.accumulated_arguments,
-                    )
-                )
-            elif item.item_type == "reasoning":
-                yield _format_sse_event(
-                    ReasoningDoneEvent(
-                        sequence_number=stream_state.next_sequence_number(),
-                        item_id=item.item_id,
-                        output_index=output_index,
-                        content_index=0,
-                        text=item.accumulated_content,
-                    )
-                )
-
-            yield _format_sse_event(
-                OutputItemDoneEvent(
-                    sequence_number=stream_state.next_sequence_number(),
-                    output_index=output_index,
-                    item=item.to_completed(),
-                )
-            )
+    for event in _emit_stream_fallback_item_done(stream_state):
+        yield _format_sse_event(event)
 
     # Emit final response event
     if error_occurred:
@@ -845,22 +795,11 @@ async def stream_response_generator(
         # Set completed_at timestamp
         stream_state.completed_at = get_current_timestamp()
 
-        # Determine if response was incomplete (truncated)
-        is_incomplete = finish_reason in ("length", "max_tokens", "max_output_tokens")
-        if is_incomplete:
+        # Determine if response was incomplete (truncated or filtered)
+        incomplete_details = finish_reason_to_incomplete(finish_reason)
+        if incomplete_details is not None:
             stream_state.status = OutputStatus.INCOMPLETE
-            stream_state.incomplete_details = IncompleteDetails(
-                reason="max_output_tokens"
-            )
-            yield _format_sse_event(
-                ResponseIncompleteEvent(
-                    sequence_number=stream_state.next_sequence_number(),
-                    response=stream_state.snapshot(),
-                )
-            )
-        elif finish_reason == "content_filter":
-            stream_state.status = OutputStatus.INCOMPLETE
-            stream_state.incomplete_details = IncompleteDetails(reason="content_filter")
+            stream_state.incomplete_details = incomplete_details
             yield _format_sse_event(
                 ResponseIncompleteEvent(
                     sequence_number=stream_state.next_sequence_number(),
@@ -1044,26 +983,3 @@ def _format_sse_event(event: Any) -> dict[str, str]:
         "event": event.type,
         "data": event.model_dump_json(exclude_none=True),
     }
-
-
-def _parse_tool_call_completion_value(value: Any) -> tuple[str, str] | None:
-    structured_value = value
-    if isinstance(value, str):
-        try:
-            structured_value = json.loads(value)
-        except json.JSONDecodeError:
-            return None
-
-    if not isinstance(structured_value, dict):
-        return None
-
-    function_name = structured_value.get("name")
-    if not isinstance(function_name, str) or not function_name:
-        return None
-
-    try:
-        arguments = json.dumps(structured_value.get("arguments", {}))
-    except (TypeError, ValueError):
-        return None
-
-    return function_name, arguments

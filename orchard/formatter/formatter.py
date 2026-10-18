@@ -321,15 +321,6 @@ class ChatFormatter:
                     placeholders.append(placeholder)
         return placeholders
 
-    def get_capability_placeholder(self) -> str | None:
-        """Return the first non-image capability placeholder used for layout."""
-        image_placeholder = self.image_placeholder
-        audio_placeholder = self.get_audio_placeholder()
-        for placeholder in self.capability_placeholders():
-            if placeholder not in {image_placeholder, audio_placeholder}:
-                return placeholder
-        return None
-
     def strip_template_placeholders(self, prompt: str) -> str:
         """Remove synthetic multimodal placeholders from rendered prompt text."""
         stripped = prompt

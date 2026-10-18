@@ -19,7 +19,6 @@ from orchard.server.models.tools import generate_tool_call_id
 RESPONSE_ID_PREFIX = "resp_"
 RESPONSE_OBJECT = "response"
 MESSAGE_ID_PREFIX = "msg_"
-MESSAGE_OBJECT = "message"
 OUTPUT_TEXT_OBJECT = "output_text"
 FUNCTION_CALL_ID_PREFIX = "fc_"
 
