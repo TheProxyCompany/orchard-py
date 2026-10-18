@@ -18,6 +18,7 @@ from orchard.formatter.multimodal import (
 from orchard.ipc.serialization import _build_request_payload
 from orchard.ipc.utils import (
     ResponseDeltaDict,
+    content_only_message_events,
     release_delta_resources,
 )
 from orchard.server.dependencies import IPCStateDep, ModelRegistryDep
@@ -447,6 +448,10 @@ async def gather_non_streaming_response(
     completed_at: int | None = None
     stop_token_id: int | None = None
     stop_token: str | None = None
+    # `content` is the reply only for a sequence that never sends state events,
+    # which is known when the reply ends; it is collected until the first one.
+    pending_content = ""
+    saw_state_events = False
 
     while True:
         try:
@@ -479,6 +484,10 @@ async def gather_non_streaming_response(
 
                 # Process state_events from PIE
                 state_events = delta.get("state_events", [])
+                if state_events:
+                    saw_state_events = True
+                elif not saw_state_events:
+                    pending_content += delta.get("content") or ""
                 for event in state_events:
                     _process_state_event_for_output(event, output_items)
 
@@ -521,6 +530,10 @@ async def gather_non_streaming_response(
         usage_counts["total_tokens"] = (
             usage_counts["prompt_tokens"] + usage_counts["completion_tokens"]
         )
+
+    if not saw_state_events and pending_content:
+        for event in content_only_message_events(pending_content):
+            _process_state_event_for_output(event, output_items)
 
     # Build final output items
     output = _build_output_items(output_items)
@@ -664,6 +677,10 @@ async def stream_response_generator(
     error_occurred = False
     error_detail: str | None = None
     finish_reason: str | None = None
+    # `content` is the reply only for a sequence that never sends state events,
+    # which is known when the stream ends; it is collected until the first one.
+    pending_content = ""
+    saw_state_events = False
 
     while True:
         try:
@@ -709,6 +726,10 @@ async def stream_response_generator(
 
                 # Process state_events from PIE
                 state_events = delta.get("state_events") or []
+                if state_events:
+                    saw_state_events = True
+                elif not saw_state_events:
+                    pending_content += delta.get("content") or ""
                 for event in state_events:
                     async for sse_event in _process_state_event_for_streaming(
                         event, stream_state
@@ -768,6 +789,13 @@ async def stream_response_generator(
                 queue.task_done()
                 if delta:
                     release_delta_resources(delta)
+
+    if not error_occurred and not saw_state_events and pending_content:
+        for event in content_only_message_events(pending_content):
+            async for sse_event in _process_state_event_for_streaming(
+                event, stream_state
+            ):
+                yield sse_event
 
     # Emit completion events for items that didn't receive an item_completed event
     # from PIE. Items that did receive item_completed already have status=COMPLETED
