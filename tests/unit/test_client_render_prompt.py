@@ -134,6 +134,7 @@ class _DummyIPCState:
     def __init__(self) -> None:
         self.engine_dead = False
         self.response_channel_id = None
+        self.lossless_responses = False
         self.active_request_queues: dict[int, Any] = {}
         self.request_socket = _DummySocket()
         self._next_request_id = 0

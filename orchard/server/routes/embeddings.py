@@ -125,6 +125,7 @@ async def create_embeddings(
         model_path=model_info.model_path,
         request_type="embedding",
         response_channel_id=response_channel_id,
+        lossless_responses=ipc_state.lossless_responses,
         prompts=[prompt_payload],
     )
 

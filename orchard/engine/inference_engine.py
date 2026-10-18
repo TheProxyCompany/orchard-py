@@ -30,6 +30,7 @@ from orchard.engine.io import (
     close_sockets,
     get_engine_file_paths,
     initialize_sockets,
+    remove_response_endpoint,
 )
 from orchard.engine.multiprocess import (
     pid_is_alive,
@@ -299,6 +300,7 @@ class InferenceEngine:
                     self._cleanup_failed_launch()
                     raise
 
+        launched = launched_fresh
         try:
             self._init_context_and_register()
         except Exception:
@@ -328,8 +330,11 @@ class InferenceEngine:
                 except BaseException:
                     self._cleanup_failed_launch()
                     raise
+            launched = True
             self._init_context_and_register()
 
+        if launched and global_context.ipc_state:
+            global_context.ipc_state.launched_engine = True
         self._lease_active = True
 
     def _init_context_and_register(self) -> None:
@@ -539,6 +544,9 @@ class InferenceEngine:
     def _request_dispatcher_shutdown(ctx: GlobalContext) -> None:
         if ctx.ipc_state:
             ctx.ipc_state.shutdown_requested = True
+            # Every shutdown path starts here, and not every one reaches the
+            # socket close that would remove the file.
+            remove_response_endpoint(ctx.ipc_state)
 
     @staticmethod
     def _join_dispatcher_thread(ctx: GlobalContext, timeout_s: float = 3.0) -> bool:
