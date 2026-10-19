@@ -12,17 +12,25 @@ concurrency:
 
 jobs:
   full-suite:
-    runs-on: [self-hosted, terminal-0]
+    runs-on: [self-hosted, ci-cd]
     timeout-minutes: 60
     env:
       PATH: /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
-      RUSTUP_TOOLCHAIN: "1.97.1"
+      PIE_REVISION: 084bd521fd76d269a2d4f0fd54a73aa4d51efbcd
 
     steps:
+      - name: Get the App's token
+        id: app
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
       - name: Checkout orchard-py
         uses: actions/checkout@v6
         with:
-          token: ${{ secrets.GH_PAT }}
+          token: ${{ steps.app.outputs.token }}
           fetch-depth: 0
           submodules: recursive
 
@@ -33,45 +41,21 @@ jobs:
           brew list ccache || brew install ccache
           brew list rust || brew install rust
 
-      - name: Install pinned Rust toolchain
-        run: |
-          set -euo pipefail
-          export PATH="$HOME/.cargo/bin:$PATH"
-          if ! command -v rustup >/dev/null; then
-            export PATH="$(brew --prefix rustup)/bin:$PATH"
-          fi
-          rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
-          rust_bin="$(dirname "$(rustup which rustc)")"
-          echo "$rust_bin" >> "$GITHUB_PATH"
-          echo "CARGO=$(rustup which cargo)" >> "$GITHUB_ENV"
-          echo "RUSTC=$(rustup which rustc)" >> "$GITHUB_ENV"
-          echo "RUSTDOC=$(rustup which rustdoc)" >> "$GITHUB_ENV"
-          rustup run "$RUSTUP_TOOLCHAIN" rustc --version
-          rustup run "$RUSTUP_TOOLCHAIN" cargo --version
-
-      - name: Checkout reviewed PIE and its private dependencies
+      - name: Checkout PIE
         uses: actions/checkout@v6
         with:
           repository: TheProxyCompany/proxy-inference-engine
-          # Root #38's published engine; testing main would certify another package.
-          ref: a3d2ce31c0a9df830a3c11f56c638bbfe55eec4d
-          token: ${{ secrets.GH_PAT }}
           path: .ci/proxy-inference-engine
+          ref: ${{ env.PIE_REVISION }}
+          token: ${{ steps.app.outputs.token }}
+          persist-credentials: false
           submodules: recursive
-
-      - name: Verify reviewed PIE revision
-        working-directory: .ci/proxy-inference-engine
-        run: |
-          pie_expected=a3d2ce31c0a9df830a3c11f56c638bbfe55eec4d
-          pie_actual="$(git rev-parse HEAD)"
-          echo "PIE revision: $pie_actual"
-          test "$pie_actual" = "$pie_expected"
-          git submodule update --init --recursive
-          git submodule status --recursive
 
       - name: Build PIE
         working-directory: .ci/proxy-inference-engine
         run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$PIE_REVISION"
           ./scripts/build.sh -t Release
 
       - name: Set up orchard-py
@@ -89,21 +73,23 @@ jobs:
 
       - name: Run full Orchard PY suite
         run: |
+          set -euo pipefail
           source .venv/bin/activate
-          export PIE_LOCAL_BUILD="$PWD/.ci/proxy-inference-engine/release"
-          python - <<'PY'
-          import fcntl
-          import subprocess
-          import sys
+          # Let conftest create a fresh namespace before any Orchard import.
+          env -u ORCHARD_CACHE_ROOT -u ORCHARD_IPC_ROOT \
+            -u PROXY_GPU_LEASE -u PROXY_GPU_LEASE_HELD \
+            PIE_LOCAL_BUILD="$PWD/.ci/proxy-inference-engine/release" \
+            ORCHARD_TEST_LOG_DIR="$PWD/logs_test" \
+            python -m pytest tests/functional tests/golden -v --tb=short -x \
+            2>&1 | tee "$RUNNER_TEMP/orchard-py-pytest.log"
 
-          # Shared Apple Silicon runners also host explicit local acceptance
-          # runs. Serialize GPU tests without stopping another owned engine.
-          with open("/tmp/proxy-gpu.lease", "a") as lease:
-              print("Waiting for the runner GPU lease", flush=True)
-              fcntl.flock(lease, fcntl.LOCK_EX)
-              print("Runner GPU lease acquired", flush=True)
-              subprocess.run([
-                  sys.executable, "-m", "pytest", "tests/functional",
-                  "tests/golden", "-v", "--tb=short", "-x",
-              ], check=True)
-          PY
+      - name: Upload Orchard failure logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orchard-py-logs-${{ github.run_id }}-${{ github.run_attempt }}
+          # engine.test.log captures the native engine's stdout and stderr.
+          path: |
+            logs_test/
+            ${{ runner.temp }}/orchard-py-pytest.log
+          retention-days: 7
