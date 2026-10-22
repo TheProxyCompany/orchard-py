@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   full-suite:
-    runs-on: [self-hosted, ci-cd]
+    runs-on: [self-hosted, ci-cd, pie-ci]
     timeout-minutes: 60
     env:
       PATH: /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
