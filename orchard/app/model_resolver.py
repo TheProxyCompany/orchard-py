@@ -241,17 +241,29 @@ class ModelResolver:
                         raise IncompleteSnapshotError(
                             f"Cached HuggingFace snapshot '{model_dir}' is missing pipeline component directory '{key}'."
                         )
+                    is_non_weight = (
+                        key == "scheduler"
+                        or key.startswith("tokenizer")
+                        or "processor" in key
+                        or "feature_extractor" in key
+                    )
                     if key == "scheduler":
-                        cfg_path = comp_dir / "scheduler_config.json"
+                        cfg_candidates = [comp_dir / "scheduler_config.json", comp_dir / "config.json"]
                     elif key.startswith("tokenizer"):
-                        cfg_path = comp_dir / "tokenizer_config.json"
+                        cfg_candidates = [comp_dir / "tokenizer_config.json", comp_dir / "config.json"]
+                    elif "processor" in key or "feature_extractor" in key:
+                        cfg_candidates = [
+                            comp_dir / "preprocessor_config.json",
+                            comp_dir / "tokenizer_config.json",
+                            comp_dir / "config.json",
+                        ]
                     else:
-                        cfg_path = comp_dir / "config.json"
-                    if not ModelResolver._is_materialized_weight_file(cfg_path):
+                        cfg_candidates = [comp_dir / "config.json"]
+                    if not any(ModelResolver._is_materialized_weight_file(p) for p in cfg_candidates):
                         raise IncompleteSnapshotError(
-                            f"Cached HuggingFace snapshot '{model_dir}' is missing component config '{cfg_path}'."
+                            f"Cached HuggingFace snapshot '{model_dir}' is missing component config '{cfg_candidates[0]}'."
                         )
-                    if not key.startswith("scheduler") and not key.startswith("tokenizer"):
+                    if not is_non_weight:
                         if not list(comp_dir.rglob("*.safetensors")):
                             raise IncompleteSnapshotError(
                                 f"Cached HuggingFace snapshot '{model_dir}' component '{key}' has no safetensors weights."
