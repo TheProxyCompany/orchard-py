@@ -261,6 +261,13 @@ class ModelResolver:
 
         safetensors = sorted(model_dir.rglob("*.safetensors"))
         if safetensors:
+            if any(
+                re.search(r"-\d+-of-\d+\.safetensors$", path.name)
+                for path in safetensors
+            ):
+                raise IncompleteSnapshotError(
+                    f"Cached HuggingFace snapshot '{model_dir}' has sharded safetensors without a .safetensors.index.json manifest."
+                )
             incomplete = [
                 path
                 for path in safetensors
