@@ -5,16 +5,24 @@ on:
 
 jobs:
   publish:
-    runs-on: [self-hosted, terminal-0]
+    runs-on: [self-hosted, ci-cd]
     timeout-minutes: 15
     env:
       PATH: /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
 
     steps:
+      - name: Get the App's token
+        id: app
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          token: ${{ secrets.GH_PAT }}
+          token: ${{ steps.app.outputs.token }}
           fetch-depth: 0
           submodules: recursive
 
@@ -33,7 +41,7 @@ jobs:
       - name: Clone and build PIE
         run: |
           rm -rf ../proxy-inference-engine
-          git clone --depth 1 --recurse-submodules "https://${{ secrets.GH_PAT }}@github.com/TheProxyCompany/proxy-inference-engine.git" ../proxy-inference-engine
+          git clone --depth 1 --recurse-submodules "https://x-access-token:${{ steps.app.outputs.token }}@github.com/TheProxyCompany/proxy-inference-engine.git" ../proxy-inference-engine
           cd ../proxy-inference-engine
           ./scripts/build.sh -t Release
 
@@ -117,8 +125,8 @@ jobs:
 
       - name: Commit version bump
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "the-proxy-company[bot]"
+          git config user.email "332167312+the-proxy-company[bot]@users.noreply.github.com"
           git add pyproject.toml
           git commit -m "v${{ steps.version.outputs.version }}"
           git push

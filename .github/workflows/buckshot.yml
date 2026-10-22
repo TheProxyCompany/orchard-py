@@ -10,12 +10,12 @@ on:
         description: "Direct PIE release archive URL (empty = stable manifest latest)"
         default: ""
   schedule:
-    # Offset from the 06:00 UTC gauntlet on terminal-0; this runs on terminal-1.
+    # Offset from the 06:00 UTC gauntlet; both run on the benchmarks pool.
     - cron: "0 7 * * *"
 
 jobs:
   gate:
-    runs-on: [self-hosted, terminal-1]
+    runs-on: [self-hosted, benchmarks]
     timeout-minutes: 180
     steps:
       - name: Checkout repository
