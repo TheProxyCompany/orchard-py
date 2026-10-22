@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 60
     env:
       PATH: /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
-      PIE_REVISION: e778e3c020bf0005c49cab169ca989f7367e595c
+      PIE_REVISION: ea1c139946484fe768ab3eae818c347bc7d2bfa1
 
     steps:
       - name: Get the App's token
