@@ -11,11 +11,11 @@ concurrency:
 
 jobs:
   full-suite:
-    runs-on: [self-hosted, ci-cd, pie-ci]
+    runs-on: [self-hosted, ci-cd]
     timeout-minutes: 60
     env:
-      PATH: /Users/theproxycompany/.cargo/bin:/opt/homebrew/opt/rustup/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
-      PIE_REVISION: 5fb2aa0f8cbea54ab7dedba789e5c8969e88bbcc
+      PATH: /opt/homebrew/opt/rustup/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+      PIE_REVISION: 7f6979a371a6162d70967040154909d8a2dc14c9
 
     steps:
       - name: Get the App's token
@@ -85,12 +85,12 @@ jobs:
         run: |
           set -euo pipefail
           source .venv/bin/activate
-          # Let conftest create a fresh namespace before any Orchard import.
+          # Run the exact buckshot gate that publish-dev.yml runs on deploy.
           env -u ORCHARD_CACHE_ROOT -u ORCHARD_IPC_ROOT \
             -u PROXY_GPU_LEASE -u PROXY_GPU_LEASE_HELD \
             PIE_LOCAL_BUILD="$PWD/.ci/proxy-inference-engine/release" \
             ORCHARD_TEST_LOG_DIR="$PWD/logs_test" \
-            python -m pytest tests/functional tests/golden -v --tb=short -x \
+            scripts/buckshot_gate.sh 1 "$RUNNER_TEMP/buckshot-py" \
             2>&1 | tee "$RUNNER_TEMP/orchard-py-pytest.log"
 
       - name: Upload Orchard failure logs
