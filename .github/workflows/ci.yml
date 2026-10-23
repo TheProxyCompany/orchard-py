@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 60
     env:
       PATH: /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
-      PIE_REVISION: 67345c351efda50060e45b01a72eb25368f613e3
+      PIE_REVISION: 342b6e6afeaff24f1c70ce5b177fcd552b1305dd
 
     steps:
       - name: Get the App's token
@@ -39,6 +39,17 @@ jobs:
           brew list cmake || brew install cmake
           brew list ccache || brew install ccache
           brew list rust || brew install rust
+          export PATH="$HOME/.cargo/bin:/opt/homebrew/bin:$PATH"
+          printf "%s\n" "$HOME/.cargo/bin" /opt/homebrew/bin >> "$GITHUB_PATH"
+          if ! command -v cargo >/dev/null 2>&1; then
+            if [ -x "/opt/homebrew/opt/rustup/bin/rustup" ]; then
+              export PATH="/opt/homebrew/opt/rustup/bin:$PATH"
+              echo "/opt/homebrew/opt/rustup/bin" >> "$GITHUB_PATH"
+            else
+              brew link --overwrite rust || true
+            fi
+          fi
+          cargo --version
 
       - name: Checkout PIE
         uses: actions/checkout@v6
