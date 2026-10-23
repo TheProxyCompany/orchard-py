@@ -3978,8 +3978,8 @@
         ],
         "usage": {
           "input_tokens": 169,
-          "output_tokens": 18,
-          "total_tokens": 187,
+          "output_tokens": 283,
+          "total_tokens": 452,
           "input_tokens_details": {
             "cached_tokens": 0
           },

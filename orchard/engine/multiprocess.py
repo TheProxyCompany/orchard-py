@@ -5,7 +5,7 @@ import signal
 import subprocess
 import threading
 import time
-from collections.abc import Callable, Iterable
+from collections.abc import Callable
 from pathlib import Path
 from sys import platform
 
@@ -64,55 +64,6 @@ def read_pid_file(pid_file: Path) -> int | None:
 
 def write_pid_file(pid_file: Path, pid: int) -> None:
     pid_file.write_text(f"{pid}\n", encoding="utf-8")
-
-
-def read_ref_pids(ref_file: Path) -> list[int]:
-    try:
-        if not ref_file.exists():
-            return []
-        content = ref_file.read_text(encoding="utf-8")
-        data = json.loads(content) if content else []
-    except (OSError, json.JSONDecodeError):
-        return []
-
-    pids: list[int] = []
-    for entry in data:
-        try:
-            pid = int(entry)
-        except (TypeError, ValueError):
-            continue
-        if pid > 0:
-            pids.append(pid)
-    return pids
-
-
-def write_ref_pids(ref_file: Path, pids: Iterable[int]) -> None:
-    unique = []
-    seen: set[int] = set()
-    for pid in pids:
-        if pid <= 0 or pid in seen:
-            continue
-        unique.append(pid)
-        seen.add(pid)
-
-    if unique:
-        tmp = ref_file.with_suffix(".tmp")
-        tmp.write_text(json.dumps(unique), encoding="utf-8")
-        tmp.replace(ref_file)
-    else:
-        ref_file.unlink(missing_ok=True)
-
-
-def filter_alive_pids(pids: Iterable[int]) -> list[int]:
-    alive: list[int] = []
-    seen: set[int] = set()
-    for pid in pids:
-        if pid in seen:
-            continue
-        if pid_is_alive(pid):
-            alive.append(pid)
-            seen.add(pid)
-    return alive
 
 
 # ENGINE PROCESS MANAGEMENT

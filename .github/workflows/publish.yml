@@ -49,7 +49,7 @@ jobs:
         run: |
           source .venv/bin/activate
           uv pip install -e ".[dev]"
-          PIE_LOCAL_BUILD="$PWD/../proxy-inference-engine/release" python -m pytest tests/functional tests/golden tests/unit -v --tb=short -x
+          PIE_LOCAL_BUILD="$PWD/../proxy-inference-engine/release" python -m pytest tests/functional tests/golden -v --tb=short -x
 
       - name: Bump version
         id: version

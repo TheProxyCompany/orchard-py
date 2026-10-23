@@ -3,7 +3,7 @@ from __future__ import annotations
 import secrets
 import time
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 from orchard.server.models.chat.logprobs import ChatCompletionLogProbs
 from orchard.server.models.chat.request import ChatMessage
@@ -69,8 +69,31 @@ class ChatCompletionUsage(BaseModel):
         description="The total number of reasoning tokens generated across all completion choices.",
     )
     total_tokens: int = Field(
-        description="The sum of `input_tokens` and `output_tokens`."
+        description="Input plus all generated tokens, including reasoning."
     )
+    cached_tokens: int = Field(
+        default=0, description="Input tokens read from the prefix cache."
+    )
+
+    @computed_field
+    @property
+    def prompt_tokens(self) -> int:
+        return self.input_tokens
+
+    @computed_field
+    @property
+    def completion_tokens(self) -> int:
+        return self.output_tokens + self.reasoning_tokens
+
+    @computed_field
+    @property
+    def prompt_tokens_details(self) -> dict[str, int]:
+        return {"cached_tokens": min(self.cached_tokens, self.input_tokens)}
+
+    @computed_field
+    @property
+    def completion_tokens_details(self) -> dict[str, int]:
+        return {"reasoning_tokens": self.reasoning_tokens}
 
 
 # --- Main Response Model ---

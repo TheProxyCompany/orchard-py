@@ -2760,8 +2760,8 @@
         ],
         "usage": {
           "input_tokens": 987,
-          "output_tokens": 18,
-          "total_tokens": 1005,
+          "output_tokens": 196,
+          "total_tokens": 1183,
           "input_tokens_details": {
             "cached_tokens": 0
           },

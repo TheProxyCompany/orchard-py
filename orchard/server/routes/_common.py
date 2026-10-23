@@ -7,7 +7,7 @@ from typing import Any
 from fastapi import HTTPException, status
 from fastapi.responses import JSONResponse
 
-from orchard.app.ipc_dispatch import QueueRegistration
+from orchard.app.ipc_dispatch import EngineDisconnectedError, QueueRegistration
 from orchard.app.model_registry import (
     ModelInfo,
     ModelLoadState,
@@ -34,6 +34,11 @@ async def resolve_model(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={"message": str(exc), "candidates": exc.candidates},
+        ) from exc
+    except EngineDisconnectedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
         ) from exc
 
     if model_state in {ModelLoadState.LOADING, ModelLoadState.ACTIVATING}:

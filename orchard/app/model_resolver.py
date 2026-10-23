@@ -224,32 +224,75 @@ class ModelResolver:
 
     @staticmethod
     def _ensure_hf_weights_complete(model_dir: Path) -> None:
-        index_files = sorted(model_dir.rglob("*.safetensors.index.json"))
-        if index_files:
-            for index_file in index_files:
-                with index_file.open("r", encoding="utf-8") as f:
-                    index_payload = json.load(f)
-                weight_map = index_payload.get("weight_map", {})
-                shard_names = sorted(set(weight_map.values()))
-                if not shard_names:
-                    raise IncompleteSnapshotError(
-                        f"Cached HuggingFace snapshot '{model_dir}' has no declared weight shards."
-                    )
-                missing_shards = [
-                    shard_name
-                    for shard_name in shard_names
-                    if not ModelResolver._is_materialized_weight_file(
-                        index_file.parent / shard_name
-                    )
-                ]
-                if missing_shards:
-                    raise IncompleteSnapshotError(
-                        f"Cached HuggingFace snapshot '{model_dir}' is missing weight shard(s): "
-                        + ", ".join(
-                            str(index_file.parent / shard) for shard in missing_shards
+        model_index_path = model_dir / "model_index.json"
+        if model_index_path.is_file():
+            try:
+                model_index = json.loads(model_index_path.read_text(encoding="utf-8"))
+            except Exception as exc:
+                raise IncompleteSnapshotError(
+                    f"Cached HuggingFace snapshot '{model_dir}' has an unreadable model_index.json."
+                ) from exc
+            if isinstance(model_index, dict):
+                for key, value in model_index.items():
+                    if key.startswith("_") or not isinstance(value, list) or len(value) < 2 or any(v is None for v in value):
+                        continue
+                    comp_dir = model_dir / key
+                    if not comp_dir.is_dir():
+                        raise IncompleteSnapshotError(
+                            f"Cached HuggingFace snapshot '{model_dir}' is missing pipeline component directory '{key}'."
                         )
+                    is_non_weight = (
+                        key == "scheduler"
+                        or key.startswith("tokenizer")
+                        or "processor" in key
+                        or "feature_extractor" in key
                     )
-            return
+                    if key == "scheduler":
+                        cfg_candidates = [comp_dir / "scheduler_config.json", comp_dir / "config.json"]
+                    elif key.startswith("tokenizer"):
+                        cfg_candidates = [comp_dir / "tokenizer_config.json", comp_dir / "config.json"]
+                    elif "processor" in key or "feature_extractor" in key:
+                        cfg_candidates = [
+                            comp_dir / "preprocessor_config.json",
+                            comp_dir / "tokenizer_config.json",
+                            comp_dir / "config.json",
+                        ]
+                    else:
+                        cfg_candidates = [comp_dir / "config.json"]
+                    if not any(ModelResolver._is_materialized_weight_file(p) for p in cfg_candidates):
+                        raise IncompleteSnapshotError(
+                            f"Cached HuggingFace snapshot '{model_dir}' is missing component config '{cfg_candidates[0]}'."
+                        )
+                    if not is_non_weight:
+                        if not list(comp_dir.rglob("*.safetensors")):
+                            raise IncompleteSnapshotError(
+                                f"Cached HuggingFace snapshot '{model_dir}' component '{key}' has no safetensors weights."
+                            )
+
+        index_files = sorted(model_dir.rglob("*.safetensors.index.json"))
+        for index_file in index_files:
+            with index_file.open("r", encoding="utf-8") as f:
+                index_payload = json.load(f)
+            weight_map = index_payload.get("weight_map", {})
+            shard_names = sorted(set(weight_map.values()))
+            if not shard_names:
+                raise IncompleteSnapshotError(
+                    f"Cached HuggingFace snapshot '{model_dir}' has no declared weight shards."
+                )
+            missing_shards = [
+                shard_name
+                for shard_name in shard_names
+                if not ModelResolver._is_materialized_weight_file(
+                    index_file.parent / shard_name
+                )
+            ]
+            if missing_shards:
+                raise IncompleteSnapshotError(
+                    f"Cached HuggingFace snapshot '{model_dir}' is missing weight shard(s): "
+                    + ", ".join(
+                        str(index_file.parent / shard) for shard in missing_shards
+                    )
+                )
 
         single_file = model_dir / "model.safetensors"
         if single_file.exists() or single_file.is_symlink():
@@ -257,10 +300,15 @@ class ModelResolver:
                 raise IncompleteSnapshotError(
                     f"Cached HuggingFace snapshot '{model_dir}' has an incomplete model.safetensors."
                 )
-            return
 
         safetensors = sorted(model_dir.rglob("*.safetensors"))
         if safetensors:
+            for path in safetensors:
+                if re.search(r"-\d+-of-\d+\.safetensors$", path.name):
+                    if not list(path.parent.glob("*.safetensors.index.json")):
+                        raise IncompleteSnapshotError(
+                            f"Cached HuggingFace snapshot '{model_dir}' has sharded safetensors '{path.name}' without a .safetensors.index.json manifest."
+                        )
             incomplete = [
                 path
                 for path in safetensors

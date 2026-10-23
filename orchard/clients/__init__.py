@@ -1,6 +1,8 @@
 from orchard.app.ipc_dispatch import IPCState
 from orchard.app.model_registry import ModelRegistry
 from orchard.clients.client import AudioClient, Client, ImagesClient, ModalArtifact
+from orchard.clients.diarization import DiarizationSession
+from orchard.clients.duplex import DuplexSession
 from orchard.clients.moondream import MoondreamClient
 from orchard.clients.privacy_filter import OpenAIPrivacyFilterClient
 
@@ -21,6 +23,8 @@ def get_client(
 __all__ = [
     "AudioClient",
     "Client",
+    "DiarizationSession",
+    "DuplexSession",
     "ImagesClient",
     "ModalArtifact",
     "MoondreamClient",
