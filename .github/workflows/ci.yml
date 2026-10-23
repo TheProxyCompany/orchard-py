@@ -14,8 +14,8 @@ jobs:
     runs-on: [self-hosted, ci-cd, pie-ci]
     timeout-minutes: 60
     env:
-      PATH: /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
-      PIE_REVISION: 342b6e6afeaff24f1c70ce5b177fcd552b1305dd
+      PATH: /Users/theproxycompany/.cargo/bin:/opt/homebrew/opt/rustup/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+      PIE_REVISION: 5fb2aa0f8cbea54ab7dedba789e5c8969e88bbcc
 
     steps:
       - name: Get the App's token
