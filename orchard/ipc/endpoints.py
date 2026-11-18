@@ -49,10 +49,19 @@ def _fnv1a64(value: str) -> int:
 
 def _bounded_ipc_root(candidate: Path) -> Path:
     canonical = candidate.resolve()
-    if len(str(canonical / _LONGEST_SOCKET_NAME).encode("utf-8")) <= _IPC_SOCKET_PATH_MAX_BYTES:
+    if (
+        len(str(canonical / _LONGEST_SOCKET_NAME).encode("utf-8"))
+        <= _IPC_SOCKET_PATH_MAX_BYTES
+    ):
         return canonical
-    compact = Path("/tmp").resolve() / f"orchard-ipc-{os.getuid()}-{_fnv1a64(str(canonical)):016x}"
-    if len(str(compact / _LONGEST_SOCKET_NAME).encode("utf-8")) > _IPC_SOCKET_PATH_MAX_BYTES:
+    compact = (
+        Path("/tmp").resolve()
+        / f"orchard-ipc-{os.getuid()}-{_fnv1a64(str(canonical)):016x}"
+    )
+    if (
+        len(str(compact / _LONGEST_SOCKET_NAME).encode("utf-8"))
+        > _IPC_SOCKET_PATH_MAX_BYTES
+    ):
         raise RuntimeError(f"Could not construct a bounded IPC root for {canonical}")
     return compact
 
@@ -69,10 +78,23 @@ IPC_ROOT = _resolve_ipc_root()
 # Pattern: PUSH/PULL (Many clients PUSH, one engine PULLs)
 REQUEST_URL = _as_ipc_url(IPC_ROOT / "pie_requests.ipc")
 
-# The endpoint for receiving responses and broadcast events from the engine.
+# The endpoint for broadcast events from the engine. An engine that predates
+# response_pull_path also answers requests here.
 # Pattern: PUB/SUB (One engine PUBlishes, many clients SUBscribe)
-# Topics are used to route messages to the correct consumer.
+# Topics are used to route messages to the correct consumer. A subscriber that
+# falls about a thousand messages behind loses the oldest ones, with no error
+# on either side.
 RESPONSE_URL = _as_ipc_url(IPC_ROOT / "pie_responses.ipc")
+
+
+def response_pull_path(response_channel_id: int) -> Path:
+    """The socket file this client listens on for its own response deltas.
+    Pattern: PUSH/PULL (the engine PUSHes, this client PULLs). Requests ask for
+    this route (serialization.RESPONSE_TRANSPORT); the engine dials the file on
+    the first delta it has for the channel, and a client that falls behind
+    makes the engine wait instead of losing messages."""
+    return IPC_ROOT / f"pie_response_{response_channel_id:x}.ipc"
+
 
 # The endpoint for synchronous management commands (e.g., load_model).
 # Pattern: REQ/REP (One client sends a REQ, one engine sends a REP)
@@ -95,4 +117,5 @@ __all__ = [
     "REQUEST_URL",
     "RESPONSE_TOPIC_PREFIX",
     "RESPONSE_URL",
+    "response_pull_path",
 ]

@@ -426,6 +426,7 @@ class Client:
                 model_path=info.model_path,
                 request_type=request_type,
                 response_channel_id=response_channel_id,
+                lossless_responses=self._ipc_state.lossless_responses,
                 prompts=[
                     {
                         "prompt_bytes": prompt_bytes,
@@ -514,6 +515,7 @@ class Client:
                 model_path=info.model_path,
                 request_type="omni",
                 response_channel_id=response_channel_id,
+                lossless_responses=self._ipc_state.lossless_responses,
                 prompts=[
                     {
                         "prompt_bytes": b"",
@@ -657,6 +659,7 @@ class Client:
             model_path=info.model_path,
             request_type="prefill_task",
             response_channel_id=response_channel_id,
+            lossless_responses=self._ipc_state.lossless_responses,
             prompts=[
                 {
                     "prompt_bytes": text.encode("utf-8"),
@@ -1821,6 +1824,7 @@ class Client:
             model_path=info.model_path,
             request_type="generation",
             response_channel_id=response_channel_id,
+            lossless_responses=self._ipc_state.lossless_responses,
             prompts=prompt_payloads,
         )
         await self._ipc_state.send_request(request_bytes)
