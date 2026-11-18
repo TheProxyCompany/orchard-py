@@ -172,6 +172,7 @@ async def _exercise_engine_death(exit_mode):
                 payload = _build_request_payload(
                     request_id=request_id,
                     response_channel_id=state.response_channel_id,
+                    lossless_responses=state.lossless_responses,
                     model_id="transport-death-probe",
                     model_path=str(engine._paths.cache_dir),
                     request_type="generation",
