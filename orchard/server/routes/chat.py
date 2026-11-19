@@ -21,7 +21,7 @@ from orchard.ipc.utils import (
     normalise_delta_payload,
     release_delta_resources,
 )
-from orchard.server.dependencies import IPCStateDep, ModelRegistryDep
+from orchard.server.dependencies import IPCStateDep, ModelDirectoriesDep, ModelRegistryDep
 from orchard.server.exceptions import InferenceError
 from orchard.server.models.chat import (
     ChatCompletionChoice,
@@ -67,6 +67,7 @@ async def handle_completion_request(
     request: ChatCompletionRequest,
     ipc_state: IPCStateDep,
     model_registry: ModelRegistryDep,
+    model_directories: ModelDirectoriesDep,
 ) -> ChatCompletionResponse | EventSourceResponse | JSONResponse:
     """
     Handles requests to the `/v1/chat/completions` endpoint.
@@ -74,7 +75,9 @@ async def handle_completion_request(
     logger.info("Chat completion request for model: %s", request.model)
 
     try:
-        canonical_id, model_info = await resolve_model(model_registry, request.model)
+        canonical_id, model_info = await resolve_model(
+            model_registry, request.model, model_directories
+        )
     except _ModelNotReadyError as exc:
         return exc.response
 

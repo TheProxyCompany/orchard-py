@@ -28,7 +28,7 @@ from orchard.ipc.utils import (
     content_only_message_events,
     release_delta_resources,
 )
-from orchard.server.dependencies import IPCStateDep, ModelRegistryDep
+from orchard.server.dependencies import IPCStateDep, ModelDirectoriesDep, ModelRegistryDep
 from orchard.server.exceptions import InferenceError
 from orchard.server.models.reasoning import (
     DEFAULT_BOOLEAN_REASONING_EFFORT,
@@ -88,12 +88,15 @@ async def handle_response_request(
     request: ResponseRequest,
     ipc_state: IPCStateDep,
     model_registry: ModelRegistryDep,
+    model_directories: ModelDirectoriesDep,
 ) -> ResponseObject | EventSourceResponse | JSONResponse:
     """Handle multimodal requests to the `/v1/responses` endpoint."""
     logger.info("Handling response request for model: %s", request.model)
 
     try:
-        canonical_id, model_info = await resolve_model(model_registry, request.model)
+        canonical_id, model_info = await resolve_model(
+            model_registry, request.model, model_directories
+        )
     except _ModelNotReadyError as exc:
         return exc.response
 

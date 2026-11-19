@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import Depends, Request
@@ -22,3 +23,10 @@ def get_model_registry(request: Request) -> ModelRegistry:
 
 IPCStateDep = Annotated[IPCState, Depends(get_ipc_state)]
 ModelRegistryDep = Annotated[ModelRegistry, Depends(get_model_registry)]
+
+
+def get_model_directories(request: Request) -> tuple[Path, ...]:
+    return request.app.state.model_directories
+
+
+ModelDirectoriesDep = Annotated[tuple[Path, ...], Depends(get_model_directories)]

@@ -2,6 +2,7 @@ import asyncio
 import logging
 from collections.abc import Callable
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 from fastapi import HTTPException, status
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 async def resolve_model(
     model_registry: ModelRegistry,
     requested_model: str,
+    model_directories: tuple[Path, ...] = (),
 ) -> tuple[str, ModelInfo]:
     """Resolve a model ID to canonical ID and ModelInfo.
 
@@ -29,7 +31,7 @@ async def resolve_model(
     failed (503), and missing runtime info (500).
     """
     try:
-        model_state, canonical_id = await model_registry.schedule_model(requested_model)
+        model_state, canonical_id = await model_registry.schedule_http_model(requested_model, model_directories)
     except ModelResolutionError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -43,7 +45,7 @@ async def resolve_model(
 
     if model_state in {ModelLoadState.LOADING, ModelLoadState.ACTIVATING}:
         try:
-            model_info = await model_registry.ensure_loaded(canonical_id)
+            model_info = await model_registry.activate_scheduled(requested_model, canonical_id)
         except RuntimeError as exc:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

@@ -12,7 +12,7 @@ from orchard.ipc.utils import (
     ResponseDeltaDict,
     release_delta_resources,
 )
-from orchard.server.dependencies import IPCStateDep, ModelRegistryDep
+from orchard.server.dependencies import IPCStateDep, ModelDirectoriesDep, ModelRegistryDep
 from orchard.server.exceptions import InferenceError
 from orchard.server.models.chat.logprobs import ChatCompletionLogProbs
 from orchard.server.models.chat.output import ChatCompletionChoice
@@ -42,6 +42,7 @@ async def handle_completion_request(
     request: CompletionRequest,
     ipc_state: IPCStateDep,
     model_registry: ModelRegistryDep,
+    model_directories: ModelDirectoriesDep,
 ) -> CompletionResponse | JSONResponse:
     """Handles requests to the `/v1/completions` endpoint."""
     logger.info("Handling completion request for model: %s", request.model)
@@ -56,7 +57,9 @@ async def handle_completion_request(
     prompts = _normalize_prompt_inputs(request.prompt)
 
     try:
-        canonical_id, model_info = await resolve_model(model_registry, request.model)
+        canonical_id, model_info = await resolve_model(
+            model_registry, request.model, model_directories
+        )
     except _ModelNotReadyError as exc:
         return exc.response
 

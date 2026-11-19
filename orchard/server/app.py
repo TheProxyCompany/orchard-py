@@ -1,7 +1,8 @@
 import logging
 import os
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Sequence
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
@@ -25,7 +26,20 @@ def create_app(
     inference_engine: InferenceEngine,
     *,
     close_engine_on_shutdown: bool = True,
+    model_directories: Sequence[Path | str] | Path | str = (),
 ) -> FastAPI:
+    paths = (
+        (model_directories,)
+        if isinstance(model_directories, (Path, str))
+        else model_directories
+    )
+    directories = tuple(
+        dict.fromkeys(Path(p).expanduser().resolve(strict=True) for p in paths)
+    )
+    for directory in directories:
+        if not directory.is_dir():
+            raise ValueError(f"Expected a model directory at {directory}")
+
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         app.state.inference_engine = inference_engine
@@ -46,6 +60,7 @@ def create_app(
         version="0.0.1",
         lifespan=lifespan,
     )
+    app.state.model_directories = directories
 
     @app.exception_handler(InferenceError)
     async def inference_exception_handler(request: Request, exc: InferenceError):

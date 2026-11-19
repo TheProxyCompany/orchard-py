@@ -14,7 +14,8 @@ from pathlib import Path
 from typing import Any
 
 from huggingface_hub import snapshot_download
-from huggingface_hub.errors import LocalEntryNotFoundError
+from huggingface_hub.errors import HFValidationError, LocalEntryNotFoundError
+from huggingface_hub.utils import validate_repo_id
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +86,7 @@ class ModelResolver:
             return self._resolved_cache[cache_key]
 
         # 1. Direct filesystem path (absolute or relative)
-        resolved = self._try_local_path(identifier)
+        resolved = self._try_local_checkpoint(Path(identifier))
         if resolved is not None:
             self._resolved_cache[cache_key] = resolved
             return resolved
@@ -95,36 +96,116 @@ class ModelResolver:
         self._resolved_cache[cache_key] = resolved
         return resolved
 
-    def _try_local_path(self, identifier: str) -> ResolvedModel | None:
-        """Try to resolve identifier as a local filesystem path."""
-        path = Path(identifier)
+    @staticmethod
+    def check_http_source(model: ResolvedModel, directories: tuple[Path, ...]) -> None:
+        if model.source in {"hf_cache", "hf_hub"}:
+            return
+        if not any(model.model_path.is_relative_to(root) for root in directories):
+            raise ModelResolutionError(
+                "Local checkpoint is outside the configured model directories."
+            )
 
-        # Check absolute path
-        if path.is_absolute():
-            if path.exists() and path.is_dir():
-                if (path / "config.json").exists() or (
-                    path / "model_index.json"
-                ).exists():
-                    return self._build_resolved_model(path, source="local")
-                return self._build_local_source_model(path)
-            if path.exists() and path.is_file():
-                return self._build_local_source_model(path)
-            return None
+    def resolve_http_model(
+        self, requested_id: str, directories: tuple[Path, ...]
+    ) -> ResolvedModel:
+        identifier = requested_id.strip()
+        if not identifier:
+            raise ModelResolutionError("Model identifier cannot be empty.")
+        name = Path(identifier)
+        outside_directories = False
+        for base in directories:
+            try:
+                candidate = (base / name).resolve()
+            except (OSError, RuntimeError, ValueError) as exc:
+                raise ModelResolutionError("Invalid local checkpoint path.") from exc
+            if not any(candidate.is_relative_to(root) for root in directories):
+                outside_directories = True
+                continue
+            resolved = self._try_local_checkpoint(candidate, directories)
+            if resolved is not None:
+                return resolved
+        if outside_directories or name.is_absolute() or ".." in name.parts:
+            raise ModelResolutionError(
+                "Expected a checkpoint inside a configured model directory."
+            )
+        return self.resolve_hub_model(identifier)
 
-        # Check relative path (relative to CWD)
-        if path.exists():
-            resolved_path = path.resolve()
-            if resolved_path.is_dir() and (
-                (resolved_path / "config.json").exists()
-                or (resolved_path / "model_index.json").exists()
-            ):
-                return self._build_resolved_model(resolved_path, source="local")
-            if resolved_path.is_dir() or resolved_path.is_file():
-                return self._build_local_source_model(resolved_path)
+    @staticmethod
+    def _check_checkpoint_assets(checkpoint: Path, roots: tuple[Path, ...]) -> None:
+        # Cache snapshots commonly link their shards into a sibling blob directory.
+        # Resolve links against every configured root, including directory links.
+        def checked(path: Path) -> Path:
+            target = path.resolve()
+            if not any(target.is_relative_to(root) for root in roots):
+                raise ModelResolutionError(
+                    "Checkpoint references an asset outside the configured model directories."
+                )
+            return target
 
+        pending = [checkpoint]
+        visited: set[Path] = set()
+        try:
+            while pending:
+                directory = pending.pop()
+                if directory in visited:
+                    continue
+                visited.add(directory)
+                for path in directory.iterdir():
+                    target = checked(path) if path.is_symlink() else path
+                    if target.is_dir():
+                        pending.append(target)
+                    elif path.name.endswith(".safetensors.index.json"):
+                        index = json.loads(target.read_text(encoding="utf-8"))
+                        for shard in set(index.get("weight_map", {}).values()):
+                            checked(directory / shard)
+                    elif path.name == "model_index.json":
+                        index = json.loads(target.read_text(encoding="utf-8"))
+                        for component, definition in index.items():
+                            if not component.startswith("_") and isinstance(
+                                definition, list
+                            ):
+                                checked(directory / component)
+        except ModelResolutionError:
+            raise
+        except (OSError, RuntimeError, ValueError, TypeError, AttributeError) as exc:
+            raise ModelResolutionError(
+                "Could not validate the local checkpoint assets."
+            ) from exc
+
+    def resolve_hub_model(self, requested_id: str) -> ResolvedModel:
+        """Resolve an HTTP model name through the Hub's snapshot API."""
+        repo_id = requested_id.strip()
+        try:
+            validate_repo_id(repo_id)
+        except HFValidationError as exc:
+            raise ModelResolutionError(
+                "Expected a registered model name or Hugging Face repository ID."
+            ) from exc
+        cached = self._resolved_cache.get(repo_id.lower())
+        if cached is not None and cached.source in {"hf_cache", "hf_hub"}:
+            return cached
+        resolved = self._resolve_huggingface(repo_id, allow_python_config=False)
+        self._resolved_cache[repo_id.lower()] = resolved
+        return resolved
+
+    def _try_local_checkpoint(
+        self, path: Path, directories: tuple[Path, ...] | None = None
+    ) -> ResolvedModel | None:
+        if path.is_dir():
+            if directories is not None:
+                self._check_checkpoint_assets(path, directories)
+            if (path / "config.json").exists() or (path / "model_index.json").exists():
+                return self._build_resolved_model(
+                    path, source="local", allow_python_config=directories is None
+                )
+            return self._build_local_source_model(path)
+        if path.is_file():
+            return self._build_local_source_model(path)
         return None
 
-    def _resolve_huggingface(self, repo_id: str) -> ResolvedModel:
+    def _resolve_huggingface(
+        self, repo_id: str, *, allow_python_config: bool = True
+    ) -> ResolvedModel:
         """Resolve a HuggingFace repo ID to a local cache path.
 
         Downloads the model if not already cached.
@@ -167,7 +248,11 @@ class ModelResolver:
                 ) from e
 
         return self._build_resolved_model(
-            path, source=source, canonical_id=repo_id, hf_repo=repo_id
+            path,
+            source=source,
+            canonical_id=repo_id,
+            hf_repo=repo_id,
+            allow_python_config=allow_python_config,
         )
 
     def _build_resolved_model(
@@ -176,12 +261,15 @@ class ModelResolver:
         source: str,
         canonical_id: str | None = None,
         hf_repo: str | None = None,
+        allow_python_config: bool = True,
     ) -> ResolvedModel:
         """Build a ResolvedModel from a model directory."""
         model_path = model_path.resolve()
 
         # Ensure model has all required files for inference
-        config = self._ensure_model_complete(model_path)
+        config = self._ensure_model_complete(
+            model_path, allow_python_config=allow_python_config
+        )
         metadata = self._collect_metadata(config)
 
         # Determine canonical ID
@@ -338,7 +426,9 @@ class ModelResolver:
             return False
         return candidate.stat().st_size > 0
 
-    def _ensure_model_complete(self, model_dir: Path) -> dict:
+    def _ensure_model_complete(
+        self, model_dir: Path, *, allow_python_config: bool = True
+    ) -> dict:
         """Ensure model directory has all required files for inference.
 
         HuggingFace models may:
@@ -351,7 +441,7 @@ class ModelResolver:
         config = self._normalize_config(self._load_config(model_dir))
 
         # Config completeness: augment from Python if using auto_map
-        if "auto_map" in config:
+        if allow_python_config and "auto_map" in config:
             self._ensure_config_complete(model_dir, config)
 
         # Tokenizer completeness: resolve external tokenizer if missing

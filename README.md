@@ -412,6 +412,12 @@ orchard upgrade stable
 Orchard resolves local paths and Hugging Face repos on demand. The currently
 tested families include Gemma, Qwen, Llama, and Moondream.
 
+HTTP inference can select models preloaded by the operator and fetch Hub repositories.
+To serve local checkpoints on demand, pass one or more directories at startup.
+For example, `orchard serve --model-directory /srv/orchard/models --model-directory /mnt/checkpoints`
+accepts relative checkpoint names under those directories and absolute paths inside them.
+The Python app factory accepts the same directories through `create_app(engine, model_directories=[...])`.
+
 | Mac | Start with |
 | --- | --- |
 | 8 GB unified memory | `google/gemma-4-E2B-it` |

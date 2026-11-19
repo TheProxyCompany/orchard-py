@@ -36,7 +36,7 @@ async def run_serve(args: argparse.Namespace):
         if args.models:
             await local_engine.load_models(args.models)
 
-        fastapi_app = create_app(local_engine)
+        fastapi_app = create_app(local_engine, model_directories=args.model_directory)
         config = uvicorn.Config(
             fastapi_app,
             host=args.host,
@@ -125,6 +125,14 @@ def main():
         dest="models",
         nargs="*",
         help="Model identifier(s) to preload on startup.",
+    )
+    serve_parser.add_argument(
+        "--model-directory",
+        type=Path,
+        action="append",
+        default=[],
+        metavar="PATH",
+        help="Serve local checkpoints below this directory on demand. Repeat for additional directories.",
     )
     serve_parser.add_argument(
         "--engine-startup-timeout",

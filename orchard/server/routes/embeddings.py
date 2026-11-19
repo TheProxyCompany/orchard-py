@@ -14,7 +14,7 @@ from orchard.ipc.utils import (
     ResponseDeltaDict,
     release_delta_resources,
 )
-from orchard.server.dependencies import IPCStateDep, ModelRegistryDep
+from orchard.server.dependencies import IPCStateDep, ModelDirectoriesDep, ModelRegistryDep
 from orchard.server.exceptions import InferenceError
 from orchard.server.models.embeddings import (
     EmbeddingData,
@@ -86,6 +86,7 @@ async def create_embeddings(
     request: EmbeddingRequest,
     ipc_state: IPCStateDep,
     model_registry: ModelRegistryDep,
+    model_directories: ModelDirectoriesDep,
 ) -> EmbeddingResponse | JSONResponse:
     """
     Handles requests to the `/v1/embeddings` endpoint.
@@ -104,7 +105,9 @@ async def create_embeddings(
     logger.debug("Generated request ID: %d", current_request_id)
 
     try:
-        canonical_id, model_info = await resolve_model(model_registry, request.model)
+        canonical_id, model_info = await resolve_model(
+            model_registry, request.model, model_directories
+        )
     except _ModelNotReadyError as exc:
         return exc.response
 
