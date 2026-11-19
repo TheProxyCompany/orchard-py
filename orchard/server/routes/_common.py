@@ -2,7 +2,6 @@ import asyncio
 import logging
 from collections.abc import Callable
 from contextlib import asynccontextmanager
-from pathlib import Path
 from typing import Any
 
 from fastapi import HTTPException, status
@@ -15,6 +14,7 @@ from orchard.app.model_registry import (
     ModelRegistry,
     ModelResolutionError,
 )
+from orchard.app.model_resolver import ModelDirectory
 from orchard.ipc.utils import ResponseDeltaDict, release_delta_resources
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 async def resolve_model(
     model_registry: ModelRegistry,
     requested_model: str,
-    model_directories: tuple[Path, ...] = (),
+    model_directories: tuple[ModelDirectory, ...] = (),
 ) -> tuple[str, ModelInfo]:
     """Resolve a model ID to canonical ID and ModelInfo.
 

@@ -20,10 +20,27 @@ from huggingface_hub.utils import validate_repo_id
 logger = logging.getLogger(__name__)
 
 __all__ = [
+    "ModelDirectory",
     "ModelResolutionError",
     "ModelResolver",
     "ResolvedModel",
 ]
+
+
+@dataclass(frozen=True, slots=True)
+class ModelDirectory:
+    """An operator-configured path and its physical directory at server startup."""
+
+    configured: Path
+    root: Path
+
+    @classmethod
+    def from_path(cls, path: Path | str) -> ModelDirectory:
+        configured = Path(path).expanduser().absolute()
+        root = configured.resolve(strict=True)
+        if not root.is_dir():
+            raise ValueError(f"Expected a model directory at {root}")
+        return cls(configured, root)
 
 
 @dataclass(slots=True)
@@ -97,51 +114,79 @@ class ModelResolver:
         return resolved
 
     @staticmethod
-    def check_http_source(model: ResolvedModel, directories: tuple[Path, ...]) -> None:
+    def check_http_source(model: ResolvedModel, directories: tuple[ModelDirectory, ...]) -> None:
         if model.source in {"hf_cache", "hf_hub"}:
             return
-        if not any(model.model_path.is_relative_to(root) for root in directories):
+        if not any(model.model_path.is_relative_to(directory.root) for directory in directories):
             raise ModelResolutionError(
                 "Local checkpoint is outside the configured model directories."
             )
 
     def resolve_http_model(
-        self, requested_id: str, directories: tuple[Path, ...]
+        self, requested_id: str, directories: tuple[ModelDirectory, ...]
     ) -> ResolvedModel:
         identifier = requested_id.strip()
         if not identifier:
             raise ModelResolutionError("Model identifier cannot be empty.")
         name = Path(identifier)
-        outside_directories = False
-        for base in directories:
+        roots = tuple(directory.root for directory in directories)
+        for directory in directories:
+            relative = name
+            if name.is_absolute():
+                for prefix in (directory.configured, directory.root):
+                    if name.is_relative_to(prefix):
+                        relative = name.relative_to(prefix)
+                        break
+                else:
+                    continue
+            # Choose existing entries from the operator's directory. A name
+            # supplied over HTTP is never used to probe an arbitrary OS path.
             try:
-                candidate = (base / name).resolve()
+                candidate = self._checked_asset(directory.root, roots)
+                for component in relative.parts:
+                    if not candidate.is_dir():
+                        break
+                    if component == "..":
+                        candidate = self._checked_asset(candidate.parent, roots)
+                        continue
+                    child = next(
+                        (
+                            entry
+                            for entry in candidate.iterdir()
+                            if entry.name == component
+                        ),
+                        None,
+                    )
+                    if child is None:
+                        break
+                    candidate = self._checked_asset(child, roots)
+                else:
+                    resolved = self._try_local_checkpoint(candidate, roots)
+                    if resolved is not None:
+                        return resolved
+            except ModelResolutionError:
+                raise
             except (OSError, RuntimeError, ValueError) as exc:
                 raise ModelResolutionError("Invalid local checkpoint path.") from exc
-            if not any(candidate.is_relative_to(root) for root in directories):
-                outside_directories = True
-                continue
-            resolved = self._try_local_checkpoint(candidate, directories)
-            if resolved is not None:
-                return resolved
-        if outside_directories or name.is_absolute() or ".." in name.parts:
+        if name.is_absolute() or ".." in name.parts:
             raise ModelResolutionError(
                 "Expected a checkpoint inside a configured model directory."
             )
         return self.resolve_hub_model(identifier)
 
     @staticmethod
-    def _check_checkpoint_assets(checkpoint: Path, roots: tuple[Path, ...]) -> None:
-        # Cache snapshots commonly link their shards into a sibling blob directory.
-        # Resolve links against every configured root, including directory links.
-        def checked(path: Path) -> Path:
-            target = path.resolve()
-            if not any(target.is_relative_to(root) for root in roots):
-                raise ModelResolutionError(
-                    "Checkpoint references an asset outside the configured model directories."
-                )
-            return target
+    def _checked_asset(path: Path, roots: tuple[Path, ...]) -> Path:
+        target = path.resolve()
+        if not any(target.is_relative_to(root) for root in roots):
+            raise ModelResolutionError(
+                "Checkpoint references an asset outside the configured model directories."
+            )
+        return target
 
+    def _check_checkpoint_assets(
+        self, checkpoint: Path, roots: tuple[Path, ...]
+    ) -> None:
+        # Cache snapshots commonly link shards into a sibling blob directory.
         pending = [checkpoint]
         visited: set[Path] = set()
         try:
@@ -151,20 +196,20 @@ class ModelResolver:
                     continue
                 visited.add(directory)
                 for path in directory.iterdir():
-                    target = checked(path) if path.is_symlink() else path
+                    target = self._checked_asset(path, roots) if path.is_symlink() else path
                     if target.is_dir():
                         pending.append(target)
                     elif path.name.endswith(".safetensors.index.json"):
                         index = json.loads(target.read_text(encoding="utf-8"))
                         for shard in set(index.get("weight_map", {}).values()):
-                            checked(directory / shard)
+                            self._checked_asset(directory / shard, roots)
                     elif path.name == "model_index.json":
                         index = json.loads(target.read_text(encoding="utf-8"))
                         for component, definition in index.items():
                             if not component.startswith("_") and isinstance(
                                 definition, list
                             ):
-                                checked(directory / component)
+                                self._checked_asset(directory / component, roots)
         except ModelResolutionError:
             raise
         except (OSError, RuntimeError, ValueError, TypeError, AttributeError) as exc:

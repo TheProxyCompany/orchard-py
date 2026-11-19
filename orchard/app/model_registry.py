@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 from huggingface_hub import snapshot_download
 
 from orchard.app.model_resolver import (
+    ModelDirectory,
     ModelResolutionError,
     ModelResolver,
     ResolvedModel,
@@ -209,7 +210,7 @@ class ModelRegistry:
         )
 
     async def schedule_http_model(
-        self, requested_model_id: str, model_directories: tuple[Path, ...] = ()
+        self, requested_model_id: str, model_directories: tuple[ModelDirectory, ...] = ()
     ) -> tuple[ModelLoadState, str]:
         """Select a registered checkpoint, a permitted local source, or a Hub model."""
         if known := await self._scheduled_state(requested_model_id, model_directories):
@@ -227,7 +228,7 @@ class ModelRegistry:
         )
 
     async def _scheduled_state(
-        self, requested_model_id: str, http_directories: tuple[Path, ...] | None = None
+        self, requested_model_id: str, http_directories: tuple[ModelDirectory, ...] | None = None
     ) -> tuple[ModelLoadState, str] | None:
         canonical = self._canonicalize(requested_model_id)
         if canonical is None:
@@ -256,7 +257,7 @@ class ModelRegistry:
         resolved: ResolvedModel,
         *,
         force_reload: bool = False,
-        http_directories: tuple[Path, ...] | None = None,
+        http_directories: tuple[ModelDirectory, ...] | None = None,
     ) -> tuple[ModelLoadState, str]:
         if resolved.source == "local_source":
             resolved = await self._inspect_model_source(

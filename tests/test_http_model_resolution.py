@@ -5,9 +5,13 @@ import pytest
 from fastapi import HTTPException
 
 from orchard.app.model_registry import ModelLoadState, ModelRegistry
-from orchard.app.model_resolver import ModelResolutionError, ModelResolver
+from orchard.app.model_resolver import ModelDirectory, ModelResolutionError, ModelResolver
 from orchard.server.app import create_app
 from orchard.server.routes._common import resolve_model
+
+
+def directories(*paths):
+    return tuple(ModelDirectory.from_path(path) for path in paths)
 
 
 def test_app_canonicalizes_configured_model_directories(tmp_path):
@@ -15,12 +19,16 @@ def test_app_canonicalizes_configured_model_directories(tmp_path):
     directory.mkdir()
     alias = tmp_path / "alias"
     alias.symlink_to(directory, target_is_directory=True)
-    assert create_app(Mock(), model_directories=directory).state.model_directories == (
-        directory,
-    )
     assert create_app(
+        Mock(), model_directories=directory
+    ).state.model_directories == directories(directory)
+    configured = create_app(
         Mock(), model_directories=[alias, directory]
-    ).state.model_directories == (directory,)
+    ).state.model_directories
+    assert configured == directories(alias, directory)
+    checkpoint = directory / "local.gguf"
+    checkpoint.write_bytes(b"fixture")
+    assert ModelResolver().resolve_http_model(str(alias / checkpoint.name), configured).model_path == checkpoint
 
 
 @pytest.mark.asyncio
@@ -89,14 +97,14 @@ async def test_served_directories_are_resolved_per_app_and_preserve_registered_a
     (checkpoint / "tokenizer.json").write_text("{}")
     monkeypatch.setattr("orchard.app.model_registry.ChatFormatter", Mock())
     registry = ModelRegistry(Mock())
-    state, name = await registry.schedule_http_model("local-model", (first, second))
+    state, name = await registry.schedule_http_model("local-model", directories(first, second))
     assert state == ModelLoadState.LOADING and name == "local-model"
     registry._entries[name].state = ModelLoadState.READY
-    assert (await resolve_model(registry, str(checkpoint), (second,)))[
+    assert (await resolve_model(registry, str(checkpoint), directories(second)))[
         1
     ].model_path == str(checkpoint)
     with pytest.raises(HTTPException) as error:
-        await resolve_model(registry, name, (first,))
+        await resolve_model(registry, name, directories(first))
     assert error.value.status_code == 422
     await registry.schedule_model(str(checkpoint))
     assert (await resolve_model(registry, name))[0] == name
@@ -121,14 +129,14 @@ def test_served_model_references_stay_in_configured_directories(tmp_path, monkey
     resolver = ModelResolver()
     for identifier in ("sample", "external", "../blobs", str(blobs)):
         with pytest.raises(ModelResolutionError):
-            resolver.resolve_http_model(identifier, (models,))
+            resolver.resolve_http_model(identifier, directories(models))
     assert (
-        resolver.resolve_http_model("sample", (models, blobs)).model_path == checkpoint
+        resolver.resolve_http_model("sample", directories(models, blobs)).model_path == checkpoint
     )
     link.unlink()
     index = checkpoint / "model.safetensors.index.json"
     index.write_text(json.dumps({"weight_map": {"layer": str(shard)}}))
     with pytest.raises(ModelResolutionError):
-        resolver.resolve_http_model("sample", (models,))
-    assert resolver.resolve_http_model("sample", (models, blobs)).source == "local"
+        resolver.resolve_http_model("sample", directories(models))
+    assert resolver.resolve_http_model("sample", directories(models, blobs)).source == "local"
     download.assert_not_called()

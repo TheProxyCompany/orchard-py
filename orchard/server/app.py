@@ -7,6 +7,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
+from orchard.app.model_resolver import ModelDirectory
 from orchard.engine.inference_engine import InferenceEngine
 from orchard.server.exceptions import InferenceError
 from orchard.server.routes.chat import chat_router
@@ -33,12 +34,7 @@ def create_app(
         if isinstance(model_directories, (Path, str))
         else model_directories
     )
-    directories = tuple(
-        dict.fromkeys(Path(p).expanduser().resolve(strict=True) for p in paths)
-    )
-    for directory in directories:
-        if not directory.is_dir():
-            raise ValueError(f"Expected a model directory at {directory}")
+    directories = tuple(dict.fromkeys(ModelDirectory.from_path(p) for p in paths))
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
