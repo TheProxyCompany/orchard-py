@@ -9,13 +9,16 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   full-suite:
     runs-on: [self-hosted, ci-cd]
     timeout-minutes: 60
     env:
       PATH: /opt/homebrew/opt/rustup/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
-      PIE_REVISION: 43b861628ca1a659a2d8174267ae8fa59194c6fb
+      PIE_REVISION: cca7cbb8d3e0e803b0d942b7f6b68a64296ee12b
 
     steps:
       - name: Get the App's token
