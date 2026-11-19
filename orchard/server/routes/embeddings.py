@@ -8,7 +8,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 
-from orchard.app.ipc_dispatch import EngineDisconnectedError, QueueRegistration
+from orchard.app.ipc_dispatch import EngineDisconnectedError
 from orchard.ipc.serialization import _build_request_payload
 from orchard.ipc.utils import (
     ResponseDeltaDict,
@@ -22,7 +22,7 @@ from orchard.server.models.embeddings import (
     EmbeddingResponse,
     EmbeddingUsage,
 )
-from orchard.server.routes._common import _ModelNotReadyError, resolve_model
+from orchard.server.routes._common import _ModelNotReadyError, managed_stream_session, resolve_model
 
 logger = logging.getLogger(__name__)
 
@@ -129,26 +129,19 @@ async def create_embeddings(
         prompts=[prompt_payload],
     )
 
-    # 3. Create and register the asyncio Queue for this request
     response_queue = asyncio.Queue[ResponseDeltaDict]()
-    loop = asyncio.get_running_loop()
-    ipc_state.active_request_queues[current_request_id] = QueueRegistration(
-        loop=loop, queue=response_queue
-    )
-    logger.debug("Registered queue for request ID: %d", current_request_id)
-
-    # 4. Submit request to C++ engine
+    completed = False
     try:
-        logger.debug(
-            "Submitting embedding request %d to C++ engine", current_request_id
-        )
-        await ipc_state.send_request(request_bytes)
-        logger.info("Submitted embedding request %d successfully", current_request_id)
-
-        # 5. Gather response (embeddings are always non-streaming)
-        response_data = await gather_embedding_response(
-            current_request_id, response_queue, ipc_state
-        )
+        async with managed_stream_session(
+            ipc_state, current_request_id, response_queue,
+            cancel_on_exit=True, completed=lambda: completed,
+        ):
+            logger.debug("Submitting embedding request %d to C++ engine", current_request_id)
+            await ipc_state.send_request(request_bytes)
+            response_data = await gather_embedding_response(
+                current_request_id, response_queue, ipc_state
+            )
+            completed = True
 
         usage = EmbeddingUsage(
             prompt_tokens=response_data["prompt_tokens"],
@@ -182,13 +175,6 @@ async def create_embeddings(
             status_code=500,
             detail="An unexpected error occurred during embedding generation.",
         ) from e
-    finally:
-        # Clean up the request queue
-        if current_request_id in ipc_state.active_request_queues:
-            _ = ipc_state.active_request_queues.pop(current_request_id, None)
-            logger.debug(
-                "Cleaned up queue for embedding request ID %d.", current_request_id
-            )
 
 
 async def gather_embedding_response(
