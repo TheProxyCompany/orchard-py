@@ -1,10 +1,14 @@
 import asyncio
 import struct
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
+from starlette.requests import Request
 
 from orchard.server.exceptions import InferenceError
+from orchard.server.models.embeddings import EmbeddingRequest
+from orchard.server.routes import embeddings
 from orchard.server.routes.embeddings import gather_embedding_response
 
 
@@ -32,3 +36,40 @@ async def test_embedding_batch_rejects_unidentified_results(index):
     with pytest.raises(InferenceError, match="Invalid embedding prompt index"):
         await gather_embedding_response(42, queue, SimpleNamespace(next_delta=lambda q: q.get()), 2)
     await queue.join()
+
+
+@pytest.mark.asyncio
+async def test_disconnected_embedding_client_cancels_queued_inference(monkeypatch):
+    sent = asyncio.Event()
+
+    async def submit(_payload):
+        sent.set()
+
+    async def receive():
+        await sent.wait()
+        return {"type": "http.disconnect"}
+
+    ipc = SimpleNamespace(
+        get_next_request_id=AsyncMock(return_value=42),
+        send_request=submit,
+        next_delta=lambda queue: queue.get(),
+        cancel_request=AsyncMock(),
+        response_channel_id=7,
+        lossless_responses=True,
+        active_request_queues={},
+    )
+    model = SimpleNamespace(model_path="/fixture")
+    monkeypatch.setattr(embeddings, "resolve_model", AsyncMock(return_value=("model", model)))
+    result = await asyncio.wait_for(
+        embeddings.create_embeddings(
+            request=EmbeddingRequest(model="model", input=["first", "second"]),
+            http_request=Request({"type": "http"}, receive),
+            ipc_state=ipc,
+            model_registry=None,
+            model_directories=[],
+        ),
+        timeout=2,
+    )
+    assert result.status_code == 499
+    ipc.cancel_request.assert_awaited_once_with(42)
+    assert not ipc.active_request_queues
