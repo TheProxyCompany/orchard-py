@@ -73,8 +73,9 @@ class IPCState:
         self.response_socket: pynng.Sub0 | None = None
         self.response_pull_socket: pynng.Pull0 | None = None
         self.management_socket: pynng.Req0 | None = None
-        self._management_lock = asyncio.Lock()
-        self._management_lock_loop: asyncio.AbstractEventLoop | None = None
+        self._management_locks: weakref.WeakValueDictionary[asyncio.AbstractEventLoop, asyncio.Lock] = (
+            weakref.WeakValueDictionary()
+        )
 
         self.response_channel_id: int = 0
         self.active_request_queues: dict[int, QueueRegistration] = {}
@@ -129,18 +130,15 @@ class IPCState:
 
     @property
     def management_lock(self) -> asyncio.Lock:
-        # An asyncio.Lock binds to the loop that first acquires it, but this
-        # state outlives test/session event loops (model activation from a
-        # later loop raised "bound to a different event loop"). Rebind when
-        # the loop changed and the lock is free; real cross-loop contention
-        # stays a loud error.
+        # Preserve command order and reply timeouts on each caller's loop.
+        # Independent loops use separate NNG request contexts on the same socket.
         loop = asyncio.get_running_loop()
-        if self._management_lock_loop is not loop:
-            if self._management_lock.locked():
-                raise RuntimeError("management_lock is held on another event loop")
-            self._management_lock = asyncio.Lock()
-            self._management_lock_loop = loop
-        return self._management_lock
+        with self._inflight_lock:
+            lock = self._management_locks.get(loop)
+            if lock is None:
+                lock = asyncio.Lock()
+                self._management_locks[loop] = lock
+            return lock
 
     @contextmanager
     def socket_op(self):
@@ -278,15 +276,16 @@ class IPCState:
 
         async def exchange() -> bytes:
             async with self.management_lock:
-                await socket.asend(payload)
-                # pynng can consume cancellation when the send finishes first.
-                # Do not start another operation after that cancellation.
-                task = asyncio.current_task()
-                if task is not None and task.cancelling():
-                    raise asyncio.CancelledError
-                if timeout is None:
-                    return await socket.arecv()
-                return await asyncio.wait_for(socket.arecv(), timeout)
+                with socket.new_context() as context:
+                    await context.asend(payload)
+                    # pynng can consume cancellation when the send finishes first.
+                    # Do not start another operation after that cancellation.
+                    task = asyncio.current_task()
+                    if task is not None and task.cancelling():
+                        raise asyncio.CancelledError
+                    if timeout is None:
+                        return await context.arecv()
+                    return await asyncio.wait_for(context.arecv(), timeout)
 
         reply_bytes = await self._run_socket_op(exchange)
 

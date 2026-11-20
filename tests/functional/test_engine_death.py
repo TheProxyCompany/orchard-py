@@ -13,6 +13,35 @@ from pathlib import Path
 import pytest
 
 
+def test_management_replies_reach_the_requesting_client_loop():
+    import pynng
+    from orchard.app.ipc_dispatch import IPCState
+    from orchard.engine.global_context import GlobalContext
+
+    application = GlobalContext()
+    state = IPCState(application)
+    address = f"inproc://orchard-management-{id(state)}"
+
+    async def compare_replies(first_peer, second_peer):
+        first = asyncio.create_task(state.cancel_request(17))
+        first_request = json.loads(await asyncio.wait_for(first_peer.arecv(), 2))
+        second = asyncio.create_task(asyncio.to_thread(asyncio.run, state.cancel_request(23)))
+        try:
+            second_request = json.loads(await asyncio.wait_for(second_peer.arecv(), 2))
+            assert second_request["request_id"] == 23
+            await second_peer.asend(b'{"status":"accepted","request_id":23}')
+        finally:
+            await first_peer.asend(b'{"status":"accepted","request_id":17}')
+            first_reply, second_reply = await asyncio.gather(first, second)
+        assert first_request["request_id"] == first_reply["request_id"] == 17
+        assert second_reply["request_id"] == 23
+
+    with pynng.Rep0(listen=address) as peer, pynng.Req0(dial=address) as socket:
+        state.management_socket = socket
+        with peer.new_context() as first_peer, peer.new_context() as second_peer:
+            asyncio.run(compare_replies(first_peer, second_peer))
+
+
 def test_telemetry_updates_delta_wait_only_when_engine_work_advances():
     from orchard.app.ipc_dispatch import EVENT_TOPIC_PREFIX, IPCState
     from orchard.engine.global_context import GlobalContext
