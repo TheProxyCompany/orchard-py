@@ -24,6 +24,7 @@ pinning the random value. Timestamps are dropped. Everything behavioral
 
 import json
 import os
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -144,6 +145,20 @@ def assert_or_record(
             )
 
     message = f"golden drift {template_type}/{scenario}/{turn}: {detail}"
+    log_dir = os.environ.get("ORCHARD_TEST_LOG_DIR")
+    diff_dir = os.environ.get("ORCHARD_GOLDEN_DIFF_DIR")
+    if diff_dir or log_dir:
+        root = Path(diff_dir) if diff_dir else Path(log_dir) / "golden-diffs"
+        try:
+            root.mkdir(parents=True, exist_ok=True)
+            label = "_".join((template_type, scenario, turn)).replace("/", "_")
+            capture = Path(tempfile.mkdtemp(prefix=f"{label}-", dir=root))
+            for name, stream in (("expected.json", data[turn]), ("actual.json", live)):
+                (capture / name).write_text(json.dumps(stream, indent=2) + "\n")
+            message += f"; full expected and actual streams in {capture}"
+        except OSError as error:
+            message += f"; could not save full streams: {error}"
+
     # Another case can keep the suite open until its deadline. Preserve this
     # completed comparison in the run log even if the suite times out later.
     print("\n".join(line[:400] for line in message.splitlines()), flush=True)
