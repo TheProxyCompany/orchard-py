@@ -143,7 +143,11 @@ def assert_or_record(
                 f"; live is missing the event at index {n}:\n  golden: {recorded[n]}"
             )
 
-    raise AssertionError(f"golden drift {template_type}/{scenario}/{turn}: {detail}")
+    message = f"golden drift {template_type}/{scenario}/{turn}: {detail}"
+    # Another case can keep the suite open until its deadline. Preserve this
+    # completed comparison in the run log even if the suite times out later.
+    print("\n".join(line[:400] for line in message.splitlines()), flush=True)
+    raise AssertionError(message)
 
 
 def flush_pending() -> None:
