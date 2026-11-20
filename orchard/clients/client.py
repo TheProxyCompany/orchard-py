@@ -375,6 +375,7 @@ class Client:
             prompt_count,
             on_cancel=lambda: self._cancel_request_for_cleanup(request_id),
             expected_final_count=final_count,
+            stop_on_choice_error=False,
         )
         try:
             async for delta in stream_processor:
@@ -563,6 +564,7 @@ class Client:
         on_cancel: Callable[[], Awaitable[None]] | None = None,
         *,
         expected_final_count: int | None = None,
+        stop_on_choice_error: bool = True,
     ) -> AsyncIterator[ClientDelta]:
         """The core async stream processor."""
         final_count = expected_final_count or expected_final_prompt_count
@@ -591,9 +593,12 @@ class Client:
                     completed = len(finished_choices) >= final_count or (
                         client_delta.prompt_index is None and client_delta.candidate_index is None
                     )
-                    # An error can precede creation of the other choices in a fanout.
+                    # A stream reports each choice. Aggregation can fail on the
+                    # first error and cancel the remainder of the request.
                     should_stop = completed or (
-                        has_fanout and (client_delta.error_message or client_delta.finish_reason == "error")
+                        stop_on_choice_error
+                        and has_fanout
+                        and (client_delta.error_message or client_delta.finish_reason == "error")
                     )
 
                 try:
