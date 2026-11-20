@@ -62,7 +62,7 @@ def _parse_embedding_response(response: httpx.Response, model_id: str) -> dict:
         return response.json()
 
     detail = _extract_error_detail(response)
-    if response.status_code in {400, 404, 422, 500, 501, 503}:
+    if response.status_code == 501:
         _mark_unsupported(model_id, f"status {response.status_code}: {detail}")
 
     pytest.fail(
@@ -72,13 +72,10 @@ def _parse_embedding_response(response: httpx.Response, model_id: str) -> dict:
 
 
 async def _post_embeddings(
-    server_url: str, request_payload: dict, model_id: str
+    server_url: str, request_payload: dict
 ) -> httpx.Response:
-    try:
-        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT_S) as client:
-            return await client.post(f"{server_url}/v1/embeddings", json=request_payload)
-    except httpx.HTTPError as exc:
-        _mark_unsupported(model_id, f"{type(exc).__name__}: {exc}")
+    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT_S) as client:
+        return await client.post(f"{server_url}/v1/embeddings", json=request_payload)
 
 
 async def test_embeddings_non_infinite_values(live_server, text_model_id):
@@ -91,7 +88,7 @@ async def test_embeddings_non_infinite_values(live_server, text_model_id):
         "encoding_format": "float",
     }
 
-    response = await _post_embeddings(server_url, request_payload, text_model_id)
+    response = await _post_embeddings(server_url, request_payload)
     response_data = _parse_embedding_response(response, text_model_id)
     _assert_valid_embedding_response(response_data, text_model_id)
 
@@ -106,7 +103,7 @@ async def test_embeddings_batch_input(live_server, text_model_id):
         "encoding_format": "float",
     }
 
-    response = await _post_embeddings(server_url, request_payload, text_model_id)
+    response = await _post_embeddings(server_url, request_payload)
     response_data = _parse_embedding_response(response, text_model_id)
     _assert_valid_embedding_response(response_data, text_model_id, count=2)
 
@@ -125,6 +122,6 @@ async def test_embeddings_vision_model_text_input(live_server, vision_model_id):
         "encoding_format": "float",
     }
 
-    response = await _post_embeddings(server_url, request_payload, vision_model_id)
+    response = await _post_embeddings(server_url, request_payload)
     response_data = _parse_embedding_response(response, vision_model_id)
     _assert_valid_embedding_response(response_data, vision_model_id)
