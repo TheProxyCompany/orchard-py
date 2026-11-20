@@ -4,6 +4,7 @@ from collections.abc import Callable
 from contextlib import asynccontextmanager
 from typing import Any
 
+import anyio
 from fastapi import HTTPException, status
 from fastapi.responses import JSONResponse
 
@@ -111,23 +112,26 @@ async def managed_stream_session(
     try:
         yield queue
     finally:
-        if cancel_on_exit and not (completed and completed()):
-            try:
-                await ipc_state.cancel_request(request_id)
-            except Exception:
-                logger.debug(
-                    "Failed to cancel interrupted PIE request %d.",
-                    request_id,
-                    exc_info=True,
-                )
-        ipc_state.active_request_queues.pop(request_id, None)
         try:
-            while True:
-                leftover = queue.get_nowait()
-                release_delta_resources(leftover)
-                queue.task_done()
-        except asyncio.QueueEmpty:
-            pass
+            if cancel_on_exit and not (completed and completed()):
+                try:
+                    with anyio.CancelScope(shield=True):
+                        await ipc_state.cancel_request(request_id)
+                except Exception:
+                    logger.debug(
+                        "Failed to cancel interrupted PIE request %d.",
+                        request_id,
+                        exc_info=True,
+                    )
+        finally:
+            ipc_state.active_request_queues.pop(request_id, None)
+            try:
+                while True:
+                    leftover = queue.get_nowait()
+                    release_delta_resources(leftover)
+                    queue.task_done()
+            except asyncio.QueueEmpty:
+                pass
 
 
 def extract_usage(delta: ResponseDeltaDict, counts: dict[str, int]) -> None:
