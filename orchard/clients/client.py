@@ -1842,5 +1842,5 @@ class Client:
         )
         await self._ipc_state.send_request(request_bytes)
         return sum(
-            max(prompt["num_candidates"], prompt["best_of"]) for prompt in prompt_payloads
+            max(prompt["best_of"], prompt["final_candidates"]) for prompt in prompt_payloads
         )

@@ -119,3 +119,36 @@ async def test_non_streaming_chat_still_fails_on_the_first_indexed_error():
             await client.achat("model", [{"role": "user", "content": "tips"}], n=3, stream=False)
     client._cancel_request_for_cleanup.assert_awaited_once_with(7)
     client._close_request.assert_called_once_with(7)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("n", "best_of", "final_candidates"), [(2, 4, 2), (1, 2, 4)])
+async def test_chat_stream_counts_every_candidate_generated_by_pie(n, best_of, final_candidates):
+    choices = [(index, "length") for index in range(4)]
+    client = _chat_with_terminals(choices)
+    del client._asubmit_request_batch
+    client._ipc_state.response_channel_id = 11
+    client._ipc_state.lossless_responses = True
+    client._ipc_state.send_request = AsyncMock()
+    client._model_registry = Mock()
+    client._model_registry.get_info = AsyncMock(return_value=Mock(model_id="model", model_path="/model"))
+    client._prepare_prompt_payload = Mock(
+        return_value=(
+            {"prompt": "tips", "num_candidates": n, "best_of": best_of, "final_candidates": final_candidates},
+            None,
+        )
+    )
+
+    stream = await client.achat(
+        "model",
+        [{"role": "user", "content": "tips"}],
+        n=n,
+        best_of=best_of,
+        final_candidates=final_candidates,
+        stream=True,
+    )
+    async with asyncio.timeout(1):
+        actual = [(delta.candidate_index, delta.finish_reason) async for delta in stream]
+    assert actual == choices
+    client._ipc_state.send_request.assert_awaited_once()
+    client._cancel_request_for_cleanup.assert_not_awaited()
