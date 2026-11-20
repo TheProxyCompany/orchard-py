@@ -256,7 +256,7 @@ async def handle_response_request(
     )
 
     response_queue: asyncio.Queue[ResponseDeltaDict] = asyncio.Queue()
-    request_completed = False
+    native_completed = asyncio.Event()
     exit_stack = AsyncExitStack()
     await exit_stack.enter_async_context(
         managed_stream_session(
@@ -264,7 +264,7 @@ async def handle_response_request(
             current_request_id,
             response_queue,
             cancel_on_exit=True,
-            completed=lambda: request_completed,
+            completed=native_completed.is_set,
         )
     )
 
@@ -340,7 +340,6 @@ async def handle_response_request(
             response_id = generate_response_id()
 
             async def event_stream() -> AsyncIterable[dict[str, str]]:
-                nonlocal request_completed
                 try:
                     async for event in stream_response_generator(
                         request_id=current_request_id,
@@ -349,9 +348,9 @@ async def handle_response_request(
                         response_id=response_id,
                         model_name=request.model,
                         stream_tokens=request.stream_tokens,
+                        native_completed=native_completed,
                     ):
                         yield event
-                    request_completed = True
                 finally:
                     await exit_stack.aclose()
 
@@ -406,7 +405,7 @@ async def handle_response_request(
         )
 
         logger.info("Response request %d completed successfully.", current_request_id)
-        request_completed = True
+        native_completed.set()
         await exit_stack.aclose()
         return response
     except HTTPException:
@@ -653,6 +652,7 @@ async def stream_response_generator(
     response_id: str,
     model_name: str,
     stream_tokens: bool = False,
+    native_completed: asyncio.Event | None = None,
 ) -> AsyncIterable[dict[str, str]]:
     """Generate Open Responses SSE events from PIE deltas with state_events."""
     stream_state = ResponseStreamState(response_id=response_id, model=model_name)
@@ -699,6 +699,9 @@ async def stream_response_generator(
             try:
                 if not delta:
                     continue
+
+                if native_completed is not None and delta.get("is_final_delta", False):
+                    native_completed.set()
 
                 if delta.get("error"):
                     error_occurred = True
