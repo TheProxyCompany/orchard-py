@@ -18,7 +18,7 @@ jobs:
     timeout-minutes: 60
     env:
       PATH: /opt/homebrew/opt/rustup/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
-      PIE_REVISION: c3919a66c85c395df9fdb4d6b4c4af5cc4522d7e
+      PIE_REVISION: 9ab16a6788638bc7f0f85918c4cf9b0d34dcac6a
 
     steps:
       - name: Get the App's token
