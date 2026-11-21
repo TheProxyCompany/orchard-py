@@ -1,4 +1,5 @@
 import asyncio
+import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -11,6 +12,7 @@ from orchard.app.model_registry import ModelInfo, ModelLoadState
 from orchard.formatter.formatter import ChatFormatter
 from orchard.server.routes._common import managed_stream_session
 from orchard.server.routes.chat import chat_router
+from orchard.server.routes.completions import completions_router
 from orchard.server.routes.responses import responses_router
 
 
@@ -136,4 +138,53 @@ async def test_sse_cancels_only_requests_missing_a_native_terminal(
         state.cancel_request.assert_awaited_once_with(23)
     else:
         state.cancel_request.assert_not_awaited()
+    assert not state.active_request_queues
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("path", "inputs"),
+    [
+        ("/chat/completions", {"messages": [{"role": "user", "content": "Hello"}]}),
+        ("/responses", {"input": "Hello"}),
+        ("/completions", {"prompt": "Hello"}),
+    ],
+)
+async def test_non_streaming_disconnect_releases_the_submitted_request(path, inputs):
+    model = "meta-llama/Llama-3.1-8B-Instruct"
+    info = ModelInfo(
+        model, "/fixture/llama",
+        ChatFormatter.from_config("/fixture/llama", {"model_type": "llama", "architectures": ["LlamaForCausalLM"]}),
+    )
+    submitted = asyncio.Event()
+    state = SimpleNamespace(
+        active_request_queues={}, response_channel_id=7, lossless_responses=True,
+        get_next_request_id=AsyncMock(return_value=23), cancel_request=AsyncMock(),
+        send_request=AsyncMock(side_effect=lambda _: submitted.set()), next_delta=lambda queue: queue.get(),
+    )
+    app = FastAPI()
+    for router in (chat_router, responses_router, completions_router):
+        app.include_router(router)
+    app.state.ipc_state = state
+    app.state.model_directories = ()
+    app.state.model_registry = SimpleNamespace(
+        schedule_http_model=AsyncMock(return_value=(ModelLoadState.READY, model)),
+        get_if_ready=lambda _: info,
+    )
+    body = json.dumps({"model": model, "stream": False, **inputs}).encode()
+    messages = iter([{"type": "http.request", "body": body, "more_body": False}])
+
+    async def receive():
+        message = next(messages, None)
+        if message is not None:
+            return message
+        await submitted.wait()
+        return {"type": "http.disconnect"}
+
+    sent = AsyncMock()
+    scope = {"type": "http", "method": "POST", "path": path, "query_string": b"",
+             "headers": [(b"content-type", b"application/json")], "http_version": "1.1", "scheme": "http"}
+    await asyncio.wait_for(app(scope, receive, sent), timeout=2)
+    assert sent.await_args_list[0].args[0]["status"] == 499
+    state.cancel_request.assert_awaited_once_with(23)
     assert not state.active_request_queues
