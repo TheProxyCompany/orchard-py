@@ -142,7 +142,7 @@ async def live_server(engine: InferenceEngine):
         ws="none",
     )
     server = uvicorn.Server(config)
-    server_url = f"http://localhost:{server_port}"
+    server_url = f"http://{config.host}:{config.port}"
     server_errors: list[BaseException] = []
 
     def run_server() -> None:
