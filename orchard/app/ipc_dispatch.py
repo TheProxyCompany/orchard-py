@@ -89,8 +89,8 @@ class IPCState:
         # Monotonic time of the last engine message that proves generation or
         # activation progress (any response delta, model_loaded/_load_failed).
         # Written by the dispatcher thread, read by delta waiters; a float
-        # attribute write is atomic under the GIL. Telemetry heartbeats do not
-        # count — a wedged engine still emits them.
+        # attribute write is atomic under the GIL. A heartbeat extends the
+        # idle deadline only when a work counter increases.
         self.last_progress_monotonic: float = 0.0
 
         self._inflight_lock = threading.Lock()
@@ -210,8 +210,8 @@ class IPCState:
         beyond any flat per-delta timeout (measured 91s behind ~800 queued
         sequences at buckshot width 21) while the engine streams deltas for
         other requests the whole time. So wait in slices: engine-wide
-        delta/activation traffic keeps the wait alive, DELTA_TIMEOUT_S of
-        engine-wide silence raises TimeoutError (the old flat-timeout
+        delta traffic, model activation and completed GPU work keep the wait
+        alive. DELTA_TIMEOUT_S of engine-wide silence raises TimeoutError (the old flat-timeout
         semantics for a wedged engine), and DELTA_HARD_TIMEOUT_S bounds the
         total wait (a request the engine dropped). Engine death needs no
         timeout at all: the dispatcher's exit path fails every registered
@@ -377,6 +377,17 @@ class IPCState:
             return
 
         if event_name == "telemetry" and ctx is not None:
+            previous = ctx.last_telemetry
+            pid = payload.get("health", {}).get("pid")
+            if isinstance(pid, int) and previous and previous.get("health", {}).get("pid") == pid:
+                old_queues = previous.get("queues", {})
+                new_queues = payload.get("queues", {})
+                for counter in ("gpu_command_buffers_completed", "responses_delivered"):
+                    old = old_queues.get(counter)
+                    new = new_queues.get(counter)
+                    if isinstance(old, int) and isinstance(new, int) and new > old:
+                        self.last_progress_monotonic = time.monotonic()
+                        break
             ctx.last_telemetry = payload
             return
 
