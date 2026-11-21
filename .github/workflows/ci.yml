@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 60
     env:
       PATH: /Users/theproxycompany/.cargo/bin:/opt/homebrew/opt/rustup/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
-      PIE_REVISION: 5fb2aa0f8cbea54ab7dedba789e5c8969e88bbcc
+      PIE_REVISION: 8b41d3504a898de668449ebc75c054145d0375da
 
     steps:
       - name: Get the App's token
