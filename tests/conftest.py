@@ -14,20 +14,18 @@ import pytest
 import pytest_asyncio
 import uvicorn
 
-# Tests must never operate in the default engine namespace: that namespace
-# belongs to whatever long-lived engine this machine runs (Proxy.app's Grand
-# Central engine in production), and the pre-test cleanup below force-stops
-# the namespace's engine. Unless the caller pinned a namespace explicitly
-# (pie_cycle.sh exports ORCHARD_CACHE_ROOT), give this session a private one.
+# The cycle owns engine replacement and supplies a namespace shared by both
+# clients. A standalone pytest session gets its own namespace.
 # This must happen before any orchard import: orchard.ipc.endpoints resolves
 # the IPC socket root at import time.
 if "ORCHARD_CACHE_ROOT" not in os.environ:
     os.environ["ORCHARD_CACHE_ROOT"] = tempfile.mkdtemp(prefix="orchard-pytest-")
 
 from models import MODELS, Model
-
 from orchard.clients.client import Client
 from orchard.engine.inference_engine import InferenceEngine
+from orchard.engine.io import get_engine_file_paths
+from orchard.engine.multiprocess import read_pid_file
 from orchard.server.app import create_app
 
 logger = logging.getLogger(__name__)
@@ -64,15 +62,6 @@ SERVER_STARTUP_TIMEOUT_SECONDS = float(
     os.getenv("ORCHARD_TEST_SERVER_STARTUP_TIMEOUT_SECONDS", "120.0")
 )
 
-# Ensure we start with a clean slate in case a prior run crashed and left the engine up.
-try:
-    InferenceEngine.shutdown(timeout=30.0)
-    logger.info("Pre-test engine cleanup complete.")
-except RuntimeError as exc:
-    raise RuntimeError(
-        "Failed to stop existing engine before starting tests; manual cleanup required."
-    ) from exc
-
 
 @pytest.fixture(scope="session")
 def engine() -> Generator[InferenceEngine, None, None]:
@@ -90,12 +79,16 @@ def engine() -> Generator[InferenceEngine, None, None]:
             startup_timeout=120.0,
             load_models=ALL_MODELS,
         )
+        if expected_pid := os.environ.get("ORCHARD_TEST_ENGINE_PID"):
+            assert read_pid_file(get_engine_file_paths(None, None).pid_file) == int(
+                expected_pid
+            ), "The test client replaced the cycle's engine"
         logger.info("Local Engine is ready. Yielding engine instance.")
         yield engine_instance
     finally:
         if engine_instance is not None:
             engine_instance.close()
-        logger.info("Test session finished. Local Engine shut down.")
+        logger.info("Test session finished. Client released its engine lease.")
 
 
 @pytest.fixture(scope="session")
@@ -156,6 +149,7 @@ async def live_server(engine: InferenceEngine):
         try:
             asyncio.run(server.serve())
         except BaseException as exc:
+            logger.exception("FastAPI test server exited")
             server_errors.append(exc)
 
     server_thread = threading.Thread(
