@@ -8,7 +8,7 @@ from collections.abc import AsyncIterable, Sequence
 from contextlib import AsyncExitStack
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
 
@@ -41,6 +41,7 @@ from orchard.server.models.reasoning import DEFAULT_BOOLEAN_REASONING_EFFORT
 from orchard.server.models.tools import ToolCall
 from orchard.server.routes._common import (
     _ModelNotReadyError,
+    collect_while_connected,
     managed_stream_session,
     resolve_model,
 )
@@ -68,6 +69,7 @@ async def handle_completion_request(
     ipc_state: IPCStateDep,
     model_registry: ModelRegistryDep,
     model_directories: ModelDirectoriesDep,
+    http_request: Request,
 ) -> ChatCompletionResponse | EventSourceResponse | JSONResponse:
     """
     Handles requests to the `/v1/chat/completions` endpoint.
@@ -296,15 +298,18 @@ async def handle_completion_request(
             )
 
         logger.debug("Handling non-streaming for request %d", current_request_id)
-        response_data = await gather_non_streaming_batch_response(
-            current_request_id,
-            response_queue,
-            ipc_state,
-            fanout_counts,
-            final_candidate_counts,
-            canonical_id,
-            thinking_flags,
-            released_text=model_info.releases_held_text,
+        response_data = await collect_while_connected(
+            http_request,
+            gather_non_streaming_batch_response(
+                current_request_id,
+                response_queue,
+                ipc_state,
+                fanout_counts,
+                final_candidate_counts,
+                canonical_id,
+                thinking_flags,
+                released_text=model_info.releases_held_text,
+            ),
         )
         usage = ChatCompletionUsage(
             input_tokens=response_data["prompt_tokens"],
@@ -326,7 +331,7 @@ async def handle_completion_request(
         native_completed.set()
         await exit_stack.aclose()
         return final_response
-    except HTTPException:
+    except (HTTPException, asyncio.CancelledError):
         await exit_stack.aclose()
         raise
     except (InferenceError, EngineDisconnectedError) as exc:

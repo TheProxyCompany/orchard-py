@@ -22,7 +22,7 @@ from orchard.server.models.embeddings import (
     EmbeddingResponse,
     EmbeddingUsage,
 )
-from orchard.server.routes._common import _ModelNotReadyError, managed_stream_session, resolve_model
+from orchard.server.routes._common import _ModelNotReadyError, collect_while_connected, managed_stream_session, resolve_model
 
 logger = logging.getLogger(__name__)
 
@@ -133,21 +133,15 @@ async def create_embeddings(
         ):
             logger.debug("Submitting embedding request %d to C++ engine", current_request_id)
             await ipc_state.send_request(request_bytes)
-            response = asyncio.create_task(
-                gather_embedding_response(current_request_id, response_queue, ipc_state, len(texts))
-            )
-            disconnect = asyncio.create_task(_wait_for_disconnect(http_request))
             try:
-                done, _ = await asyncio.wait((response, disconnect), return_when=asyncio.FIRST_COMPLETED)
-                if response not in done:
-                    disconnect.result()
-                    return JSONResponse(status_code=499, content={"detail": "Client disconnected."})
-                response_data = response.result()
-                completed = True
-            finally:
-                response.cancel()
-                disconnect.cancel()
-                await asyncio.gather(response, disconnect, return_exceptions=True)
+                response_data = await collect_while_connected(
+                    http_request, gather_embedding_response(current_request_id, response_queue, ipc_state, len(texts))
+                )
+            except HTTPException as exc:
+                if exc.status_code != 499:
+                    raise
+                return JSONResponse(status_code=499, content={"detail": exc.detail})
+            completed = True
 
         usage = EmbeddingUsage(
             prompt_tokens=response_data["prompt_tokens"],
@@ -180,12 +174,6 @@ async def create_embeddings(
             status_code=500,
             detail="An unexpected error occurred during embedding generation.",
         ) from e
-
-
-async def _wait_for_disconnect(request: Request) -> None:
-    # FastAPI has already read the JSON request body.
-    while (await request.receive())["type"] != "http.disconnect":
-        pass
 
 
 async def gather_embedding_response(

@@ -3,14 +3,12 @@ import logging
 import random
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 
-from orchard.app.ipc_dispatch import QueueRegistration
 from orchard.ipc.serialization import _build_request_payload
 from orchard.ipc.utils import (
     ResponseDeltaDict,
-    release_delta_resources,
 )
 from orchard.server.dependencies import IPCStateDep, ModelDirectoriesDep, ModelRegistryDep
 from orchard.server.exceptions import InferenceError
@@ -22,7 +20,7 @@ from orchard.server.models.completions import (
     CompletionResponse,
     CompletionUsage,
 )
-from orchard.server.routes._common import _ModelNotReadyError, resolve_model
+from orchard.server.routes._common import _ModelNotReadyError, collect_while_connected, managed_stream_session, resolve_model
 from orchard.server.routes.chat import (
     gather_non_streaming_batch_response,
 )
@@ -43,6 +41,7 @@ async def handle_completion_request(
     ipc_state: IPCStateDep,
     model_registry: ModelRegistryDep,
     model_directories: ModelDirectoriesDep,
+    http_request: Request,
 ) -> CompletionResponse | JSONResponse:
     """Handles requests to the `/v1/completions` endpoint."""
     logger.info("Handling completion request for model: %s", request.model)
@@ -73,12 +72,6 @@ async def handle_completion_request(
     current_request_id = await ipc_state.get_next_request_id()
     response_channel_id = ipc_state.response_channel_id or current_request_id
     response_queue: asyncio.Queue[ResponseDeltaDict] = asyncio.Queue()
-    loop = asyncio.get_running_loop()
-    ipc_state.active_request_queues[current_request_id] = QueueRegistration(
-        loop=loop,
-        queue=response_queue,
-    )
-
     fanout_counts: list[int] = []
     final_candidate_counts: list[int] = []
     prompt_payloads: list[dict[str, Any]] = []
@@ -183,21 +176,29 @@ async def handle_completion_request(
             prompts=prompt_payloads,
         )
 
-        await ipc_state.send_request(request_bytes)
-        logger.info(
-            "Submitted completions request %d with %d prompts.",
-            current_request_id,
-            len(prompt_payloads),
-        )
+        completed = False
+        async with managed_stream_session(
+            ipc_state, current_request_id, response_queue, cancel_on_exit=True, completed=lambda: completed
+        ):
+            await ipc_state.send_request(request_bytes)
+            logger.info(
+                "Submitted completions request %d with %d prompts.",
+                current_request_id,
+                len(prompt_payloads),
+            )
 
-        response_data = await gather_non_streaming_batch_response(
-            current_request_id,
-            response_queue,
-            ipc_state,
-            fanout_counts,
-            final_candidate_counts,
-            released_text=model_info.releases_held_text,
-        )
+            response_data = await collect_while_connected(
+                http_request,
+                gather_non_streaming_batch_response(
+                    current_request_id,
+                    response_queue,
+                    ipc_state,
+                    fanout_counts,
+                    final_candidate_counts,
+                    released_text=model_info.releases_held_text,
+                ),
+            )
+            completed = True
 
         completion_choices = _convert_chat_choices(response_data["choices"])
         usage = CompletionUsage(
@@ -235,17 +236,6 @@ async def handle_completion_request(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred during completion.",
         ) from exc
-    finally:
-        binding = ipc_state.active_request_queues.pop(current_request_id, None)
-        if binding is not None:
-            queue = binding.queue
-            try:
-                while True:
-                    leftover = queue.get_nowait()
-                    release_delta_resources(leftover)
-                    queue.task_done()
-            except asyncio.QueueEmpty:
-                pass
 
 
 def _normalize_prompt_inputs(prompt: str | list[str]) -> list[str]:

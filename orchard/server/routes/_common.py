@@ -1,11 +1,11 @@
 import asyncio
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Coroutine
 from contextlib import asynccontextmanager
 from typing import Any
 
 import anyio
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Request, status
 from fastapi.responses import JSONResponse
 
 from orchard.app.ipc_dispatch import EngineDisconnectedError, QueueRegistration
@@ -89,6 +89,27 @@ class _ModelNotReadyError(Exception):
 
     def __init__(self, response: JSONResponse) -> None:
         self.response = response
+
+
+async def collect_while_connected[T](request: Request, collect: Coroutine[Any, Any, T]) -> T:
+    async def disconnected() -> None:
+        # FastAPI has consumed the request body. There is no streaming response
+        # listening on this receive channel while inference is being collected.
+        while (await request.receive())["type"] != "http.disconnect":
+            pass
+
+    result = asyncio.create_task(collect)
+    disconnect = asyncio.create_task(disconnected())
+    try:
+        done, _ = await asyncio.wait((result, disconnect), return_when=asyncio.FIRST_COMPLETED)
+        if result in done:
+            return result.result()
+        disconnect.result()
+        raise HTTPException(status_code=499, detail="Client disconnected.")
+    finally:
+        result.cancel()
+        disconnect.cancel()
+        await asyncio.gather(result, disconnect, return_exceptions=True)
 
 
 @asynccontextmanager

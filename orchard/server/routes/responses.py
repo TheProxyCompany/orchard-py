@@ -7,7 +7,7 @@ from collections.abc import AsyncIterable
 from contextlib import AsyncExitStack
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
 
@@ -69,6 +69,7 @@ from orchard.server.models.responses import (
 )
 from orchard.server.routes._common import (
     _ModelNotReadyError,
+    collect_while_connected,
     managed_stream_session,
     resolve_model,
 )
@@ -89,6 +90,7 @@ async def handle_response_request(
     ipc_state: IPCStateDep,
     model_registry: ModelRegistryDep,
     model_directories: ModelDirectoriesDep,
+    http_request: Request,
 ) -> ResponseObject | EventSourceResponse | JSONResponse:
     """Handle multimodal requests to the `/v1/responses` endpoint."""
     logger.info("Handling response request for model: %s", request.model)
@@ -360,8 +362,8 @@ async def handle_response_request(
             )
 
         # Non-streaming path
-        aggregated = await gather_non_streaming_response(
-            current_request_id, response_queue, ipc_state
+        aggregated = await collect_while_connected(
+            http_request, gather_non_streaming_response(current_request_id, response_queue, ipc_state)
         )
 
         usage = ResponseUsage(
@@ -408,7 +410,7 @@ async def handle_response_request(
         native_completed.set()
         await exit_stack.aclose()
         return response
-    except HTTPException:
+    except (HTTPException, asyncio.CancelledError):
         await exit_stack.aclose()
         raise
     except (InferenceError, EngineDisconnectedError) as exc:
