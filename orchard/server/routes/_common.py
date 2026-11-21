@@ -1,10 +1,11 @@
 import asyncio
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Coroutine
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import HTTPException, status
+import anyio
+from fastapi import HTTPException, Request, status
 from fastapi.responses import JSONResponse
 
 from orchard.app.ipc_dispatch import EngineDisconnectedError, QueueRegistration
@@ -14,6 +15,7 @@ from orchard.app.model_registry import (
     ModelRegistry,
     ModelResolutionError,
 )
+from orchard.app.model_resolver import ModelDirectory
 from orchard.ipc.utils import ResponseDeltaDict, release_delta_resources
 
 logger = logging.getLogger(__name__)
@@ -22,6 +24,7 @@ logger = logging.getLogger(__name__)
 async def resolve_model(
     model_registry: ModelRegistry,
     requested_model: str,
+    model_directories: tuple[ModelDirectory, ...] = (),
 ) -> tuple[str, ModelInfo]:
     """Resolve a model ID to canonical ID and ModelInfo.
 
@@ -29,7 +32,7 @@ async def resolve_model(
     failed (503), and missing runtime info (500).
     """
     try:
-        model_state, canonical_id = await model_registry.schedule_model(requested_model)
+        model_state, canonical_id = await model_registry.schedule_http_model(requested_model, model_directories)
     except ModelResolutionError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -43,7 +46,7 @@ async def resolve_model(
 
     if model_state in {ModelLoadState.LOADING, ModelLoadState.ACTIVATING}:
         try:
-            model_info = await model_registry.ensure_loaded(canonical_id)
+            model_info = await model_registry.activate_scheduled(requested_model, canonical_id)
         except RuntimeError as exc:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -88,6 +91,27 @@ class _ModelNotReadyError(Exception):
         self.response = response
 
 
+async def collect_while_connected[T](request: Request, collect: Coroutine[Any, Any, T]) -> T:
+    async def disconnected() -> None:
+        # FastAPI has consumed the request body. There is no streaming response
+        # listening on this receive channel while inference is being collected.
+        while (await request.receive())["type"] != "http.disconnect":
+            pass
+
+    result = asyncio.create_task(collect)
+    disconnect = asyncio.create_task(disconnected())
+    try:
+        done, _ = await asyncio.wait((result, disconnect), return_when=asyncio.FIRST_COMPLETED)
+        if result in done:
+            return result.result()
+        disconnect.result()
+        raise HTTPException(status_code=499, detail="Client disconnected.")
+    finally:
+        result.cancel()
+        disconnect.cancel()
+        await asyncio.gather(result, disconnect, return_exceptions=True)
+
+
 @asynccontextmanager
 async def managed_stream_session(
     ipc_state: Any,
@@ -109,23 +133,26 @@ async def managed_stream_session(
     try:
         yield queue
     finally:
-        if cancel_on_exit and not (completed and completed()):
-            try:
-                await ipc_state.cancel_request(request_id)
-            except Exception:
-                logger.debug(
-                    "Failed to cancel interrupted PIE request %d.",
-                    request_id,
-                    exc_info=True,
-                )
-        ipc_state.active_request_queues.pop(request_id, None)
         try:
-            while True:
-                leftover = queue.get_nowait()
-                release_delta_resources(leftover)
-                queue.task_done()
-        except asyncio.QueueEmpty:
-            pass
+            if cancel_on_exit and not (completed and completed()):
+                try:
+                    with anyio.CancelScope(shield=True):
+                        await ipc_state.cancel_request(request_id)
+                except Exception:
+                    logger.debug(
+                        "Failed to cancel interrupted PIE request %d.",
+                        request_id,
+                        exc_info=True,
+                    )
+        finally:
+            ipc_state.active_request_queues.pop(request_id, None)
+            try:
+                while True:
+                    leftover = queue.get_nowait()
+                    release_delta_resources(leftover)
+                    queue.task_done()
+            except asyncio.QueueEmpty:
+                pass
 
 
 def extract_usage(delta: ResponseDeltaDict, counts: dict[str, int]) -> None:

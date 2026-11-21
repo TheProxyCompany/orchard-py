@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 from huggingface_hub import snapshot_download
 
 from orchard.app.model_resolver import (
+    ModelDirectory,
     ModelResolutionError,
     ModelResolver,
     ResolvedModel,
@@ -68,6 +69,7 @@ class ModelEntry:
     event: asyncio.Event = field(default_factory=asyncio.Event)
     task: asyncio.Task[None] | None = None
     resolved: ResolvedModel | None = None
+    operator_path: Path | None = None
     bytes_downloaded: int | None = None
     bytes_total: int | None = None
     activation_future: asyncio.Future | None = None
@@ -121,7 +123,13 @@ class ModelRegistry:
         self, requested_model_id: str, timeout: float | None = None
     ) -> ModelInfo:
         """Ensure a model is staged locally and activated on the engine."""
-        state, canonical_id = await self.schedule_model(requested_model_id)
+        _, canonical_id = await self.schedule_model(requested_model_id)
+        return await self.activate_scheduled(requested_model_id, canonical_id, timeout)
+
+    async def activate_scheduled(
+        self, requested_model_id: str, canonical_id: str, timeout: float | None = None
+    ) -> ModelInfo:
+        """Activate an already scheduled registry entry."""
         # Wait for local readiness (download + formatter)
         state, info, error = await self.await_model(canonical_id, timeout)
         if state == ModelLoadState.FAILED or not info:
@@ -193,27 +201,69 @@ class ModelRegistry:
         """Ensure a model is loading or ready and return the canonical identifier."""
 
         if not force_reload and (
-            canonical_id := self._canonicalize(requested_model_id)
+            known := await self._scheduled_state(requested_model_id)
         ):
-            async with self._bound_lock():
-                entry = self._entries.get(canonical_id)
-                if entry and entry.state != ModelLoadState.IDLE:
-                    if (
-                        entry.state == ModelLoadState.FAILED
-                        and entry.error == MODEL_LOAD_CANCELLED
-                    ):
-                        pass
-                    else:
-                        return entry.state, canonical_id
-
+            return known
         resolved = self._resolver.resolve(requested_model_id)
+        return await self._schedule_resolved(
+            requested_model_id, resolved, force_reload=force_reload
+        )
+
+    async def schedule_http_model(
+        self, requested_model_id: str, model_directories: tuple[ModelDirectory, ...] = ()
+    ) -> tuple[ModelLoadState, str]:
+        """Select a registered checkpoint, a permitted local source, or a Hub model."""
+        if known := await self._scheduled_state(requested_model_id, model_directories):
+            return known
+        async with self._bound_lock():
+            canonical = self._canonicalize(requested_model_id)
+            entry = self._entries.get(canonical) if canonical is not None else None
+            resolved = entry.resolved if entry is not None else None
+        if resolved is None:
+            resolved = self._resolver.resolve_http_model(
+                requested_model_id, model_directories
+            )
+        return await self._schedule_resolved(
+            requested_model_id, resolved, http_directories=model_directories
+        )
+
+    async def _scheduled_state(
+        self, requested_model_id: str, http_directories: tuple[ModelDirectory, ...] | None = None
+    ) -> tuple[ModelLoadState, str] | None:
+        canonical = self._canonicalize(requested_model_id)
+        if canonical is None:
+            return None
+        async with self._bound_lock():
+            entry = self._entries.get(canonical)
+            if entry is None:
+                return None
+            if entry.resolved is not None:
+                if http_directories is None:
+                    entry.operator_path = entry.resolved.model_path
+                elif entry.operator_path != entry.resolved.model_path:
+                    self._resolver.check_http_source(entry.resolved, http_directories)
+            if entry.state == ModelLoadState.IDLE:
+                return None
+            if (
+                entry.state == ModelLoadState.FAILED
+                and entry.error == MODEL_LOAD_CANCELLED
+            ):
+                return None
+            return entry.state, canonical
+
+    async def _schedule_resolved(
+        self,
+        requested_model_id: str,
+        resolved: ResolvedModel,
+        *,
+        force_reload: bool = False,
+        http_directories: tuple[ModelDirectory, ...] | None = None,
+    ) -> tuple[ModelLoadState, str]:
         if resolved.source == "local_source":
             resolved = await self._inspect_model_source(
                 requested_model_id, resolved, refresh=force_reload
             )
         canonical_id = resolved.canonical_id
-        self._alias_cache[requested_model_id.lower()] = canonical_id
-        self._alias_cache.setdefault(canonical_id.lower(), canonical_id)
         model_is_local = resolved.source in {
             "local",
             "local_source",
@@ -223,9 +273,24 @@ class ModelRegistry:
 
         async with self._bound_lock():
             entry = self._entries.get(canonical_id)
+            if http_directories is not None:
+                if (
+                    entry is not None
+                    and entry.resolved is not None
+                    and entry.operator_path != entry.resolved.model_path
+                ):
+                    self._resolver.check_http_source(entry.resolved, http_directories)
+                if entry is None or entry.operator_path != resolved.model_path:
+                    self._resolver.check_http_source(resolved, http_directories)
             if entry is None:
                 entry = ModelEntry()
                 self._entries[canonical_id] = entry
+            if http_directories is None and (
+                entry.resolved is None or entry.resolved.model_path == resolved.model_path
+            ):
+                entry.operator_path = resolved.model_path
+            self._alias_cache[requested_model_id.lower()] = canonical_id
+            self._alias_cache.setdefault(canonical_id.lower(), canonical_id)
 
             if entry.state == ModelLoadState.READY and not force_reload:
                 return ModelLoadState.READY, canonical_id
@@ -252,6 +317,8 @@ class ModelRegistry:
             entry.info = None
             entry.event = asyncio.Event()
             entry.resolved = resolved
+            if http_directories is None:
+                entry.operator_path = resolved.model_path
             entry.bytes_downloaded = None
             entry.bytes_total = None
             entry.activation_future = None
@@ -530,14 +597,6 @@ class ModelRegistry:
         if not ipc_state or not ipc_state.management_socket:
             raise RuntimeError("IPC state is not initialized.")
 
-        async with self._bound_lock():
-            entry = self._entries.get(canonical_id)
-        if entry is None or entry.activation_future is None:
-            await self._mark_activation_failed(
-                canonical_id, "Activation waiter missing."
-            )
-            raise RuntimeError("Activation waiter missing.")
-
         command = {
             "type": "load_model",
             "requested_id": requested_id,
@@ -575,19 +634,15 @@ class ModelRegistry:
                 f"Engine rejected load_model for '{requested_id}': {message}"
             )
 
-        # Accepted: wait for model_loaded event via handle_model_loaded
-        async with self._bound_lock():
-            entry = self._entries[canonical_id]
-            waiter = entry.activation_future
-
-        if waiter is None:
-            await self._mark_activation_failed(
-                canonical_id, "Activation waiter missing."
-            )
-            raise RuntimeError("Activation waiter missing.")
+        # ensure_loaded owns the waiter; model_loaded may have resolved it
+        # and cleared the entry before the accepted reply arrived.
 
     def update_capabilities(self, model_id: str, capabilities: dict | None) -> None:
         """Update persisted capabilities for a given model."""
+        # Both a load_model reply and a model_loaded event come through here,
+        # before the caller that waits for the model is woken, so its first
+        # request already knows what the engine advertises.
+        self._ipc_state.note_engine_capabilities(capabilities)
         if not capabilities:
             return
 
@@ -599,6 +654,10 @@ class ModelRegistry:
 
         normalized: dict[str, list[int]] = {}
         for name, value in capabilities.items():
+            if name == "lossless_responses":
+                # Describes the engine (IPCState.note_engine_capabilities),
+                # not a control token of this model.
+                continue
             if isinstance(value, list | tuple):
                 normalized[str(name)] = [int(v) for v in value]
             else:

@@ -7,7 +7,7 @@ from collections.abc import AsyncIterable
 from contextlib import AsyncExitStack
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
 
@@ -28,7 +28,7 @@ from orchard.ipc.utils import (
     content_only_message_events,
     release_delta_resources,
 )
-from orchard.server.dependencies import IPCStateDep, ModelRegistryDep
+from orchard.server.dependencies import IPCStateDep, ModelDirectoriesDep, ModelRegistryDep
 from orchard.server.exceptions import InferenceError
 from orchard.server.models.reasoning import (
     DEFAULT_BOOLEAN_REASONING_EFFORT,
@@ -69,6 +69,7 @@ from orchard.server.models.responses import (
 )
 from orchard.server.routes._common import (
     _ModelNotReadyError,
+    collect_while_connected,
     managed_stream_session,
     resolve_model,
 )
@@ -88,12 +89,16 @@ async def handle_response_request(
     request: ResponseRequest,
     ipc_state: IPCStateDep,
     model_registry: ModelRegistryDep,
+    model_directories: ModelDirectoriesDep,
+    http_request: Request,
 ) -> ResponseObject | EventSourceResponse | JSONResponse:
     """Handle multimodal requests to the `/v1/responses` endpoint."""
     logger.info("Handling response request for model: %s", request.model)
 
     try:
-        canonical_id, model_info = await resolve_model(model_registry, request.model)
+        canonical_id, model_info = await resolve_model(
+            model_registry, request.model, model_directories
+        )
     except _ModelNotReadyError as exc:
         return exc.response
 
@@ -253,7 +258,7 @@ async def handle_response_request(
     )
 
     response_queue: asyncio.Queue[ResponseDeltaDict] = asyncio.Queue()
-    request_completed = False
+    native_completed = asyncio.Event()
     exit_stack = AsyncExitStack()
     await exit_stack.enter_async_context(
         managed_stream_session(
@@ -261,7 +266,7 @@ async def handle_response_request(
             current_request_id,
             response_queue,
             cancel_on_exit=True,
-            completed=lambda: request_completed,
+            completed=native_completed.is_set,
         )
     )
 
@@ -318,6 +323,7 @@ async def handle_response_request(
             model_path=model_info.model_path,
             request_type="generation",
             response_channel_id=response_channel_id,
+            lossless_responses=ipc_state.lossless_responses,
             prompts=[prompt_payload],
         )
 
@@ -336,7 +342,6 @@ async def handle_response_request(
             response_id = generate_response_id()
 
             async def event_stream() -> AsyncIterable[dict[str, str]]:
-                nonlocal request_completed
                 try:
                     async for event in stream_response_generator(
                         request_id=current_request_id,
@@ -345,9 +350,9 @@ async def handle_response_request(
                         response_id=response_id,
                         model_name=request.model,
                         stream_tokens=request.stream_tokens,
+                        native_completed=native_completed,
                     ):
                         yield event
-                    request_completed = True
                 finally:
                     await exit_stack.aclose()
 
@@ -357,8 +362,8 @@ async def handle_response_request(
             )
 
         # Non-streaming path
-        aggregated = await gather_non_streaming_response(
-            current_request_id, response_queue, ipc_state
+        aggregated = await collect_while_connected(
+            http_request, gather_non_streaming_response(current_request_id, response_queue, ipc_state)
         )
 
         usage = ResponseUsage(
@@ -402,10 +407,10 @@ async def handle_response_request(
         )
 
         logger.info("Response request %d completed successfully.", current_request_id)
-        request_completed = True
+        native_completed.set()
         await exit_stack.aclose()
         return response
-    except HTTPException:
+    except (HTTPException, asyncio.CancelledError):
         await exit_stack.aclose()
         raise
     except (InferenceError, EngineDisconnectedError) as exc:
@@ -649,6 +654,7 @@ async def stream_response_generator(
     response_id: str,
     model_name: str,
     stream_tokens: bool = False,
+    native_completed: asyncio.Event | None = None,
 ) -> AsyncIterable[dict[str, str]]:
     """Generate Open Responses SSE events from PIE deltas with state_events."""
     stream_state = ResponseStreamState(response_id=response_id, model=model_name)
@@ -695,6 +701,9 @@ async def stream_response_generator(
             try:
                 if not delta:
                     continue
+
+                if native_completed is not None and delta.get("is_final_delta", False):
+                    native_completed.set()
 
                 if delta.get("error"):
                     error_occurred = True

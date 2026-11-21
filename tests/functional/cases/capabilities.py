@@ -1,3 +1,4 @@
+import base64
 from pathlib import Path
 
 import pytest
@@ -10,6 +11,36 @@ ASSETS_DIR = Path(__file__).parents[2] / "assets"
 APPLE_IMAGE_PATH = ASSETS_DIR / "apple.jpg"
 MOONDREAM_IMAGE_PATH = ASSETS_DIR / "moondream.jpg"
 BOTTLES_IMAGE_PATH = ASSETS_DIR / "bottles.jpg"
+
+
+async def test_caption_after_text_prefix(client, moondream_model_id):
+    # Moondream's first image affects the hidden state of its leading text token.
+    await client.achat(
+        moondream_model_id,
+        [{"role": "user", "content": "Name a flower."}],
+        max_generated_tokens=4,
+        reasoning=False,
+    )
+    encoded = base64.b64encode(APPLE_IMAGE_PATH.read_bytes()).decode("ascii")
+    content = [{"type": "input_image", "image_url": f"data:image/jpeg;base64,{encoded}"}]
+    messages = [{"role": "user", "content": content}]
+    options = dict(
+        task_name="caption_long",
+        temperature=0,
+        rng_seed=73,
+        max_generated_tokens=4,
+        reasoning=False,
+    )
+    cached = await client.achat(
+        moondream_model_id, messages, prefix_cache=True, **options
+    )
+    fresh = await client.achat(
+        moondream_model_id, messages, prefix_cache=False, **options
+    )
+    cached_tokens = [token for delta in cached.deltas for token in delta.tokens]
+    fresh_tokens = [token for delta in fresh.deltas for token in delta.tokens]
+    assert len(fresh_tokens) == options["max_generated_tokens"]
+    assert cached_tokens == fresh_tokens
 
 
 def test_moondream_reasoning_grounding(

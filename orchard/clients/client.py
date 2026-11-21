@@ -364,11 +364,18 @@ class Client:
         self._ipc_state.active_request_queues.pop(request_id, None)
 
     async def _stream_deltas(
-        self, request_id: int, response_queue: asyncio.Queue[ResponseDeltaDict]
+        self,
+        request_id: int,
+        response_queue: asyncio.Queue[ResponseDeltaDict],
+        prompt_count: int = 1,
+        final_count: int | None = None,
     ) -> AsyncIterator[ClientDelta]:
         stream_processor = self._async_process_stream(
             response_queue,
+            prompt_count,
             on_cancel=lambda: self._cancel_request_for_cleanup(request_id),
+            expected_final_count=final_count,
+            stop_on_choice_error=False,
         )
         try:
             async for delta in stream_processor:
@@ -426,6 +433,7 @@ class Client:
                 model_path=info.model_path,
                 request_type=request_type,
                 response_channel_id=response_channel_id,
+                lossless_responses=self._ipc_state.lossless_responses,
                 prompts=[
                     {
                         "prompt_bytes": prompt_bytes,
@@ -514,6 +522,7 @@ class Client:
                 model_path=info.model_path,
                 request_type="omni",
                 response_channel_id=response_channel_id,
+                lossless_responses=self._ipc_state.lossless_responses,
                 prompts=[
                     {
                         "prompt_bytes": b"",
@@ -553,9 +562,14 @@ class Client:
         response_queue: asyncio.Queue[ResponseDeltaDict],
         expected_final_prompt_count: int = 1,
         on_cancel: Callable[[], Awaitable[None]] | None = None,
+        *,
+        expected_final_count: int | None = None,
+        stop_on_choice_error: bool = True,
     ) -> AsyncIterator[ClientDelta]:
         """The core async stream processor."""
-        completed_prompt_indexes: set[int] = set()
+        final_count = expected_final_count or expected_final_prompt_count
+        has_fanout = final_count > expected_final_prompt_count
+        finished_choices: set[tuple[int, int]] = set()
         completed = False
         try:
             while True:
@@ -573,19 +587,19 @@ class Client:
                 client_delta = ClientDelta.model_validate(sanitized_delta)
                 should_stop = False
                 if client_delta.is_final:
-                    if (
-                        expected_final_prompt_count <= 1
-                        or client_delta.prompt_index is None
-                    ):
-                        should_stop = True
-                    else:
-                        completed_prompt_indexes.add(client_delta.prompt_index)
-                        should_stop = (
-                            len(completed_prompt_indexes) >= expected_final_prompt_count
-                        )
-
-                if should_stop:
-                    completed = True
+                    finished_choices.add(
+                        (client_delta.prompt_index or 0, client_delta.candidate_index or 0)
+                    )
+                    completed = len(finished_choices) >= final_count or (
+                        client_delta.prompt_index is None and client_delta.candidate_index is None
+                    )
+                    # A stream reports each choice. Aggregation can fail on the
+                    # first error and cancel the remainder of the request.
+                    should_stop = completed or (
+                        stop_on_choice_error
+                        and has_fanout
+                        and (client_delta.error_message or client_delta.finish_reason == "error")
+                    )
 
                 try:
                     yield client_delta
@@ -657,6 +671,7 @@ class Client:
             model_path=info.model_path,
             request_type="prefill_task",
             response_channel_id=response_channel_id,
+            lossless_responses=self._ipc_state.lossless_responses,
             prompts=[
                 {
                     "prompt_bytes": text.encode("utf-8"),
@@ -984,20 +999,21 @@ class Client:
         stream_managed_cleanup = False
 
         try:
-            await self._asubmit_request_batch(
+            expected_final_count = await self._asubmit_request_batch(
                 request_id, model_id, conversations, **kwargs
             )
 
             if stream:
                 stream_managed_cleanup = True
-                return self._stream_deltas(request_id, response_queue)
+                return self._stream_deltas(request_id, response_queue, batch_size, expected_final_count)
             else:
                 deltas = [
                     delta
                     async for delta in self._async_process_stream(
                         response_queue,
-                        batch_size if is_batched else 1,
+                        batch_size,
                         on_cancel=lambda: self._cancel_request_for_cleanup(request_id),
+                        expected_final_count=expected_final_count,
                     )
                 ]
                 responses = self._aggregate_batch_response(deltas, batch_size)
@@ -1790,8 +1806,8 @@ class Client:
         model_id: str,
         conversations: list[list[dict]],
         **kwargs: Any,
-    ):
-        """Prepares and submits a batched request over the pynng IPC channel."""
+    ) -> int:
+        """Submit the prompts and return the number of terminal choice deltas expected."""
         info = await self._model_registry.get_info(model_id)
         engine_model_id = info.model_id
 
@@ -1821,6 +1837,10 @@ class Client:
             model_path=info.model_path,
             request_type="generation",
             response_channel_id=response_channel_id,
+            lossless_responses=self._ipc_state.lossless_responses,
             prompts=prompt_payloads,
         )
         await self._ipc_state.send_request(request_bytes)
+        return sum(
+            max(prompt["best_of"], prompt["final_candidates"]) for prompt in prompt_payloads
+        )

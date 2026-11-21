@@ -13,6 +13,7 @@ from orchard.app.ipc_dispatch import IPCState
 from orchard.app.model_registry import ModelRegistry
 from orchard.clients.client import Client
 from orchard.engine import ClientDelta
+from orchard.server.exceptions import InferenceError
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +63,19 @@ class MoondreamClient(Client):
             )
         return float(struct.unpack("<f", raw_bytes)[0])
 
+    @staticmethod
+    def _checked_stream(stream: Iterator[Any], task: str) -> Iterator[ClientDelta]:
+        completed = False
+        for delta in stream:
+            if not isinstance(delta, ClientDelta):
+                continue
+            if delta.error_message or (delta.finish_reason or "").lower() == "error":
+                raise InferenceError(delta.error_message or delta.content or f"Moondream {task} failed.")
+            completed |= delta.is_final
+            yield delta
+        if not completed:
+            raise InferenceError(f"Moondream {task} stream ended before its final delta.")
+
     def _task_stream(
         self, content: list[dict[str, Any]], task_name: str, kwargs: dict[str, Any]
     ) -> Iterator[Any]:
@@ -73,7 +87,7 @@ class MoondreamClient(Client):
         )
         if not isinstance(response, Iterator):
             raise RuntimeError("Expected streaming iterator from chat call.")
-        return response
+        return self._checked_stream(response, task_name)
 
     def _collect_coords(self, response: Iterator[Any]) -> list[float]:
         coords: list[float] = []
@@ -192,8 +206,7 @@ class MoondreamClient(Client):
             current_coords.clear()
             ground_start_idx = None
 
-        for delta in stream:
-            assert isinstance(delta, ClientDelta)
+        for delta in self._checked_stream(stream, "query"):
 
             append_content = True
             if (

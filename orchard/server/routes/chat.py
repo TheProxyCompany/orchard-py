@@ -8,7 +8,7 @@ from collections.abc import AsyncIterable, Sequence
 from contextlib import AsyncExitStack
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
 
@@ -21,7 +21,7 @@ from orchard.ipc.utils import (
     normalise_delta_payload,
     release_delta_resources,
 )
-from orchard.server.dependencies import IPCStateDep, ModelRegistryDep
+from orchard.server.dependencies import IPCStateDep, ModelDirectoriesDep, ModelRegistryDep
 from orchard.server.exceptions import InferenceError
 from orchard.server.models.chat import (
     ChatCompletionChoice,
@@ -41,6 +41,7 @@ from orchard.server.models.reasoning import DEFAULT_BOOLEAN_REASONING_EFFORT
 from orchard.server.models.tools import ToolCall
 from orchard.server.routes._common import (
     _ModelNotReadyError,
+    collect_while_connected,
     managed_stream_session,
     resolve_model,
 )
@@ -67,6 +68,8 @@ async def handle_completion_request(
     request: ChatCompletionRequest,
     ipc_state: IPCStateDep,
     model_registry: ModelRegistryDep,
+    model_directories: ModelDirectoriesDep,
+    http_request: Request,
 ) -> ChatCompletionResponse | EventSourceResponse | JSONResponse:
     """
     Handles requests to the `/v1/chat/completions` endpoint.
@@ -74,7 +77,9 @@ async def handle_completion_request(
     logger.info("Chat completion request for model: %s", request.model)
 
     try:
-        canonical_id, model_info = await resolve_model(model_registry, request.model)
+        canonical_id, model_info = await resolve_model(
+            model_registry, request.model, model_directories
+        )
     except _ModelNotReadyError as exc:
         return exc.response
 
@@ -238,7 +243,7 @@ async def handle_completion_request(
     response_channel_id = ipc_state.response_channel_id or current_request_id
 
     response_queue = asyncio.Queue[ResponseDeltaDict]()
-    request_completed = False
+    native_completed = asyncio.Event()
     exit_stack = AsyncExitStack()
     await exit_stack.enter_async_context(
         managed_stream_session(
@@ -246,7 +251,7 @@ async def handle_completion_request(
             current_request_id,
             response_queue,
             cancel_on_exit=True,
-            completed=lambda: request_completed,
+            completed=native_completed.is_set,
         )
     )
 
@@ -258,6 +263,7 @@ async def handle_completion_request(
             model_path=model_path,
             request_type="generation",
             response_channel_id=response_channel_id,
+            lossless_responses=ipc_state.lossless_responses,
             prompts=prompt_payloads,
         )
         await ipc_state.send_request(request_bytes)
@@ -266,7 +272,6 @@ async def handle_completion_request(
             logger.debug("Handling streaming for request %d", current_request_id)
 
             async def event_stream() -> AsyncIterable[dict[str, str]]:
-                nonlocal request_completed
                 try:
                     async for chunk in stream_response_generator(
                         current_request_id,
@@ -277,13 +282,13 @@ async def handle_completion_request(
                         canonical_id,
                         thinking_flags,
                         released_text=model_info.releases_held_text,
+                        native_completed=native_completed,
                         include_usage=bool(
                             request.stream_options
                             and request.stream_options.include_usage
                         ),
                     ):
                         yield chunk
-                    request_completed = True
                 finally:
                     await exit_stack.aclose()
 
@@ -293,15 +298,18 @@ async def handle_completion_request(
             )
 
         logger.debug("Handling non-streaming for request %d", current_request_id)
-        response_data = await gather_non_streaming_batch_response(
-            current_request_id,
-            response_queue,
-            ipc_state,
-            fanout_counts,
-            final_candidate_counts,
-            canonical_id,
-            thinking_flags,
-            released_text=model_info.releases_held_text,
+        response_data = await collect_while_connected(
+            http_request,
+            gather_non_streaming_batch_response(
+                current_request_id,
+                response_queue,
+                ipc_state,
+                fanout_counts,
+                final_candidate_counts,
+                canonical_id,
+                thinking_flags,
+                released_text=model_info.releases_held_text,
+            ),
         )
         usage = ChatCompletionUsage(
             input_tokens=response_data["prompt_tokens"],
@@ -320,10 +328,10 @@ async def handle_completion_request(
             usage=usage,
         )
         logger.info("Non-streaming request %d successful.", current_request_id)
-        request_completed = True
+        native_completed.set()
         await exit_stack.aclose()
         return final_response
-    except HTTPException:
+    except (HTTPException, asyncio.CancelledError):
         await exit_stack.aclose()
         raise
     except (InferenceError, EngineDisconnectedError) as exc:
@@ -927,6 +935,7 @@ async def stream_response_generator(
     *,
     released_text: bool,
     include_usage: bool = False,
+    native_completed: asyncio.Event | None = None,
 ) -> AsyncIterable[dict[str, str]]:
     """
     Generates Server-Sent Events (SSE) from the response queue.
@@ -1078,6 +1087,9 @@ async def stream_response_generator(
                     ):
                         completed_candidate_slots.add(candidate_key)
                         remaining_sequences -= 1
+
+                    if remaining_sequences <= 0 and native_completed is not None:
+                        native_completed.set()
 
                     generation = None
                     if tokens_by_candidate[candidate_key]:

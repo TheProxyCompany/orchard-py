@@ -10,6 +10,7 @@ import shlex
 import subprocess
 import sys
 import threading
+import time
 from pathlib import Path
 from typing import Self
 
@@ -31,6 +32,7 @@ from orchard.engine.io import (
     close_sockets,
     get_engine_file_paths,
     initialize_sockets,
+    remove_response_endpoint,
 )
 from orchard.engine.model_preparation import ModelLoadRequest, native_adapter
 from orchard.engine.multiprocess import (
@@ -39,6 +41,7 @@ from orchard.engine.multiprocess import (
     reap_engine_process,
     stop_engine_process,
     wait_for_engine_ready,
+    wait_for_exit,
 )
 from orchard.ipc import endpoints as ipc_endpoints
 
@@ -225,18 +228,20 @@ class InferenceEngine:
         if self._closed:
             return
 
-        release_process_lease = False
-        if self._lease_active:
-            with global_context.lock:
-                if global_context.ref_count > 0:
-                    global_context.ref_count -= 1
-                release_process_lease = global_context.ref_count == 0
-
-        try:
-            if not self._lease_active or not release_process_lease:
+        with self._lock:
+            if self._closed:
                 return
 
-            with self._lock:
+            try:
+                if not self._lease_active:
+                    return
+                with global_context.lock:
+                    if global_context.ref_count > 0:
+                        global_context.ref_count -= 1
+                    release_process_lease = global_context.ref_count == 0
+                if not release_process_lease:
+                    return
+
                 engine_pid = read_pid_file(self._paths.pid_file)
                 engine_running = engine_pid is not None and pid_is_alive(engine_pid)
 
@@ -254,9 +259,9 @@ class InferenceEngine:
                     global_context,
                     decrement_ref=False,
                 )
-        finally:
-            self._lease_active = False
-            self._closed = True
+            finally:
+                self._lease_active = False
+                self._closed = True
 
     def _launch_engine_locked(self) -> None:
         cache_dir = self._paths.cache_dir
@@ -293,63 +298,57 @@ class InferenceEngine:
         if self._closed or self._lease_active:
             return
 
-        with self._lock:
-            engine_pid = read_pid_file(self._paths.pid_file)
-            engine_running = (
-                engine_pid is not None
-                and pid_is_alive(engine_pid)
-                and _pid_is_engine(engine_pid)
-            )
-            if not engine_running:
-                engine_pid = None
-                self._paths.pid_file.unlink(missing_ok=True)
-                self._paths.ready_file.unlink(missing_ok=True)
-            elif self._must_restart_running_engine(engine_pid):
-                self._stop_engine_locked(engine_pid)
-                engine_pid = None
-                engine_running = False
+        deadline = time.monotonic() + self._startup_timeout
+        while True:
+            engine_pid = None
+            launched_fresh = False
+            try:
+                with self._lock:
+                    engine_pid = read_pid_file(self._paths.pid_file)
+                    engine_running = (
+                        engine_pid is not None
+                        and pid_is_alive(engine_pid)
+                        and _pid_is_engine(engine_pid)
+                    )
+                    if not engine_running:
+                        engine_pid = None
+                        self._paths.pid_file.unlink(missing_ok=True)
+                        self._paths.ready_file.unlink(missing_ok=True)
+                    elif self._must_restart_running_engine(engine_pid):
+                        self._stop_engine_locked(engine_pid)
+                        engine_pid = None
+                        engine_running = False
 
-            launched_fresh = not engine_running
-            if launched_fresh:
-                logger.debug("Inference engine not running. Launching new instance.")
-                try:
-                    self._launch_engine_locked()
-                    engine_pid = self._wait_for_engine_ready()
-                except BaseException:
-                    self._cleanup_failed_launch()
+                    launched_fresh = not engine_running
+                    if launched_fresh:
+                        logger.debug("Inference engine not running. Launching new instance.")
+                        try:
+                            self._launch_engine_locked()
+                            engine_pid = self._wait_for_engine_ready()
+                        except BaseException:
+                            self._cleanup_failed_launch()
+                            raise
+
+                    try:
+                        self._init_context_and_register()
+                    except Exception:
+                        if launched_fresh:
+                            self._cleanup_failed_launch()
+                        raise
+                break
+            except Exception:
+                # A last-client shutdown may have committed before registration.
+                # Let other clients close while waiting; an attach failure never
+                # grants ownership of a live engine.
+                if launched_fresh or engine_pid is None:
+                    raise
+                if not wait_for_exit(
+                    engine_pid, timeout=max(0.0, deadline - time.monotonic())
+                ) or time.monotonic() >= deadline:
                     raise
 
-        try:
-            self._init_context_and_register()
-        except Exception:
-            if launched_fresh:
-                raise
-            # The pid-file engine failed us during attach: it accepted its
-            # last client's deregistration just before we arrived and is now
-            # self-terminating (register rejected or the management socket is
-            # already gone). Attaching to it would poison this session, so
-            # replace it and retry once.
-            logger.warning(
-                "Attach to running engine PID %s failed; replacing it with a "
-                "fresh engine.",
-                engine_pid,
-                exc_info=True,
-            )
-            with self._lock:
-                current_pid = read_pid_file(self._paths.pid_file)
-                if current_pid is not None and pid_is_alive(current_pid):
-                    self._stop_engine_locked(current_pid)
-                else:
-                    self._paths.pid_file.unlink(missing_ok=True)
-                    self._paths.ready_file.unlink(missing_ok=True)
-                try:
-                    self._launch_engine_locked()
-                    self._wait_for_engine_ready()
-                except BaseException:
-                    self._cleanup_failed_launch()
-                    raise
-            self._init_context_and_register()
-
+        if launched_fresh and global_context.ipc_state:
+            global_context.ipc_state.launched_engine = True
         self._lease_active = True
 
     def _init_context_and_register(self) -> None:
@@ -560,6 +559,9 @@ class InferenceEngine:
     def _request_dispatcher_shutdown(ctx: GlobalContext) -> None:
         if ctx.ipc_state:
             ctx.ipc_state.shutdown_requested = True
+            # Every shutdown path starts here, and not every one reaches the
+            # socket close that would remove the file.
+            remove_response_endpoint(ctx.ipc_state)
 
     @staticmethod
     def _join_dispatcher_thread(ctx: GlobalContext, timeout_s: float = 3.0) -> bool:

@@ -21,7 +21,7 @@ from tests.golden.cases.registry import run_cases as run_golden
 from tests.models import MODELS, PIPELINE_TOOL_MODELS, Model
 
 pytestmark = [
-    pytest.mark.asyncio,
+    pytest.mark.asyncio(loop_scope="session"),
     pytest.mark.buckshot,
 ]
 

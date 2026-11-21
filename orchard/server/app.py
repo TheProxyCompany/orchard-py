@@ -1,11 +1,13 @@
 import logging
 import os
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Sequence
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
+from orchard.app.model_resolver import ModelDirectory
 from orchard.engine.inference_engine import InferenceEngine
 from orchard.server.exceptions import InferenceError
 from orchard.server.routes.chat import chat_router
@@ -25,7 +27,15 @@ def create_app(
     inference_engine: InferenceEngine,
     *,
     close_engine_on_shutdown: bool = True,
+    model_directories: Sequence[Path | str] | Path | str = (),
 ) -> FastAPI:
+    paths = (
+        (model_directories,)
+        if isinstance(model_directories, (Path, str))
+        else model_directories
+    )
+    directories = tuple(dict.fromkeys(ModelDirectory.from_path(p) for p in paths))
+
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         app.state.inference_engine = inference_engine
@@ -46,6 +56,7 @@ def create_app(
         version="0.0.1",
         lifespan=lifespan,
     )
+    app.state.model_directories = directories
 
     @app.exception_handler(InferenceError)
     async def inference_exception_handler(request: Request, exc: InferenceError):

@@ -88,9 +88,7 @@ async def run_cases(
     async def run_one(case: GoldenCase) -> tuple[str, BaseException | None]:
         try:
             await case.run(fixtures, model)
-        except pytest.skip.Exception as exc:
-            return case.id, exc
-        except Exception as exc:
+        except (pytest.skip.Exception, pytest.fail.Exception, Exception) as exc:
             return case.id, exc
         return case.id, None
 

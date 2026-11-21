@@ -42,8 +42,8 @@ import json, re, sys
 out, run, wall, status, log = sys.argv[1:]
 suites = []
 for line in open(log):
-    m = re.match(r"\[buckshot\] (\S+)\s+(\S+)\s+([\d.]+)s\s+(.*)", line.strip())
-    if m:
+    # Concurrent test output may precede a completion marker on the same line.
+    for m in re.finditer(r"\[buckshot\] (\S+)\s+(\S+)\s+([\d.]+)s\s+(\d+ fail|TIMEOUT)\b", line):
         suites.append(
             {"suite": m[1], "name": m[2], "secs": float(m[3]), "state": m[4].strip()}
         )
