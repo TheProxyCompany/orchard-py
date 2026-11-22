@@ -3,6 +3,7 @@ import json
 import httpx
 import pytest
 
+from tests.functional.cases._timeout import HTTP_TIMEOUT_S
 from tests.functional.cases._token_budget import semantic_token_limit
 
 pytestmark = pytest.mark.asyncio
@@ -34,7 +35,7 @@ async def test_unicode_payload_round_trip(
     chunks = []
     finish_reason = None
 
-    async with httpx.AsyncClient(timeout=120.0) as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
         async with client.stream(
             "POST",
             f"{live_server}/v1/chat/completions",

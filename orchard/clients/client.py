@@ -9,6 +9,7 @@ import os
 import random
 import sys
 import threading
+import time
 from array import array
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Iterator
 from dataclasses import dataclass
@@ -25,7 +26,7 @@ from orchard.clients.responses import (
     aggregate_non_streaming_response,
     iter_response_events,
 )
-from orchard.defaults import MAX_GENERATED_TOKENS
+from orchard.defaults import DELTA_HARD_TIMEOUT_S, DELTA_TIMEOUT_S, MAX_GENERATED_TOKENS
 from orchard.engine import ClientDelta, ClientResponse, UsageStats
 from orchard.formatter import ChatFormatter
 from orchard.formatter.multimodal import (
@@ -1265,8 +1266,15 @@ class Client:
             loop_started.wait()
 
     def _sync_iterator_bridge(self, async_iterator: AsyncIterator[T]) -> Iterator[T]:
-        """Bridges an async iterator to a sync iterator."""
-        DELTA_TIMEOUT_S = float(os.getenv("ORCHARD_SYNC_DELTA_TIMEOUT_S", "300"))
+        """Bridges an async iterator to a sync iterator.
+
+        Each delta is awaited the way IPCState.next_delta awaits one: engine-wide
+        progress keeps the wait alive, DELTA_TIMEOUT_S of engine-wide silence
+        ends it, and the hard ceiling bounds a request the engine dropped.
+        """
+        hard_timeout_s = float(
+            os.getenv("ORCHARD_SYNC_DELTA_TIMEOUT_S", str(DELTA_HARD_TIMEOUT_S))
+        )
 
         async def _next_delta() -> T:
             return await async_iterator.__anext__()
@@ -1282,15 +1290,29 @@ class Client:
                     _next_delta(),
                     self._sync_loop or asyncio.new_event_loop(),
                 )
+                start = time.monotonic()
                 try:
-                    yield future.result(timeout=DELTA_TIMEOUT_S)
-                except TimeoutError as exc:
-                    raise RuntimeError(
-                        f"Timed out waiting for inference delta after {DELTA_TIMEOUT_S}s. "
-                        "Engine may have crashed."
-                    ) from exc
+                    while True:
+                        now = time.monotonic()
+                        newest_progress = max(
+                            start, self._ipc_state.last_progress_monotonic
+                        )
+                        deadline = min(
+                            newest_progress + DELTA_TIMEOUT_S, start + hard_timeout_s
+                        )
+                        if now >= deadline:
+                            raise RuntimeError(
+                                f"Timed out waiting for inference delta after {now - start:.1f}s. "
+                                "Engine may have crashed."
+                            )
+                        try:
+                            delta = future.result(timeout=deadline - now)
+                            break
+                        except TimeoutError:
+                            continue
                 except StopAsyncIteration:
                     break
+                yield delta
         finally:
             if future is not None and not future.done():
                 future.cancel()

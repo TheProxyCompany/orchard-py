@@ -3,10 +3,11 @@ import math
 import httpx
 import pytest
 
+from tests.functional.cases._timeout import HTTP_TIMEOUT_S
+
 pytestmark = pytest.mark.asyncio
 
 _UNSUPPORTED_EMBEDDING_MODELS: dict[str, str] = {}
-REQUEST_TIMEOUT_S = 200.0
 
 
 def _mark_unsupported(model_id: str, detail: str) -> None:
@@ -75,7 +76,7 @@ async def _post_embeddings(
     server_url: str, request_payload: dict, model_id: str
 ) -> httpx.Response:
     try:
-        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT_S) as client:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
             return await client.post(f"{server_url}/v1/embeddings", json=request_payload)
     except httpx.HTTPError as exc:
         _mark_unsupported(model_id, f"{type(exc).__name__}: {exc}")
