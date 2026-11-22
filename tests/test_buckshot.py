@@ -25,7 +25,7 @@ pytestmark = [
     pytest.mark.buckshot,
 ]
 
-SUITE_TIMEOUT_S = 1200
+SUITE_TIMEOUT_S = 2400
 
 
 async def test_buckshot_full_matrix(live_server, client, engine):

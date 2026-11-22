@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import time
 import traceback
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
@@ -85,12 +86,21 @@ async def run_cases(
     fixtures: dict[str, Any],
     model: Model | None = None,
 ) -> list[CaseFailure]:
+    label = model.template_type if model else "pipeline"
+
     async def run_one(case: GoldenCase) -> tuple[str, BaseException | None]:
+        # One line per finished case: a suite cut off at its wall says only
+        # how long the wall was, and these say which cases it never reached.
+        start = time.perf_counter()
+        exc: BaseException | None = None
         try:
             await case.run(fixtures, model)
-        except (pytest.skip.Exception, pytest.fail.Exception, Exception) as exc:
-            return case.id, exc
-        return case.id, None
+        except (pytest.skip.Exception, pytest.fail.Exception, Exception) as caught:
+            exc = caught
+        secs = time.perf_counter() - start
+        state = "ok" if exc is None else type(exc).__name__
+        print(f"[case] golden {label} {case.id} {secs:.1f}s {state}", flush=True)
+        return case.id, exc
 
     results = await asyncio.gather(*(run_one(case) for case in cases))
     failures: list[CaseFailure] = []
