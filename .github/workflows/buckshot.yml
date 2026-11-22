@@ -60,7 +60,8 @@ jobs:
 
       - name: Run the gate
         env:
-          ORCHARD_TEST_HTTP_TIMEOUT_S: "900"
+          ORCHARD_TEST_HTTP_TIMEOUT_S: "1800"
+          ORCHARD_DELTA_HARD_TIMEOUT_S: "1800"
         run: |
           source .venv/bin/activate
           bash scripts/buckshot_gate.sh "${{ github.event.inputs.runs || '5' }}" buckshot_gate_results

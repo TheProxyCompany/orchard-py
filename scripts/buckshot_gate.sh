@@ -14,10 +14,14 @@ N="${1:-5}"
 OUT_DIR="${2:-buckshot_gate_results}"
 mkdir -p "$OUT_DIR"
 
-# Under the full volley a single request can legitimately queue for 790s;
-# size the per-request HTTP timeout above that so the client cap cannot
-# masquerade as an engine failure (tests/functional/cases/_timeout.py).
-export ORCHARD_TEST_HTTP_TIMEOUT_S="${ORCHARD_TEST_HTTP_TIMEOUT_S:-900}"
+# Under the full volley with both clients on one engine a request waited
+# 1219s for its model to get room on the 64 GiB lane and 822s on the 128 GiB
+# lane (root run 45025843400, 2026-11-22). The HTTP timeout and the server's
+# ceiling on one delta wait are sized above that for this gate only, so
+# neither cap can masquerade as an engine failure
+# (tests/functional/cases/_timeout.py, orchard/defaults.py).
+export ORCHARD_TEST_HTTP_TIMEOUT_S="${ORCHARD_TEST_HTTP_TIMEOUT_S:-1800}"
+export ORCHARD_DELTA_HARD_TIMEOUT_S="${ORCHARD_DELTA_HARD_TIMEOUT_S:-1800}"
 
 for i in $(seq 1 "$N"); do
   log="$OUT_DIR/run_${i}.log"
