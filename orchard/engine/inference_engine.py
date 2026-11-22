@@ -193,6 +193,7 @@ class InferenceEngine:
             raise ValueError(
                 "This model adapter does not accept native streaming options"
             )
+        global_context.model_registry.allow_local_path(model_id)
         await global_context.model_registry.ensure_loaded(model_id)
 
     def client(self, model_id: str | None = None) -> Client:

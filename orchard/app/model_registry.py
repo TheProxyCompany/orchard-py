@@ -84,6 +84,10 @@ class ModelRegistry:
         self._local_source_inspection_cache: dict[str, ResolvedModel] = {}
         self._ipc_state = ipc_state
 
+    def allow_local_path(self, path: str | os.PathLike[str]) -> None:
+        """Allow resolving an explicit local model path supplied by a trusted caller."""
+        self._resolver.allow_local_path(path)
+
     def _bound_lock(self) -> asyncio.Lock:
         # Same loop-rebinding rationale as IPCState.management_lock: the
         # registry outlives test/session event loops.

@@ -5,15 +5,17 @@ from __future__ import annotations
 import importlib.util
 import json
 import logging
+import os
 import re
 import shutil
 import sys
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from huggingface_hub import snapshot_download
+from huggingface_hub.constants import HF_HUB_CACHE
 from huggingface_hub.errors import LocalEntryNotFoundError
 
 logger = logging.getLogger(__name__)
@@ -53,13 +55,37 @@ class ModelResolver:
     """Resolves model identifiers to local filesystem paths.
 
     Resolution order:
-    1. Local filesystem path (absolute or relative) -> use directly
+    1. Local filesystem path (within allowed local model roots) -> use directly
     2. Treat as HF repo ID -> resolve via HuggingFace
     """
 
-    def __init__(self):
+    def __init__(
+        self,
+        allowed_roots: Sequence[str | os.PathLike[str]] | None = None,
+    ) -> None:
         # Cache of resolved models to avoid repeated HF lookups
         self._resolved_cache: dict[str, ResolvedModel] = {}
+        self._allowed_roots: list[str] = []
+        if allowed_roots:
+            for root in allowed_roots:
+                self.allow_local_root(root)
+
+    def allow_local_root(self, root: str | os.PathLike[str]) -> None:
+        """Register an additional directory or file path allowed for local resolution."""
+        raw = os.fspath(root).strip()
+        if not raw or "\x00" in raw:
+            return
+        real = os.path.realpath(os.path.expanduser(raw))
+        if real != os.sep and real not in self._allowed_roots:
+            self._allowed_roots.append(real)
+
+    def allow_local_path(self, identifier: str | os.PathLike[str]) -> None:
+        """Allow resolving an explicit local model path supplied by a trusted caller."""
+        raw = os.fspath(identifier).strip()
+        if not raw or "\x00" in raw:
+            return
+        if isinstance(identifier, os.PathLike) or self._is_explicit_local_path(raw):
+            self.allow_local_root(raw)
 
     def resolve(self, requested_id: str) -> ResolvedModel:
         """Resolve a model identifier to a local filesystem path.
@@ -84,7 +110,7 @@ class ModelResolver:
         if cache_key in self._resolved_cache:
             return self._resolved_cache[cache_key]
 
-        # 1. Direct filesystem path (absolute or relative)
+        # 1. Direct filesystem path (absolute or relative, within allowed roots)
         resolved = self._try_local_path(identifier)
         if resolved is not None:
             self._resolved_cache[cache_key] = resolved
@@ -95,32 +121,94 @@ class ModelResolver:
         self._resolved_cache[cache_key] = resolved
         return resolved
 
+    def _iter_allowed_roots(self) -> Iterator[str]:
+        """Yield canonicalized root paths where local models may reside."""
+        seen: set[str] = set()
+
+        candidates: list[str] = list(self._allowed_roots)
+        if env_dirs := os.getenv("ORCHARD_MODEL_DIRS"):
+            candidates.extend(
+                entry.strip()
+                for entry in env_dirs.split(os.pathsep)
+                if entry.strip()
+            )
+
+        try:
+            candidates.append(os.getcwd())
+        except OSError:
+            pass
+
+        if cache_root := os.getenv("ORCHARD_CACHE_ROOT"):
+            candidates.append(cache_root)
+
+        candidates.append(os.fspath(Path.home() / ".orchard"))
+
+        if hf_hub_cache := (
+            os.getenv("HF_HUB_CACHE") or os.getenv("HUGGINGFACE_HUB_CACHE")
+        ):
+            candidates.append(hf_hub_cache)
+        elif hf_home := os.getenv("HF_HOME"):
+            candidates.append(os.path.join(hf_home, "hub"))
+        else:
+            candidates.append(HF_HUB_CACHE)
+
+        for candidate in candidates:
+            if not candidate or "\x00" in candidate:
+                continue
+            real = os.path.realpath(os.path.expanduser(candidate))
+            if real == os.sep or real in seen:
+                continue
+            seen.add(real)
+            yield real
+
+    @staticmethod
+    def _is_explicit_local_path(identifier: str) -> bool:
+        """Return True when identifier uses explicit filesystem path syntax."""
+        if (
+            identifier in {".", ".."}
+            or identifier.startswith(("/", "./", "../", "~"))
+            or "\\" in identifier
+            or os.path.isabs(identifier)
+        ):
+            return True
+        if identifier.count("/") >= 2:
+            return True
+        return ".." in identifier.split("/")
+
+    def _resolve_safe_local_path(self, identifier: str) -> Path | None:
+        """Normalize and verify that a candidate local path stays within allowed roots."""
+        if "\x00" in identifier:
+            raise ModelResolutionError("Model identifier cannot contain null bytes.")
+
+        normalized = os.path.realpath(os.path.expanduser(identifier))
+        for root in self._iter_allowed_roots():
+            if normalized == root:
+                return Path(root)
+            root_prefix = root if root.endswith(os.sep) else root + os.sep
+            if normalized.startswith(root_prefix):
+                return Path(normalized)
+
+        if self._is_explicit_local_path(identifier):
+            raise ModelResolutionError(
+                f"Local model path '{identifier}' is outside allowed model directories."
+            )
+        return None
+
     def _try_local_path(self, identifier: str) -> ResolvedModel | None:
         """Try to resolve identifier as a local filesystem path."""
-        path = Path(identifier)
-
-        # Check absolute path
-        if path.is_absolute():
-            if path.exists() and path.is_dir():
-                if (path / "config.json").exists() or (
-                    path / "model_index.json"
-                ).exists():
-                    return self._build_resolved_model(path, source="local")
-                return self._build_local_source_model(path)
-            if path.exists() and path.is_file():
-                return self._build_local_source_model(path)
+        safe_path = self._resolve_safe_local_path(identifier)
+        if safe_path is None or not safe_path.exists():
             return None
 
-        # Check relative path (relative to CWD)
-        if path.exists():
-            resolved_path = path.resolve()
-            if resolved_path.is_dir() and (
-                (resolved_path / "config.json").exists()
-                or (resolved_path / "model_index.json").exists()
-            ):
-                return self._build_resolved_model(resolved_path, source="local")
-            if resolved_path.is_dir() or resolved_path.is_file():
-                return self._build_local_source_model(resolved_path)
+        if safe_path.is_dir():
+            if (safe_path / "config.json").exists() or (
+                safe_path / "model_index.json"
+            ).exists():
+                return self._build_resolved_model(safe_path, source="local")
+            return self._build_local_source_model(safe_path)
+
+        if safe_path.is_file():
+            return self._build_local_source_model(safe_path)
 
         return None
 
