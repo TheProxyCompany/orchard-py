@@ -3,12 +3,14 @@ from __future__ import annotations
 import asyncio
 import inspect
 import os
+import time
 import traceback
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from itertools import product
 from typing import Any
 
+import anyio
 import pytest
 
 from tests.models import Model
@@ -106,15 +108,29 @@ class FunctionalCase:
             return model.template_type == "moondream3"
         return True
 
-    async def run(self, fixtures: dict[str, Any], model: Model) -> None:
+    @property
+    def needs_worker(self) -> bool:
+        return self.function in _RUN_IN_THREAD or not inspect.iscoroutinefunction(
+            self.function
+        )
+
+    async def run(
+        self,
+        fixtures: dict[str, Any],
+        model: Model,
+        worker_limit: anyio.CapacityLimiter | None = None,
+    ) -> None:
         kwargs = self._kwargs(fixtures, model)
-        if self.function in _RUN_IN_THREAD:
-            await asyncio.to_thread(_run_function, self.function, kwargs)
-            return
-        if inspect.iscoroutinefunction(self.function):
+        if self.needs_worker:
+            await anyio.to_thread.run_sync(
+                _run_function,
+                self.function,
+                kwargs,
+                abandon_on_cancel=True,
+                limiter=worker_limit,
+            )
+        else:
             await self.function(**kwargs)
-            return
-        await asyncio.to_thread(_run_function, self.function, kwargs)
 
     def _kwargs(self, fixtures: dict[str, Any], model: Model) -> dict[str, Any]:
         kwargs: dict[str, Any] = {}
@@ -164,14 +180,29 @@ async def run_cases(
     fixtures: dict[str, Any],
     model: Model,
 ) -> tuple[list[CaseFailure], list[str]]:
+    cases = tuple(cases)
+    # A blocking SDK call occupies its worker until inference finishes. Give
+    # each such case in this volley a worker when its request is ready.
+    worker_limit = anyio.CapacityLimiter(
+        max(1, sum(case.needs_worker for case in cases))
+    )
+
     async def run_one(case: FunctionalCase) -> tuple[str, BaseException | None]:
+        # One line per finished case: a suite cut off at its wall says only
+        # how long the wall was, and these say which cases it never reached.
+        start = time.perf_counter()
+        exc: BaseException | None = None
         try:
-            await case.run(fixtures, model)
-        except pytest.skip.Exception as exc:
-            return case.id, exc
-        except Exception as exc:
-            return case.id, exc
-        return case.id, None
+            await case.run(fixtures, model, worker_limit)
+        except (pytest.skip.Exception, pytest.fail.Exception, Exception) as caught:
+            exc = caught
+        secs = time.perf_counter() - start
+        state = "ok" if exc is None else type(exc).__name__
+        print(
+            f"[case] functional {model.template_type} {case.id} {secs:.1f}s {state}",
+            flush=True,
+        )
+        return case.id, exc
 
     # CASES_WIDTH=N caps concurrent cases (0/unset = all at once). Diagnostic
     # knob: intermittent garbage output appears only when enough same-model

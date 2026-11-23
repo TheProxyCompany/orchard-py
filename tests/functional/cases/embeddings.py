@@ -3,10 +3,11 @@ import math
 import httpx
 import pytest
 
+from tests.functional.cases._timeout import HTTP_TIMEOUT_S
+
 pytestmark = pytest.mark.asyncio
 
 _UNSUPPORTED_EMBEDDING_MODELS: dict[str, str] = {}
-REQUEST_TIMEOUT_S = 200.0
 
 
 def _mark_unsupported(model_id: str, detail: str) -> None:
@@ -15,26 +16,25 @@ def _mark_unsupported(model_id: str, detail: str) -> None:
     pytest.skip(reason)
 
 
-def _assert_valid_embedding_response(response_data: dict, model_id: str) -> None:
+def _assert_valid_embedding_response(response_data: dict, model_id: str, count: int = 1) -> None:
     assert response_data["object"] == "list"
     assert response_data["model"] == model_id
 
     assert "data" in response_data
     assert isinstance(response_data["data"], list)
-    assert len(response_data["data"]) == 1
+    assert len(response_data["data"]) == count
+    for index, embedding_data in enumerate(response_data["data"]):
+        assert embedding_data["object"] == "embedding"
+        assert embedding_data["index"] == index
 
-    embedding_data = response_data["data"][0]
-    assert embedding_data["object"] == "embedding"
-    assert embedding_data["index"] == 0
+        embedding_vector = embedding_data["embedding"]
+        assert isinstance(embedding_vector, list)
+        if not embedding_vector:
+            _mark_unsupported(model_id, "returned an empty embedding vector")
 
-    embedding_vector = embedding_data["embedding"]
-    assert isinstance(embedding_vector, list)
-    if not embedding_vector:
-        _mark_unsupported(model_id, "returned an empty embedding vector")
-
-    for i, value in enumerate(embedding_vector):
-        assert isinstance(value, int | float), f"Value at index {i} is not numeric"
-        assert math.isfinite(value), f"Value at index {i} is not finite: {value}"
+        for i, value in enumerate(embedding_vector):
+            assert isinstance(value, int | float), f"Value at index {i} is not numeric"
+            assert math.isfinite(value), f"Value at index {i} is not finite: {value}"
 
     usage = response_data["usage"]
     if usage["prompt_tokens"] <= 0:
@@ -76,7 +76,7 @@ async def _post_embeddings(
     server_url: str, request_payload: dict, model_id: str
 ) -> httpx.Response:
     try:
-        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT_S) as client:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
             return await client.post(f"{server_url}/v1/embeddings", json=request_payload)
     except httpx.HTTPError as exc:
         _mark_unsupported(model_id, f"{type(exc).__name__}: {exc}")
@@ -109,10 +109,11 @@ async def test_embeddings_batch_input(live_server, text_model_id):
 
     response = await _post_embeddings(server_url, request_payload, text_model_id)
     response_data = _parse_embedding_response(response, text_model_id)
-    _assert_valid_embedding_response(response_data, text_model_id)
+    _assert_valid_embedding_response(response_data, text_model_id, count=2)
 
-    # The current endpoint accepts a string list but embeds only the first item.
-    assert len(response_data["data"]) == 1
+    results = response_data["data"]
+    assert len(results[0]["embedding"]) == len(results[1]["embedding"])
+    assert results[0]["embedding"] != results[1]["embedding"]
 
 
 async def test_embeddings_vision_model_text_input(live_server, vision_model_id):

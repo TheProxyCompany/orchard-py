@@ -43,47 +43,8 @@ def _coerce_embedding_bytes(value: Any) -> bytes:
     raise InferenceError("Embedding response contained an unsupported byte payload.")
 
 
-@embeddings_router.post("/embeddings", response_model=EmbeddingResponse)
-async def create_embeddings(
-    request: EmbeddingRequest,
-    ipc_state: IPCStateDep,
-    model_registry: ModelRegistryDep,
-) -> EmbeddingResponse | JSONResponse:
-    """
-    Handles requests to the `/v1/embeddings` endpoint.
-    """
-    logger.info("Embeddings request for model: %s", request.model)
-
-    # For now, we'll handle single string input only as a placeholder
-    # Full implementation will handle batching and tokenization
-    if isinstance(request.input, str):
-        input_text = request.input
-    elif (
-        isinstance(request.input, list)
-        and len(request.input) > 0
-        and isinstance(request.input[0], str)
-    ):
-        # For MVP, just take the first string
-        input_text = request.input[0]
-        logger.warning("Batch embedding not yet implemented, using first input only")
-    else:
-        raise HTTPException(
-            status_code=400,
-            detail="Only string input is currently supported for embeddings",
-        )
-
-    # 1. Generate request ID
-    current_request_id = await ipc_state.get_next_request_id()
-    logger.debug("Generated request ID: %d", current_request_id)
-
-    try:
-        canonical_id, model_info = await resolve_model(model_registry, request.model)
-    except _ModelNotReadyError as exc:
-        return exc.response
-
-    response_channel_id = ipc_state.response_channel_id or current_request_id
-    rng_seed = random.randint(0, 2**32 - 1)
-    prompt_bytes = input_text.encode("utf-8")
+def _embedding_prompt(text: str, rng_seed: int) -> dict[str, Any]:
+    prompt_bytes = text.encode("utf-8")
     layout_segments = [
         {
             "type": "text",
@@ -91,7 +52,7 @@ async def create_embeddings(
         }
     ]
 
-    prompt_payload = {
+    return {
         "prompt_bytes": prompt_bytes,
         "image_buffers": [],
         "layout": layout_segments,
@@ -119,13 +80,43 @@ async def create_embeddings(
         "final_candidates": 1,
     }
 
+
+@embeddings_router.post("/embeddings", response_model=EmbeddingResponse)
+async def create_embeddings(
+    request: EmbeddingRequest,
+    ipc_state: IPCStateDep,
+    model_registry: ModelRegistryDep,
+) -> EmbeddingResponse | JSONResponse:
+    """
+    Handles requests to the `/v1/embeddings` endpoint.
+    """
+    logger.info("Embeddings request for model: %s", request.model)
+
+    if isinstance(request.input, str):
+        texts = [request.input]
+    elif isinstance(request.input, list) and request.input and all(isinstance(text, str) for text in request.input):
+        texts = request.input
+    else:
+        raise HTTPException(status_code=400, detail="Expected a string or a nonempty list of strings.")
+
+    # 1. Generate request ID
+    current_request_id = await ipc_state.get_next_request_id()
+    logger.debug("Generated request ID: %d", current_request_id)
+
+    try:
+        canonical_id, model_info = await resolve_model(model_registry, request.model)
+    except _ModelNotReadyError as exc:
+        return exc.response
+
+    response_channel_id = ipc_state.response_channel_id or current_request_id
+    rng_seed = random.randint(0, 2**32 - 1)
     request_bytes = _build_request_payload(
         request_id=current_request_id,
         model_id=canonical_id,
         model_path=model_info.model_path,
         request_type="embedding",
         response_channel_id=response_channel_id,
-        prompts=[prompt_payload],
+        prompts=[_embedding_prompt(text, rng_seed) for text in texts],
     )
 
     # 3. Create and register the asyncio Queue for this request
@@ -146,7 +137,7 @@ async def create_embeddings(
 
         # 5. Gather response (embeddings are always non-streaming)
         response_data = await gather_embedding_response(
-            current_request_id, response_queue, ipc_state
+            current_request_id, response_queue, ipc_state, len(texts)
         )
 
         usage = EmbeddingUsage(
@@ -155,13 +146,12 @@ async def create_embeddings(
             # No completion tokens for embeddings
         )
 
-        embedding_vector = response_data.get("embedding_vector", [])
-
-        embedding_data = EmbeddingData(embedding=embedding_vector, index=0)
-
         final_response = EmbeddingResponse(
             object="list",
-            data=[embedding_data],
+            data=[
+                EmbeddingData(embedding=vector, index=index)
+                for index, vector in enumerate(response_data["embedding_vectors"])
+            ],
             model=request.model,
             usage=usage,
         )
@@ -194,12 +184,14 @@ async def gather_embedding_response(
     request_id: int,
     queue: asyncio.Queue[ResponseDeltaDict],
     ipc_state: IPCStateDep,
+    prompt_count: int,
 ) -> dict[str, Any]:
-    """Collects the embedding response from the queue."""
-    prompt_tokens = 0
-    embedding_vector = []
+    """Collect one final vector per prompt, independent of response arrival order."""
+    vectors: list[list[float] | None] = [None] * prompt_count
+    tokens = [0] * prompt_count
+    finished: set[int] = set()
 
-    while True:
+    while len(finished) < prompt_count:
         try:
             delta = await ipc_state.next_delta(queue)
         except EngineDisconnectedError as exc:
@@ -230,27 +222,29 @@ async def gather_embedding_response(
                         )
                     )
 
+                index = delta.get("prompt_index")
+                if not isinstance(index, int) or not 0 <= index < prompt_count:
+                    raise InferenceError(f"Invalid embedding prompt index {index!r} for {prompt_count} inputs.")
+                if index in finished:
+                    continue
                 if delta.get("prompt_token_count", 0) > 0:
-                    prompt_tokens = delta["prompt_token_count"]
+                    tokens[index] = delta["prompt_token_count"]
 
                 if delta.get("embedding_bytes"):
-                    embedding_bytes = _coerce_embedding_bytes(delta["embedding_bytes"])
-                    num_floats = len(embedding_bytes) // 4
-                    embedding_vector = list(
-                        struct.unpack(f"{num_floats}f", embedding_bytes)
-                    )
-                    logger.debug("Unpacked %d floats from embedding bytes.", num_floats)
+                    raw = _coerce_embedding_bytes(delta["embedding_bytes"])
+                    if len(raw) % 4:
+                        raise InferenceError("Embedding payload contains an incomplete float32 value.")
+                    vectors[index] = list(struct.unpack(f"{len(raw) // 4}f", raw))
 
                 if delta.get("is_final_delta", False):
-                    logger.debug(
-                        "Received final delta for embedding request %d", request_id
-                    )
-                    break
+                    if vectors[index] is None:
+                        raise InferenceError(f"Missing embedding vector for prompt index {index}.")
+                    finished.add(index)
             finally:
                 queue.task_done()
                 release_delta_resources(delta)
 
     return {
-        "prompt_tokens": prompt_tokens,
-        "embedding_vector": embedding_vector,
+        "prompt_tokens": sum(tokens),
+        "embedding_vectors": vectors,
     }

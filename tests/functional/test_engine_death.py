@@ -7,6 +7,7 @@ import signal
 import subprocess
 import sys
 import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -14,6 +15,21 @@ import pytest
 
 @pytest.mark.parametrize("exit_mode", ["death", "close"])
 def test_engine_death_settles_streams_and_server_cleanup(tmp_path, exit_mode):
+    assert _run_engine_process(tmp_path, exit_mode) == {
+        "streams_settled": 36,
+        "management_settled": 3,
+        "model_calls_settled": 2,
+    }
+
+
+def test_concurrent_close_preserves_the_new_instance_lease(tmp_path):
+    assert _run_engine_process(tmp_path, "handoff") == {
+        "new_lease_preserved": True,
+        "final_lease_released": True,
+    }
+
+
+def _run_engine_process(tmp_path, exit_mode):
     # A separate process keeps this death test out of the session engine used
     # by the model tests and gives both Python and PIE the same private IPC root.
     project = Path(__file__).resolve().parents[2]
@@ -56,12 +72,68 @@ def test_engine_death_settles_streams_and_server_cleanup(tmp_path, exit_mode):
             stdout, stderr = process.communicate(timeout=5)
         pytest.fail("Engine-death subprocess did not exit:\n" + stdout + stderr)
     assert process.returncode == 0, stdout + stderr
-    receipt = json.loads(stdout.splitlines()[-1])
-    assert receipt == {
-        "streams_settled": 36,
-        "management_settled": 3,
-        "model_calls_settled": 2,
-    }
+    return json.loads(stdout.splitlines()[-1])
+
+
+def _exercise_lease_handoff():
+    from filelock import FileLock
+
+    from orchard.engine.inference_engine import InferenceEngine
+    from orchard.engine.multiprocess import pid_is_alive, read_pid_file, wait_for_exit
+
+    engine = InferenceEngine(load_models=[], startup_timeout=20)
+    process = engine._launch_process
+    assert process is not None, "The private namespace must launch its own engine"
+    started = threading.Event()
+    finished = threading.Event()
+    close_errors = []
+    replacement = None
+
+    def close():
+        started.set()
+        try:
+            engine.close()
+        except BaseException as error:
+            close_errors.append(error)
+        finally:
+            finished.set()
+
+    closing = threading.Thread(target=close)
+    try:
+        with FileLock(str(engine._paths.lock_file)):
+            closing.start()
+            assert started.wait(2)
+            # The close must wait for the real lifecycle lock. Release during
+            # its retry interval so the new constructor can acquire it first.
+            time.sleep(0.015)
+            assert not finished.is_set()
+        replacement = InferenceEngine(load_models=[], startup_timeout=20)
+        constructed_before_close = not finished.is_set()
+        closing.join(timeout=10)
+        assert not closing.is_alive()
+        assert not close_errors, close_errors
+        assert constructed_before_close, "Constructor did not overtake the waiting close"
+        client = replacement.client()
+        try:
+            deadline = time.monotonic() + 1
+            while time.monotonic() < deadline:
+                assert client.cancel_request(999999)["status"] == "accepted"
+                assert read_pid_file(engine._paths.pid_file) == process.pid
+                assert pid_is_alive(process.pid)
+                time.sleep(0.05)
+        finally:
+            client.close()
+        replacement.close()
+        assert wait_for_exit(process.pid, 10), "The final lease did not release PIE"
+        print(json.dumps({"new_lease_preserved": True, "final_lease_released": True}))
+    finally:
+        closing.join(timeout=10)
+        if replacement is not None:
+            replacement.close()
+        engine.close()
+        if process.poll() is None:
+            process.kill()
+            process.wait(timeout=3)
 
 
 async def _exercise_engine_death(exit_mode):
@@ -270,4 +342,8 @@ async def _exercise_engine_death(exit_mode):
 
 
 if __name__ == "__main__":
-    asyncio.run(_exercise_engine_death(sys.argv[1] if len(sys.argv) > 1 else "death"))
+    mode = sys.argv[1] if len(sys.argv) > 1 else "death"
+    if mode == "handoff":
+        _exercise_lease_handoff()
+    else:
+        asyncio.run(_exercise_engine_death(mode))
