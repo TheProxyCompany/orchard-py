@@ -10,8 +10,7 @@ DELTA_TIMEOUT_S = float(os.getenv("ORCHARD_DELTA_TIMEOUT_S", "30"))
 
 # Ceiling on one delta wait even while the engine is demonstrably busy with
 # other requests. Bounds the case of a request the engine dropped. Sized from
-# the joint buckshot, where 18 models take turns in memory that holds a few
-# of them: a request waited up to 512s for its model to come back and then
-# 279s to decode beside a diffusion model (64 GiB lane, root run 45011140250,
-# 2026-11-22). 900s clears that 791s by about 109s.
-DELTA_HARD_TIMEOUT_S = float(os.getenv("ORCHARD_DELTA_HARD_TIMEOUT_S", "900"))
+# the width-21 buckshot cold peak: ~250 batched requests landing at once fan
+# out to ~800 sequences, and the deepest first prefill starts 91s after
+# submit (pt1 py6_engine.log, 2026-07-23) — 300s is ~3x that tail.
+DELTA_HARD_TIMEOUT_S = float(os.getenv("ORCHARD_DELTA_HARD_TIMEOUT_S", "300"))

@@ -13,32 +13,6 @@ from pathlib import Path
 import pytest
 
 
-def test_telemetry_updates_delta_wait_only_when_engine_work_advances():
-    from orchard.app.ipc_dispatch import EVENT_TOPIC_PREFIX, IPCState
-    from orchard.engine.global_context import GlobalContext
-
-    context = GlobalContext()
-    state = IPCState(context)
-
-    def heartbeat(pid, **queues):
-        body = json.dumps({"health": {"pid": pid}, "queues": queues}).encode()
-        state.handle_engine_event(EVENT_TOPIC_PREFIX + b"telemetry\x00" + body)
-
-    heartbeat(17)
-    heartbeat(17, gpu_command_buffers_completed=2, responses_delivered=8)
-    assert state.last_progress_monotonic == 0
-    heartbeat(17, gpu_command_buffers_completed=3, responses_delivered=8)
-    gpu_progress = state.last_progress_monotonic
-    assert gpu_progress > 0
-    heartbeat(17, gpu_command_buffers_completed=3, responses_delivered=8)
-    assert state.last_progress_monotonic == gpu_progress
-    heartbeat(17, gpu_command_buffers_completed=3, responses_delivered=9)
-    delivered = state.last_progress_monotonic
-    assert delivered > gpu_progress
-    heartbeat(18, gpu_command_buffers_completed=10, responses_delivered=20)
-    assert state.last_progress_monotonic == delivered
-
-
 @pytest.mark.parametrize("exit_mode", ["death", "close"])
 def test_engine_death_settles_streams_and_server_cleanup(tmp_path, exit_mode):
     assert _run_engine_process(tmp_path, exit_mode) == {

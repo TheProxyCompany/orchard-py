@@ -184,7 +184,7 @@ async def gather_embedding_response(
     request_id: int,
     queue: asyncio.Queue[ResponseDeltaDict],
     ipc_state: IPCStateDep,
-    prompt_count: int = 1,
+    prompt_count: int,
 ) -> dict[str, Any]:
     """Collect one final vector per prompt, independent of response arrival order."""
     vectors: list[list[float] | None] = [None] * prompt_count
@@ -223,8 +223,6 @@ async def gather_embedding_response(
                     )
 
                 index = delta.get("prompt_index")
-                if index is None and prompt_count == 1:
-                    index = 0
                 if not isinstance(index, int) or not 0 <= index < prompt_count:
                     raise InferenceError(f"Invalid embedding prompt index {index!r} for {prompt_count} inputs.")
                 if index in finished:
@@ -249,5 +247,4 @@ async def gather_embedding_response(
     return {
         "prompt_tokens": sum(tokens),
         "embedding_vectors": vectors,
-        "embedding_vector": vectors[0] if vectors else [],
     }
