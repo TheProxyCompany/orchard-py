@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from typing import Any, Literal, TypeVar, overload
 
 from orchard.app.ipc_dispatch import IPCState, QueueRegistration
-from orchard.app.model_registry import ModelRegistry
+from orchard.app.model_registry import ModelInfo, ModelRegistry
 from orchard.clients.diarization import DiarizationSession
 from orchard.clients.duplex import DuplexSession
 from orchard.clients.replay import splice_replays, take_replays
@@ -398,7 +398,7 @@ class Client:
         stream_managed_cleanup = False
 
         try:
-            info = await self._model_registry.get_info(model_id)
+            info = await self._model_info(model_id)
             response_channel_id = self._ipc_state.response_channel_id or request_id
             prompt_bytes = prompt.encode("utf-8")
             image_buffers = image_buffers or []
@@ -507,7 +507,7 @@ class Client:
         request_id, response_queue = await self._open_request()
 
         try:
-            info = await self._model_registry.get_info(model_id)
+            info = await self._model_info(model_id)
             response_channel_id = self._ipc_state.response_channel_id or request_id
             request_bytes = _build_request_payload(
                 request_id=request_id,
@@ -649,7 +649,7 @@ class Client:
         texts: list[str],
         task_name: str,
     ) -> None:
-        info = await self._model_registry.get_info(model_id)
+        info = await self._model_info(model_id)
         engine_model_id = info.model_id
         response_channel_id = self._ipc_state.response_channel_id or request_id
         request_bytes = _build_request_payload(
@@ -818,7 +818,7 @@ class Client:
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Render a single chat prompt exactly as Orchard will submit it."""
-        info = await self._model_registry.get_info(model_id)
+        info = await self._model_info(model_id)
         _, capture_payload = self._prepare_prompt_payload(
             model_id=model_id,
             model_path=info.model_path,
@@ -920,7 +920,7 @@ class Client:
                    response's `deltas`.
         """
         deltas = list(deltas)
-        info = await self._model_registry.get_info(model_id)
+        info = await self._model_info(model_id)
         reasoning, tool_calls = self._aggregate_structured_items(deltas)
         tokens = [token for delta in deltas for token in delta.tokens]
 
@@ -1264,6 +1264,12 @@ class Client:
             )
             self._sync_thread.start()
             loop_started.wait()
+
+    async def _model_info(self, model_id: str) -> ModelInfo:
+        # The SDK caller chose this model, so an explicit local path is theirs
+        # to use. HTTP requests never come through here.
+        self._model_registry.allow_local_path(model_id)
+        return await self._model_registry.get_info(model_id)
 
     def _sync_iterator_bridge(self, async_iterator: AsyncIterator[T]) -> Iterator[T]:
         """Bridges an async iterator to a sync iterator.
@@ -1814,7 +1820,7 @@ class Client:
         **kwargs: Any,
     ):
         """Prepares and submits a batched request over the pynng IPC channel."""
-        info = await self._model_registry.get_info(model_id)
+        info = await self._model_info(model_id)
         engine_model_id = info.model_id
 
         # Build a prompt payload for each conversation
