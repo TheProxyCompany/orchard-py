@@ -29,6 +29,7 @@ def resolve_models(models: Iterable[str]) -> list[PreloadEntry]:
     seen: set[tuple[str, str]] = set()
 
     for requested in models:
+        resolver.allow_local_path(requested)
         try:
             resolved = resolver.resolve(requested)
         except ModelResolutionError as exc:  # pragma: no cover - defensive logging path

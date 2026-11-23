@@ -84,6 +84,10 @@ class ModelRegistry:
         self._local_source_inspection_cache: dict[str, ResolvedModel] = {}
         self._ipc_state = ipc_state
 
+    def allow_local_path(self, path: str | os.PathLike[str]) -> None:
+        """Allow resolving an explicit local model path supplied by a trusted caller."""
+        self._resolver.allow_local_path(path)
+
     def _bound_lock(self) -> asyncio.Lock:
         # Same loop-rebinding rationale as IPCState.management_lock: the
         # registry outlives test/session event loops.
@@ -530,14 +534,6 @@ class ModelRegistry:
         if not ipc_state or not ipc_state.management_socket:
             raise RuntimeError("IPC state is not initialized.")
 
-        async with self._bound_lock():
-            entry = self._entries.get(canonical_id)
-        if entry is None or entry.activation_future is None:
-            await self._mark_activation_failed(
-                canonical_id, "Activation waiter missing."
-            )
-            raise RuntimeError("Activation waiter missing.")
-
         command = {
             "type": "load_model",
             "requested_id": requested_id,
@@ -575,16 +571,8 @@ class ModelRegistry:
                 f"Engine rejected load_model for '{requested_id}': {message}"
             )
 
-        # Accepted: wait for model_loaded event via handle_model_loaded
-        async with self._bound_lock():
-            entry = self._entries[canonical_id]
-            waiter = entry.activation_future
-
-        if waiter is None:
-            await self._mark_activation_failed(
-                canonical_id, "Activation waiter missing."
-            )
-            raise RuntimeError("Activation waiter missing.")
+        # ensure_loaded owns the waiter; model_loaded may have resolved it
+        # and cleared the entry before the accepted reply arrived.
 
     def update_capabilities(self, model_id: str, capabilities: dict | None) -> None:
         """Update persisted capabilities for a given model."""

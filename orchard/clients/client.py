@@ -9,13 +9,14 @@ import os
 import random
 import sys
 import threading
+import time
 from array import array
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Iterator
 from dataclasses import dataclass
 from typing import Any, Literal, TypeVar, overload
 
 from orchard.app.ipc_dispatch import IPCState, QueueRegistration
-from orchard.app.model_registry import ModelRegistry
+from orchard.app.model_registry import ModelInfo, ModelRegistry
 from orchard.clients.diarization import DiarizationSession
 from orchard.clients.duplex import DuplexSession
 from orchard.clients.replay import splice_replays, take_replays
@@ -25,7 +26,7 @@ from orchard.clients.responses import (
     aggregate_non_streaming_response,
     iter_response_events,
 )
-from orchard.defaults import MAX_GENERATED_TOKENS
+from orchard.defaults import DELTA_HARD_TIMEOUT_S, DELTA_TIMEOUT_S, MAX_GENERATED_TOKENS
 from orchard.engine import ClientDelta, ClientResponse, UsageStats
 from orchard.formatter import ChatFormatter
 from orchard.formatter.multimodal import (
@@ -397,7 +398,7 @@ class Client:
         stream_managed_cleanup = False
 
         try:
-            info = await self._model_registry.get_info(model_id)
+            info = await self._model_info(model_id)
             response_channel_id = self._ipc_state.response_channel_id or request_id
             prompt_bytes = prompt.encode("utf-8")
             image_buffers = image_buffers or []
@@ -506,7 +507,7 @@ class Client:
         request_id, response_queue = await self._open_request()
 
         try:
-            info = await self._model_registry.get_info(model_id)
+            info = await self._model_info(model_id)
             response_channel_id = self._ipc_state.response_channel_id or request_id
             request_bytes = _build_request_payload(
                 request_id=request_id,
@@ -648,7 +649,7 @@ class Client:
         texts: list[str],
         task_name: str,
     ) -> None:
-        info = await self._model_registry.get_info(model_id)
+        info = await self._model_info(model_id)
         engine_model_id = info.model_id
         response_channel_id = self._ipc_state.response_channel_id or request_id
         request_bytes = _build_request_payload(
@@ -817,7 +818,7 @@ class Client:
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Render a single chat prompt exactly as Orchard will submit it."""
-        info = await self._model_registry.get_info(model_id)
+        info = await self._model_info(model_id)
         _, capture_payload = self._prepare_prompt_payload(
             model_id=model_id,
             model_path=info.model_path,
@@ -919,7 +920,7 @@ class Client:
                    response's `deltas`.
         """
         deltas = list(deltas)
-        info = await self._model_registry.get_info(model_id)
+        info = await self._model_info(model_id)
         reasoning, tool_calls = self._aggregate_structured_items(deltas)
         tokens = [token for delta in deltas for token in delta.tokens]
 
@@ -1264,9 +1265,22 @@ class Client:
             self._sync_thread.start()
             loop_started.wait()
 
+    async def _model_info(self, model_id: str) -> ModelInfo:
+        # The SDK caller chose this model, so an explicit local path is theirs
+        # to use. HTTP requests never come through here.
+        self._model_registry.allow_local_path(model_id)
+        return await self._model_registry.get_info(model_id)
+
     def _sync_iterator_bridge(self, async_iterator: AsyncIterator[T]) -> Iterator[T]:
-        """Bridges an async iterator to a sync iterator."""
-        DELTA_TIMEOUT_S = float(os.getenv("ORCHARD_SYNC_DELTA_TIMEOUT_S", "300"))
+        """Bridges an async iterator to a sync iterator.
+
+        Each delta is awaited the way IPCState.next_delta awaits one: engine-wide
+        progress keeps the wait alive, DELTA_TIMEOUT_S of engine-wide silence
+        ends it, and the hard ceiling bounds a request the engine dropped.
+        """
+        hard_timeout_s = float(
+            os.getenv("ORCHARD_SYNC_DELTA_TIMEOUT_S", str(DELTA_HARD_TIMEOUT_S))
+        )
 
         async def _next_delta() -> T:
             return await async_iterator.__anext__()
@@ -1282,15 +1296,29 @@ class Client:
                     _next_delta(),
                     self._sync_loop or asyncio.new_event_loop(),
                 )
+                start = time.monotonic()
                 try:
-                    yield future.result(timeout=DELTA_TIMEOUT_S)
-                except TimeoutError as exc:
-                    raise RuntimeError(
-                        f"Timed out waiting for inference delta after {DELTA_TIMEOUT_S}s. "
-                        "Engine may have crashed."
-                    ) from exc
+                    while True:
+                        now = time.monotonic()
+                        newest_progress = max(
+                            start, self._ipc_state.last_progress_monotonic
+                        )
+                        deadline = min(
+                            newest_progress + DELTA_TIMEOUT_S, start + hard_timeout_s
+                        )
+                        if now >= deadline:
+                            raise RuntimeError(
+                                f"Timed out waiting for inference delta after {now - start:.1f}s. "
+                                "Engine may have crashed."
+                            )
+                        try:
+                            delta = future.result(timeout=deadline - now)
+                            break
+                        except TimeoutError:
+                            continue
                 except StopAsyncIteration:
                     break
+                yield delta
         finally:
             if future is not None and not future.done():
                 future.cancel()
@@ -1792,7 +1820,7 @@ class Client:
         **kwargs: Any,
     ):
         """Prepares and submits a batched request over the pynng IPC channel."""
-        info = await self._model_registry.get_info(model_id)
+        info = await self._model_info(model_id)
         engine_model_id = info.model_id
 
         # Build a prompt payload for each conversation
