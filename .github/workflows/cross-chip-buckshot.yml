@@ -1,0 +1,396 @@
+name: Cross-Chip Joint Buckshot
+
+on:
+  schedule:
+    # Offset from the 06:00 UTC gauntlet and 07:00 UTC buckshot gate.
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: "Consecutive joint runs per chip"
+        required: false
+        default: "1"
+        type: string
+      pie_ref:
+        description: "proxy-inference-engine git ref when pie_url is empty"
+        required: false
+        default: "main"
+        type: string
+      pie_url:
+        description: "Optional prebuilt PIE release archive URL"
+        required: false
+        default: ""
+        type: string
+      orchard_rs_ref:
+        description: "orchard-rs git ref"
+        required: false
+        default: "main"
+        type: string
+
+concurrency:
+  group: cross-chip-buckshot-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  joint-buckshot:
+    name: Joint Buckshot (${{ matrix.label }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - chip: m5-ultra
+            label: M5 Ultra 512 GiB
+            runs_on: [self-hosted, chip-m5-ultra]
+            expected_memory_gib: 512
+            test_models: ""
+            pipeline_family: ""
+          - chip: m5-max
+            label: M5 Max 128 GiB
+            runs_on: [self-hosted, chip-m5-max]
+            expected_memory_gib: 128
+            test_models: ""
+            pipeline_family: ""
+          - chip: m5-pro
+            label: M5 Pro 64 GiB
+            runs_on: [self-hosted, ci-cd, chip-m5-pro]
+            expected_memory_gib: 64
+            test_models: ""
+            pipeline_family: ""
+          - chip: m4
+            label: M4 24 GiB
+            runs_on: [self-hosted, chip-m4]
+            expected_memory_gib: 24
+            test_models: "gemma4,qwen3_5,nemotron_h"
+            pipeline_family: "audio"
+    runs-on: ${{ matrix.runs_on }}
+    timeout-minutes: 150
+    env:
+      PATH: /Users/theproxycompany/.cargo/bin:/opt/homebrew/opt/rustup/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+    steps:
+      - name: Verify runner hardware
+        env:
+          EXPECTED_MEMORY_GIB: ${{ matrix.expected_memory_gib }}
+          CHIP_SLUG: ${{ matrix.chip }}
+        run: |
+          set -euo pipefail
+          actual_bytes="$(sysctl -n hw.memsize)"
+          expected_bytes="$((EXPECTED_MEMORY_GIB * 1024 * 1024 * 1024))"
+          test "$actual_bytes" -eq "$expected_bytes" || {
+            echo "Runner has $actual_bytes bytes; lane $CHIP_SLUG requires $expected_bytes bytes"
+            exit 1
+          }
+          chip_name="$(system_profiler SPHardwareDataType | awk -F': ' '/Chip:/ {print $2}')"
+          model_name="$(system_profiler SPHardwareDataType | awk -F': ' '/Model Name:/ {print $2}')"
+          {
+            echo "## Cross-Chip Runner ($CHIP_SLUG)"
+            echo "- **Host:** $(hostname)"
+            echo "- **Model:** $model_name"
+            echo "- **Chip:** $chip_name"
+            echo "- **Memory:** ${EXPECTED_MEMORY_GIB} GiB"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Get the App's token
+        id: app
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Checkout orchard-py
+        uses: actions/checkout@v6
+        with:
+          path: orchard-py
+          token: ${{ steps.app.outputs.token }}
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Checkout orchard-rs
+        uses: actions/checkout@v6
+        with:
+          repository: TheProxyCompany/orchard-rs
+          ref: ${{ inputs.orchard_rs_ref || 'main' }}
+          path: orchard-rs
+          token: ${{ steps.app.outputs.token }}
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Checkout proxy-inference-engine
+        uses: actions/checkout@v6
+        with:
+          repository: TheProxyCompany/proxy-inference-engine
+          ref: ${{ inputs.pie_ref || 'main' }}
+          path: proxy-inference-engine
+          token: ${{ steps.app.outputs.token }}
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Install build tools
+        run: |
+          export HOMEBREW_NO_AUTO_UPDATE=1
+          for tool in cmake ccache rust uv; do
+            brew list "$tool" >/dev/null 2>&1 || brew install "$tool"
+          done
+          export PATH="$HOME/.cargo/bin:/opt/homebrew/bin:$PATH"
+          printf "%s\n" "$HOME/.cargo/bin" /opt/homebrew/bin >> "$GITHUB_PATH"
+          if ! command -v cargo >/dev/null 2>&1; then
+            if [ -x "/opt/homebrew/opt/rustup/bin/rustup" ]; then
+              export PATH="/opt/homebrew/opt/rustup/bin:$PATH"
+              echo "/opt/homebrew/opt/rustup/bin" >> "$GITHUB_PATH"
+            else
+              brew link --overwrite rust || true
+            fi
+          fi
+          cargo --version
+
+      - name: Build or download PIE release
+        env:
+          PIE_URL: ${{ inputs.pie_url }}
+        run: |
+          set -euo pipefail
+          if [ -n "$PIE_URL" ]; then
+            rm -rf proxy-inference-engine/release
+            mkdir -p proxy-inference-engine/release
+            curl -fsSL "$PIE_URL" | tar -xz -C proxy-inference-engine/release
+          else
+            (cd proxy-inference-engine && ./scripts/build.sh -t Release)
+          fi
+
+      - name: Prepare Orchard client test suites
+        run: |
+          uv --no-config venv --python 3.12 orchard-py/.venv
+          uv --no-config pip install --python orchard-py/.venv/bin/python -e "./orchard-py[dev]" --quiet
+          cargo test --manifest-path orchard-rs/Cargo.toml --release \
+            --test buckshot --test engine_lifecycle --no-run
+
+      - name: Run joint Orchard buckshot
+        env:
+          ORCHARD_TEST_MODELS: ${{ matrix.test_models }}
+          ORCHARD_TEST_PIPELINE_FAMILY: ${{ matrix.pipeline_family }}
+          ORCHARD_TEST_HTTP_TIMEOUT_S: "1800"
+          ORCHARD_DELTA_HARD_TIMEOUT_S: "1800"
+          RUNS: ${{ inputs.runs || '1' }}
+        run: |
+          set -euo pipefail
+          ORCHARD_CACHE_ROOT="$(mktemp -d /tmp/orc-xbuck.XXXXXX)"
+          export ORCHARD_CACHE_ROOT
+          export ORCHARD_IPC_ROOT="$ORCHARD_CACHE_ROOT/ipc"
+          mkdir -p "$ORCHARD_IPC_ROOT"
+          echo "ORCHARD_CACHE_ROOT=$ORCHARD_CACHE_ROOT" >> "$GITHUB_ENV"
+          PIE_RELEASE_DIR="$PWD/proxy-inference-engine/release"
+          ORCHARD_PY_DIR="$PWD/orchard-py"
+          ORCHARD_RS_DIR="$PWD/orchard-rs"
+          PIE_LOCAL_BUILD="$PIE_RELEASE_DIR" ./proxy-inference-engine/scripts/gpu_lease.sh \
+            "$ORCHARD_PY_DIR/.venv/bin/python" - \
+            "$ORCHARD_PY_DIR" "$ORCHARD_RS_DIR" "$RUNS" <<'PY'
+          import ctypes
+          import hashlib
+          import json
+          import os
+          import signal
+          import subprocess
+          import sys
+          import time
+          from pathlib import Path
+
+          from orchard.engine.inference_engine import InferenceEngine
+          from orchard.engine.io import get_engine_file_paths
+          from orchard.engine.multiprocess import pid_is_alive, read_pid_file, wait_for_exit
+
+          orchard_py_dir = Path(sys.argv[1])
+          orchard_rs_dir = Path(sys.argv[2])
+          runs = int(sys.argv[3])
+          cache = Path(os.environ["ORCHARD_CACHE_ROOT"])
+          paths = get_engine_file_paths(None, None)
+          release = Path(os.environ["PIE_LOCAL_BUILD"]).resolve()
+          binary = release / "bin/proxy_inference_engine"
+          libraries = release / "lib"
+
+
+          def artifact_hashes():
+              artifacts = {binary, libraries / "libmlx.dylib", libraries / "mlx.metallib", libraries / "pal.metallib"}
+              artifacts.update(libraries.glob("*.metallib"))
+              artifacts.update(libraries.glob("*.dylib"))
+              hashes = {}
+              for artifact in sorted(artifacts):
+                  with artifact.open("rb") as source:
+                      hashes[str(artifact)] = hashlib.file_digest(source, "sha256").hexdigest()
+              return hashes
+
+
+          def process_binary(pid):
+              if sys.platform == "darwin":
+                  libproc = ctypes.CDLL("/usr/lib/libproc.dylib", use_errno=True)
+                  libproc.proc_pidpath.argtypes = [ctypes.c_int, ctypes.c_void_p, ctypes.c_uint32]
+                  libproc.proc_pidpath.restype = ctypes.c_int
+                  buffer = ctypes.create_string_buffer(4096)
+                  assert libproc.proc_pidpath(pid, buffer, len(buffer)) > 0, "Cannot identify live PIE binary"
+                  return Path(os.fsdecode(buffer.value)).resolve()
+              return (Path("/proc") / str(pid) / "exe").resolve(strict=True)
+
+
+          expected_hashes = artifact_hashes()
+
+
+          def interrupted(signum, frame):
+              raise KeyboardInterrupt
+
+
+          signal.signal(signal.SIGTERM, interrupted)
+          for run in range(1, runs + 1):
+              output = cache / f"run-{run}"
+              output.mkdir(parents=True, exist_ok=True)
+              InferenceEngine.shutdown(timeout=30.0)
+              processes = []
+              logs = []
+              pid = None
+              try:
+                  with InferenceEngine(
+                      client_log_file=output / "owner.log",
+                      engine_log_file=output / "engine.log",
+                      startup_timeout=120.0,
+                  ):
+                      pid = read_pid_file(paths.pid_file)
+                      assert pid is not None and pid_is_alive(pid), "PIE did not start"
+                      assert process_binary(pid) == binary, "The owner launched a different PIE binary"
+                      assert artifact_hashes() == expected_hashes, "PIE artifacts changed before the run"
+                      env = os.environ | {
+                          "ORCHARD_TEST_ENGINE_PID": str(pid),
+                          "PATH": f"{Path(sys.executable).parent}:{os.environ['PATH']}",
+                      }
+                      commands = [
+                          (
+                              "orchard-py",
+                              ["bash", "scripts/buckshot_gate.sh", "1", str(output / "python")],
+                              orchard_py_dir,
+                              env | {"ORCHARD_TEST_LOG_DIR": str(output / "python-logs")},
+                          ),
+                          (
+                              "orchard-rs",
+                              ["cargo", "test", "--release", "--test", "buckshot", "--", "--nocapture"],
+                              orchard_rs_dir,
+                              env,
+                          ),
+                      ]
+                      print(
+                          json.dumps(
+                              {
+                                  "run": run,
+                                  "engine_pid": pid,
+                                  "binary_path": str(process_binary(pid)),
+                                  "test_models": os.environ.get("ORCHARD_TEST_MODELS", ""),
+                                  "pipeline_family": os.environ.get("ORCHARD_TEST_PIPELINE_FAMILY", ""),
+                                  "artifact_sha256": expected_hashes,
+                                  "logs": str(output),
+                              }
+                          ),
+                          flush=True,
+                      )
+                      volley_start = time.monotonic()
+                      for name, command, workdir, child_env in commands:
+                          log = (output / f"{name}.log").open("w")
+                          logs.append(log)
+                          processes.append(
+                              (
+                                  name,
+                                  subprocess.Popen(
+                                      command,
+                                      cwd=workdir,
+                                      env=child_env,
+                                      stdout=log,
+                                      stderr=subprocess.STDOUT,
+                                      start_new_session=True,
+                                  ),
+                              )
+                          )
+                      results = {}
+                      pending = dict(processes)
+                      while pending:
+                          assert read_pid_file(paths.pid_file) == pid and pid_is_alive(pid), (
+                              "PIE exited or changed during buckshot"
+                          )
+                          for name, process in list(pending.items()):
+                              code = process.poll()
+                              if code is None:
+                                  continue
+                              results[name] = code
+                              del pending[name]
+                              print(
+                                  json.dumps(
+                                      {
+                                          "client": name,
+                                          "exit_code": code,
+                                          "elapsed_s": round(time.monotonic() - volley_start, 3),
+                                      }
+                                  ),
+                                  flush=True,
+                              )
+                              assert artifact_hashes() == expected_hashes, f"PIE artifacts changed during {name}"
+                          if pending:
+                              time.sleep(0.25)
+                      print(
+                          json.dumps(
+                              {
+                                  "run": run,
+                                  "engine_pid": pid,
+                                  "exit_codes": results,
+                                  "joint_buckshot_s": round(time.monotonic() - volley_start, 3),
+                              }
+                          ),
+                          flush=True,
+                      )
+                      failed_clients = {name: code for name, code in results.items() if code}
+                      if failed_clients:
+                          raise RuntimeError(f"Buckshot clients failed {failed_clients}. Logs are in {output}.")
+                  assert wait_for_exit(pid, timeout=30.0), "PIE did not exit after the final client released its lease"
+                  lifecycle_env = os.environ.copy()
+                  lifecycle_env.pop("ORCHARD_TEST_ENGINE_PID", None)
+                  lifecycle = output / "lifecycle"
+                  lifecycle.mkdir()
+                  lifecycle_env.update(
+                      {
+                          "ORCHARD_CACHE_ROOT": str(lifecycle / "cache"),
+                          "ORCHARD_IPC_ROOT": str(lifecycle / "ipc"),
+                          "ORCHARD_TEST_LOG_DIR": str(lifecycle / "logs"),
+                      }
+                  )
+                  subprocess.run(
+                      [sys.executable, "-m", "pytest", "-q", "tests/functional/test_engine_death.py"],
+                      cwd=orchard_py_dir,
+                      env=lifecycle_env,
+                      check=True,
+                  )
+                  subprocess.run(
+                      ["cargo", "test", "--release", "--test", "engine_lifecycle", "--", "--nocapture"],
+                      cwd=orchard_rs_dir,
+                      env=lifecycle_env,
+                      check=True,
+                  )
+                  assert artifact_hashes() == expected_hashes, "PIE artifacts changed during teardown"
+              finally:
+                  for _, process in processes:
+                      if process.poll() is None:
+                          os.killpg(process.pid, signal.SIGTERM)
+                          try:
+                              process.wait(timeout=10)
+                          except subprocess.TimeoutExpired:
+                              os.killpg(process.pid, signal.SIGKILL)
+                              process.wait()
+                  for log in logs:
+                      log.close()
+                  if pid is not None and pid_is_alive(pid):
+                      InferenceEngine.shutdown(timeout=30.0)
+          PY
+
+      - name: Golden data must be untouched
+        run: |
+          git -C orchard-py diff --exit-code tests/golden/data
+          git -C orchard-rs diff --exit-code tests/golden/data
+
+      - name: Upload integration logs
+        if: always() && env.ORCHARD_CACHE_ROOT != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: cross-chip-buckshot-${{ matrix.chip }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.ORCHARD_CACHE_ROOT }}
+          retention-days: 7
