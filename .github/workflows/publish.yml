@@ -5,7 +5,7 @@ on:
 
 jobs:
   publish:
-    runs-on: [self-hosted, ci-cd]
+    runs-on: [self-hosted, pie-ci]
     timeout-minutes: 15
     env:
       PATH: /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin

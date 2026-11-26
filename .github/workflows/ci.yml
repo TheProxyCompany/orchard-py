@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   full-suite:
-    runs-on: [self-hosted, ci-cd, pie-ci]
+    runs-on: [self-hosted, pie-ci]
     timeout-minutes: 60
     env:
       PATH: /Users/theproxycompany/.cargo/bin:/opt/homebrew/opt/rustup/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
