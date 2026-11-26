@@ -18,7 +18,7 @@ from tests.functional.cases.registry import run_cases as run_functional
 from tests.golden import golden_io
 from tests.golden.cases.registry import model_cases, pipeline_cases
 from tests.golden.cases.registry import run_cases as run_golden
-from tests.models import MODELS, PIPELINE_TOOL_MODELS, Model
+from tests.models import MODELS, PIPELINE_FAMILY, PIPELINE_TOOL_MODELS, Model
 
 pytestmark = [
     pytest.mark.asyncio,
@@ -55,13 +55,17 @@ async def test_buckshot_full_matrix(live_server, client, engine):
     for model_id in PIPELINE_TOOL_MODELS:
         await engine.load_models([model_id])
 
-    jobs = [
-        run_suite(
-            "golden",
-            "pipeline",
-            lambda: run_golden(pipeline_cases(), {"client": client}),
+    jobs = []
+    if PIPELINE_FAMILY != "none":
+        jobs.append(
+            run_suite(
+                "golden",
+                "pipeline",
+                lambda: run_golden(
+                    pipeline_cases(PIPELINE_FAMILY), {"client": client}
+                ),
+            )
         )
-    ]
     for m in MODELS:
         jobs.append(
             run_suite("functional", m.template_type, lambda m=m: functional_suite(m))
